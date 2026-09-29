@@ -1,16 +1,17 @@
-# Faith TV Series
+# Faith TV Series (Faith Stream for WordPress)
 
-WordPress plugin that puts a Faith TV (Gideo) category, like the Mini Series, live on
-faithtabernacle.com. New series added on Faith TV show up on the site by themselves, and
-visitors can watch episodes right on the page.
+WordPress plugin by FaithStream that puts a church's video series live on its website, from
+**Faith Stream** or a **Gideo** TV channel. New series show up on the site by themselves, and
+visitors watch right on the page. Built first for faithtabernacle.com; any church can connect.
 
+- **Faith Stream** menu in WordPress: Church (connect in 3 steps), Videos, Look & feel, Embed, Updates
 - Elementor widget **Faith TV Series** (search "Faith TV" in the widget panel)
-- Shortcode anywhere else: `[faith_tv_series category="Faith TV Mini Series"]`
-- **Settings > Faith TV Series** lists every Faith TV category with a shortcode to copy
+- Shortcode anywhere else: `[faith_tv_series category="<id>"]` (copy from Faith Stream > Videos)
+- **Embed** page: copy-and-paste code to show a category on any other website
+- Updates itself from this repository's GitHub releases
 
-Layouts: showcase (default, a big featured series that rotates), 3D carousel, sliding row,
-grid. Phones get their own layout (by default the swipe carousel). All options are in
-[`faith-tv-series/readme.txt`](faith-tv-series/readme.txt).
+Layouts: showcase (default), 3D carousel, featured + list (phones), sliding row, grid. All
+options are in [`faith-tv-series/readme.txt`](faith-tv-series/readme.txt).
 
 ## Install on the website
 
@@ -21,17 +22,32 @@ grid. Phones get their own layout (by default the swipe carousel). All options a
 To update later: build a new zip and upload it the same way. WordPress asks to replace the
 installed version.
 
+## Releasing an update
+
+```bash
+python release.py 1.2.0 "What changed, in one line"
+```
+
+It sets the version, adds the note to the changelog, builds `faith-tv-series.zip`, commits,
+tags `v1.2.0`, pushes and creates the GitHub release. Sites see "Update available" within
+12 hours, or right away with Faith Stream > Updates > Check for updates now. Add
+`--dry-run` to see what it would do first.
+
 ## How it works
 
-- `includes/class-gideo-client.php` reads Gideo's public catalog
-  (`ott.gideo.video/api/legacy`, account `Faith-Tabernacle-1`) and caches it (15 minutes by
-  default). The last good copy is kept, so the site still shows the list if Gideo is down.
+- `includes/class-catalog.php` is the switchboard: every request goes to the connected
+  church's platform, `class-gideo-client.php` (Gideo's public API) or
+  `class-faithstream-client.php` (Faith Stream's public API). Both return the same shapes.
+- `includes/class-cache.php` caches answers (15 minutes by default) and keeps the last good
+  copy, so the site still shows the list if the platform is down.
 - `includes/class-renderer.php` renders the shortcode and the Elementor widget.
+- `includes/class-embed.php` serves `/?ftvs_embed=<category>` for iframes on other sites;
+  `assets/embed.js` on the host page lets the frame grow to fit.
 - `includes/class-rest.php` serves `/wp-json/faith-tv/v1/category/<id>` and `/video/<id>`
   to the page script when someone opens a series or presses play.
-- `assets/faith-tv-series.js` runs the rotating showcase, the carousel and the player.
-  Videos are HLS; browsers without built-in HLS use the bundled hls.js 1.7.3 (Apache-2.0),
-  loaded only when someone presses play.
+- `includes/class-updater.php` feeds GitHub releases into WordPress's update system.
+- `assets/faith-tv-series.js` runs the layouts and the player (hls.js 1.7.3, Apache-2.0,
+  loaded only on play).
 
 ## Test locally
 

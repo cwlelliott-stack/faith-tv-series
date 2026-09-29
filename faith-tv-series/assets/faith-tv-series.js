@@ -4,8 +4,8 @@
 
 	var CONFIG = window.FTVS_CONFIG || {};
 	var STR = CONFIG.strings || {};
-	var ID_RE = /^[a-f0-9]{32}$/i;
-	var HASH_RE = /^#faith-tv-([a-f0-9]{32})$/i;
+	var ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+	var HASH_RE = /^#faith-tv-([A-Za-z0-9_-]{1,128})$/;
 
 	var ICON_PLAY = '<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true" focusable="false"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>';
 	var ICON_BACK = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -327,9 +327,16 @@
 	/* ---------- Row and grid: a click opens the player straight away ---------- */
 
 	function initCards(root) {
+		var more = root.querySelector('[data-ftvs-more]');
+		if (more) {
+			more.addEventListener('click', function () {
+				root.querySelector('.ftvs-list').classList.add('is-open');
+				more.hidden = true;
+			});
+		}
 		if (root.getAttribute('data-play') !== 'site') return;
 		root.addEventListener('click', function (e) {
-			var card = e.target.closest('.ftvs__card');
+			var card = e.target.closest('.ftvs__card, [data-ftvs-open]');
 			if (!card || !root.contains(card) || !plainClick(e)) return;
 			var item = readItem(card);
 			if (!item) return;
@@ -363,7 +370,7 @@
 	/* ---------- The player dialog (one per page) ---------- */
 
 	var Player = (function () {
-		var dialog, video, posterBtn, errorBox, backBtn, ambient, kickerEl, titleEl, nowEl, descEl, statusEl, catsEl, epsLabel, epsEl, tvLink;
+		var dialog, grab, video, posterBtn, errorBox, backBtn, ambient, kickerEl, titleEl, nowEl, descEl, statusEl, catsEl, epsLabel, epsEl, tvLink;
 		var stack = [];
 		var episodes = [];
 		var current = -1;
@@ -397,15 +404,20 @@
 			tvLink.innerHTML = ICON_OUT;
 			tvLink.appendChild(el('span', { text: str('watchOnTv', 'Watch on Faith TV') }));
 
+			grab = el('div', { 'class': 'ftvs-dialog__grab', 'aria-hidden': 'true' });
+			var powered = CONFIG.powered ? el('p', { 'class': 'ftvs-dialog__powered', html: 'Powered by <b>FAITHSTREAM</b>' }) : null;
 			dialog = el('dialog', { 'class': 'ftvs-dialog', 'aria-labelledby': 'ftvs-dialog-title' }, [
+				grab,
 				el('div', { 'class': 'ftvs-dialog__bar' }, [backBtn, closeBtn]),
 				el('div', { 'class': 'ftvs-dialog__player' }, [video, posterBtn, errorBox]),
 				el('div', { 'class': 'ftvs-dialog__body' }, [
 					ambient,
-					el('div', { 'class': 'ftvs-dialog__inner' }, [kickerEl, titleEl, nowEl, descEl, statusEl, catsEl, epsLabel, epsEl, tvLink])
+					el('div', { 'class': 'ftvs-dialog__inner' }, [kickerEl, titleEl, nowEl, descEl, statusEl, catsEl, epsLabel, epsEl, tvLink, powered])
 				])
 			]);
 			document.body.appendChild(dialog);
+			dragToClose();
+			if (CONFIG.embed && window.ResizeObserver) new ResizeObserver(Embed.height).observe(dialog);
 
 			closeBtn.addEventListener('click', close);
 			backBtn.addEventListener('click', function () {
@@ -432,6 +444,32 @@
 		function close() {
 			cleanup();
 			if (dialog.open) dialog.close();
+			Embed.height();
+		}
+
+		// Phones: pull the sheet down by its handle to close it.
+		function dragToClose() {
+			var startY = null;
+			grab.addEventListener('pointerdown', function (e) {
+				if (!window.matchMedia('(max-width: 600px)').matches) return;
+				startY = e.clientY;
+				grab.setPointerCapture(e.pointerId);
+				dialog.classList.add('is-dragging');
+			});
+			grab.addEventListener('pointermove', function (e) {
+				if (startY === null) return;
+				dialog.style.transform = 'translateY(' + Math.max(0, e.clientY - startY) + 'px)';
+			});
+			function end(e) {
+				if (startY === null) return;
+				var dy = e.clientY - startY;
+				startY = null;
+				dialog.classList.remove('is-dragging');
+				dialog.style.transform = '';
+				if (dy > 110) close();
+			}
+			grab.addEventListener('pointerup', end);
+			grab.addEventListener('pointercancel', end);
 		}
 
 		function open(root, kind, item, href) {
@@ -448,6 +486,7 @@
 				document.documentElement.classList.add('ftvs-lock');
 				if (!dialog.open) dialog.showModal();
 				pauseAll(true);
+				Embed.show();
 			}
 			if (kind !== 'video' && window.history && window.history.replaceState) {
 				window.history.replaceState(null, '', '#faith-tv-' + item.id);
@@ -525,7 +564,7 @@
 					el('span', { 'class': 'ftvs-dialog__cat-name', text: cat.title })
 				]);
 				btn.addEventListener('click', function () {
-					stack.push({ kind: 'category', item: cat, href: CONFIG.tv ? CONFIG.tv + '/program-group/' + cat.id : '' });
+					stack.push({ kind: 'category', item: cat, href: cat.link || '' });
 					show(stack[stack.length - 1]);
 				});
 				catsEl.appendChild(el('li', null, [btn]));
@@ -614,12 +653,20 @@
 
 		function attach(url) {
 			if (!url || url.indexOf('https://') !== 0) return Promise.reject(new Error('no stream'));
-			if (video.canPlayType('application/vnd.apple.mpegurl')) {
+			// Safari plays every stream itself. Elsewhere hls.js is used even where the browser has
+			// its own HLS, because only hls.js handles streams with a separate audio track (Mux).
+			var native = !!video.canPlayType('application/vnd.apple.mpegurl');
+			var safari = /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent);
+			if (native && (safari || !(window.MediaSource || window.ManagedMediaSource))) {
 				video.src = url;
 				return Promise.resolve();
 			}
 			return loadHls().then(function (Hls) {
-				if (!Hls || !Hls.isSupported()) throw new Error('HLS not supported');
+				if (!Hls || !Hls.isSupported()) {
+					if (!native) throw new Error('HLS not supported');
+					video.src = url;
+					return;
+				}
 				// Resolve once the stream is ready; calling play() earlier gets rejected.
 				return new Promise(function (resolve, reject) {
 					var ready = false;
@@ -688,10 +735,35 @@
 				window.history.replaceState(null, '', window.location.pathname + window.location.search);
 			}
 			if (Math.abs(window.scrollY - scrollBeforeOpen) > 2) window.scrollTo(0, scrollBeforeOpen);
+			Embed.height();
 		}
 
-		return { open: open };
+		return { open: open, dialog: function () { return dialog; } };
 	})();
+
+	/* ---------- Embed pages ---------- */
+
+	var Embed = {
+		height: function () {
+			if (!CONFIG.embed || window.parent === window) return;
+			// The body's own height, not the page's (which is never smaller than the frame).
+			var h = Math.ceil(document.body.getBoundingClientRect().height);
+			var d = Player.dialog();
+			if (d && d.open) h = Math.max(h, d.scrollHeight + 48);
+			window.parent.postMessage({ ftvs: 'height', h: h }, '*');
+		},
+		show: function () {
+			if (!CONFIG.embed || window.parent === window) return;
+			window.parent.postMessage({ ftvs: 'show' }, '*');
+			setTimeout(Embed.height, 50);
+		}
+	};
+
+	if (CONFIG.embed) {
+		window.addEventListener('load', Embed.height);
+		window.addEventListener('resize', Embed.height);
+		if (window.ResizeObserver) new ResizeObserver(Embed.height).observe(document.body);
+	}
 
 	/* ---------- Start ---------- */
 

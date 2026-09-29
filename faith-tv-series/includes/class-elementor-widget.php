@@ -26,7 +26,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 	}
 
 	public function get_keywords() {
-		return array( 'faith', 'tv', 'video', 'series', 'mini series', 'gideo', 'sermon' );
+		return array( 'faith', 'tv', 'stream', 'faith stream', 'video', 'series', 'mini series', 'gideo', 'sermon' );
 	}
 
 	// The list comes live from Faith TV, so Elementor must never cache this widget's HTML.
@@ -43,7 +43,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 	}
 
 	protected function register_controls() {
-		$this->start_controls_section( 'ftvs_content', array( 'label' => __( 'Faith TV', 'faith-tv-series' ) ) );
+		$this->start_controls_section( 'ftvs_content', array( 'label' => __( 'Faith Stream', 'faith-tv-series' ) ) );
 
 		$this->add_control(
 			'category',
@@ -61,7 +61,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 			array(
 				'label'       => __( 'Category ID', 'faith-tv-series' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
-				'description' => __( 'For a category deeper than this list shows, like one season. Copy the ID from Settings > Faith TV Series.', 'faith-tv-series' ),
+				'description' => __( 'For a category deeper than this list shows, like one season. Copy it from Faith Stream > Videos.', 'faith-tv-series' ),
 				'condition'   => array( 'category' => 'custom' ),
 			)
 		);
@@ -72,12 +72,14 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 				'label'   => __( 'Layout', 'faith-tv-series' ),
 				'type'    => \Elementor\Controls_Manager::SELECT,
 				'options' => array(
+					'default'   => __( 'Site default (Faith Stream > Look & feel)', 'faith-tv-series' ),
 					'showcase'  => __( 'Showcase (big featured series that rotates)', 'faith-tv-series' ),
 					'coverflow' => __( '3D carousel', 'faith-tv-series' ),
+					'list'      => __( 'Featured + list', 'faith-tv-series' ),
 					'row'       => __( 'Sliding row', 'faith-tv-series' ),
 					'grid'      => __( 'Grid', 'faith-tv-series' ),
 				),
-				'default' => 'showcase',
+				'default' => 'default',
 			)
 		);
 
@@ -87,15 +89,16 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 				'label'       => __( 'Phone layout', 'faith-tv-series' ),
 				'type'        => \Elementor\Controls_Manager::SELECT,
 				'options'     => array(
+					'default'   => __( 'Site default (Faith Stream > Look & feel)', 'faith-tv-series' ),
 					'auto'      => __( 'Automatic (best for phones)', 'faith-tv-series' ),
 					'same'      => __( 'Same as desktop', 'faith-tv-series' ),
-					'showcase'  => __( 'Showcase', 'faith-tv-series' ),
+					'list'      => __( 'Featured + list', 'faith-tv-series' ),
 					'coverflow' => __( 'Swipe carousel', 'faith-tv-series' ),
 					'row'       => __( 'Sliding row', 'faith-tv-series' ),
-					'grid'      => __( 'Grid', 'faith-tv-series' ),
+					'showcase'  => __( 'Showcase', 'faith-tv-series' ),
 				),
-				'default'     => 'auto',
-				'description' => __( 'Automatic gives phones the swipe carousel for Showcase, and a sliding row for Grid.', 'faith-tv-series' ),
+				'default'     => 'default',
+				'description' => __( 'Automatic: the newest one big, the rest as a list.', 'faith-tv-series' ),
 			)
 		);
 
@@ -108,7 +111,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 				'max'         => 60,
 				'default'     => 7,
 				'description' => __( '0 turns rotation off. It always pauses while someone points at it.', 'faith-tv-series' ),
-				'condition'   => array( 'layout' => array( 'showcase', 'coverflow' ) ),
+				'condition'   => array( 'layout' => array( 'default', 'showcase', 'coverflow' ) ),
 			)
 		);
 
@@ -119,7 +122,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 				'type'    => \Elementor\Controls_Manager::SELECT,
 				'options' => array(
 					'site'    => __( 'Watch here on this page', 'faith-tv-series' ),
-					'faithtv' => __( 'Open Faith TV in a new tab', 'faith-tv-series' ),
+					'faithtv' => __( 'Open it on your channel in a new tab', 'faith-tv-series' ),
 				),
 				'default' => 'site',
 			)
@@ -132,7 +135,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 				'type'        => \Elementor\Controls_Manager::NUMBER,
 				'min'         => 0,
 				'default'     => 0,
-				'description' => __( '0 shows all of them, newest first (the Faith TV order).', 'faith-tv-series' ),
+				'description' => __( '0 shows all of them, in your channel\'s order.', 'faith-tv-series' ),
 			)
 		);
 
@@ -159,18 +162,29 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 			array(
 				'label'       => __( 'Label over each featured series', 'faith-tv-series' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
-				'description' => __( 'Leave empty to use the category name.', 'faith-tv-series' ),
-				'condition'   => array( 'layout' => array( 'showcase', 'coverflow' ) ),
+				'description' => __( 'Leave empty for the site default (Faith Stream > Look & feel) or the category name.', 'faith-tv-series' ),
+				'condition'   => array( 'layout' => array( 'default', 'showcase', 'coverflow', 'list' ) ),
+			)
+		);
+
+		$this->add_control(
+			'hide_badge',
+			array(
+				'label'        => __( 'Hide the "New" badge', 'faith-tv-series' ),
+				'type'         => \Elementor\Controls_Manager::SWITCHER,
+				'return_value' => 'yes',
+				'default'      => '',
 			)
 		);
 
 		$this->add_control(
 			'badge',
 			array(
-				'label'       => __( 'Badge on the newest one', 'faith-tv-series' ),
+				'label'       => __( 'Badge text', 'faith-tv-series' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
-				'default'     => __( 'New', 'faith-tv-series' ),
-				'description' => __( 'Leave empty for no badge.', 'faith-tv-series' ),
+				'default'     => '',
+				'placeholder' => __( 'Site default', 'faith-tv-series' ),
+				'condition'   => array( 'hide_badge!' => 'yes' ),
 			)
 		);
 
@@ -228,38 +242,28 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 		echo FTVS_Renderer::render( // phpcs:ignore WordPress.Security.EscapeOutput -- the renderer escapes everything.
 			array(
 				'category'     => $category,
-				'layout'       => $s['layout'],
-				'mobile_layout' => isset( $s['mobile_layout'] ) ? $s['mobile_layout'] : 'auto',
+				'layout'        => 'default' === $s['layout'] ? null : $s['layout'],
+				'mobile_layout' => isset( $s['mobile_layout'] ) && 'default' !== $s['mobile_layout'] ? $s['mobile_layout'] : null,
 				'play'         => $s['play'],
 				'limit'        => $s['limit'],
 				'title'        => $s['title'],
 				'descriptions' => $s['descriptions'],
 				'theme'        => $s['theme'],
 				'eyebrow'      => isset( $s['eyebrow'] ) ? $s['eyebrow'] : '',
-				'label'        => '' !== trim( (string) ( isset( $s['label'] ) ? $s['label'] : '' ) ) ? $s['label'] : $this->category_label( $category ),
-				'badge'        => isset( $s['badge'] ) ? $s['badge'] : '',
+				'label'        => '' !== trim( (string) ( isset( $s['label'] ) ? $s['label'] : '' ) ) ? $s['label'] : null,
+				'badge'        => $this->badge( $s ),
 				'autoplay'     => isset( $s['autoplay'] ) ? $s['autoplay'] : 7,
 			)
 		);
 	}
 
-	/** The picked category's own name (from the cached list) for the label over each series. */
-	private function category_label( $id ) {
-		$tree = FTVS_Gideo_Client::get_tree();
-		if ( is_wp_error( $tree ) ) {
+	/** null = the site default; '' = no badge. */
+	private function badge( $s ) {
+		if ( ! empty( $s['hide_badge'] ) ) {
 			return '';
 		}
-		foreach ( $tree as $row ) {
-			if ( $row['id'] === $id ) {
-				return $row['title'];
-			}
-			foreach ( $row['children'] as $child ) {
-				if ( $child['id'] === $id ) {
-					return $child['title'];
-				}
-			}
-		}
-		return '';
+		$text = isset( $s['badge'] ) ? trim( (string) $s['badge'] ) : '';
+		return '' !== $text ? $text : null;
 	}
 
 	private function category_options() {
@@ -268,7 +272,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 		if ( class_exists( '\Elementor\Core\Frontend\Performance' ) && \Elementor\Core\Frontend\Performance::should_optimize_controls() ) {
 			return $options;
 		}
-		$tree = FTVS_Gideo_Client::get_tree();
+		$tree = FTVS_Catalog::get_tree();
 		if ( ! is_wp_error( $tree ) ) {
 			foreach ( $tree as $row ) {
 				$options[ $row['id'] ] = $row['title'];

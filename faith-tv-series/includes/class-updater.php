@@ -202,7 +202,7 @@ class FTVS_Updater {
 		self::forget();
 		delete_site_transient( 'update_plugins' );
 		wp_update_plugins();
-		wp_safe_redirect( add_query_arg( array( 'page' => FTVS_Admin::PAGE, 'ftvs_checked' => '1' ), admin_url( 'options-general.php' ) ) );
+		wp_safe_redirect( FTVS_Admin::url( 'faith-stream-updates', array( 'ftvs_checked' => '1' ) ) );
 		exit;
 	}
 

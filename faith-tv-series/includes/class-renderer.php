@@ -15,25 +15,30 @@ class FTVS_Renderer {
 		// Attached at registration so it prints whenever the script does, even when
 		// a page builder serves the widget HTML without calling render().
 		wp_add_inline_script( 'faith-tv-series', 'window.FTVS_CONFIG = ' . wp_json_encode( self::script_config() ) . ';', 'before' );
+		$accent = sanitize_hex_color( (string) FTVS_Settings::get( 'accent' ) );
+		if ( $accent ) {
+			wp_add_inline_style( 'faith-tv-series', '.ftvs,.ftvs-dialog{--ftvs-accent:' . $accent . '}' );
+		}
 		add_shortcode( 'faith_tv_series', array( __CLASS__, 'shortcode' ) );
 	}
 
-	const LAYOUTS = array( 'showcase', 'coverflow', 'row', 'grid' );
+	const LAYOUTS = array( 'showcase', 'coverflow', 'list', 'row', 'grid' );
 
+	/** null means "use the site default" from Faith Stream > Look & feel. */
 	public static function defaults() {
 		return array(
-			'category'     => '',
-			'layout'       => 'showcase',
-			'mobile_layout' => 'auto',
-			'limit'        => 0,
-			'play'         => 'site',
-			'eyebrow'      => '',
-			'title'        => '',
-			'label'        => '',
-			'badge'        => __( 'New', 'faith-tv-series' ),
-			'autoplay'     => 7,
-			'descriptions' => 'no',
-			'theme'        => 'dark',
+			'category'      => '',
+			'layout'        => null,
+			'mobile_layout' => null,
+			'limit'         => 0,
+			'play'          => 'site',
+			'eyebrow'       => '',
+			'title'         => '',
+			'label'         => null,
+			'badge'         => null,
+			'autoplay'      => 7,
+			'descriptions'  => 'no',
+			'theme'         => 'dark',
 		);
 	}
 
@@ -47,40 +52,50 @@ class FTVS_Renderer {
 	 */
 	public static function render( $atts ) {
 		$atts     = wp_parse_args( $atts, self::defaults() );
-		$layout   = in_array( $atts['layout'], self::LAYOUTS, true ) ? $atts['layout'] : 'showcase';
+		$layout   = in_array( $atts['layout'], self::LAYOUTS, true ) ? $atts['layout'] : FTVS_Settings::get( 'layout' );
+		$layout   = in_array( $layout, self::LAYOUTS, true ) ? $layout : 'showcase';
 		$play     = 'faithtv' === $atts['play'] ? 'faithtv' : 'site';
 		$theme    = 'light' === $atts['theme'] ? 'light' : 'dark';
 		$autoplay = min( 60, absint( $atts['autoplay'] ) );
 		$descs    = in_array( strtolower( (string) $atts['descriptions'] ), array( 'yes', '1', 'true', 'on' ), true );
 
-		$found = FTVS_Gideo_Client::find_category( $atts['category'] );
+		$found = FTVS_Catalog::find_category( $atts['category'] );
 		if ( is_wp_error( $found ) ) {
 			return self::problem( $found );
 		}
-		$data = FTVS_Gideo_Client::get_children( $found['id'] );
+		$data = FTVS_Catalog::get_children( $found['id'] );
 		if ( is_wp_error( $data ) ) {
 			return self::problem( $data );
 		}
 		$items = self::items( $data, $found['id'], absint( $atts['limit'] ) );
 		if ( ! $items ) {
-			return self::problem( new WP_Error( 'ftvs_empty', __( 'This Faith TV category has nothing published yet.', 'faith-tv-series' ) ) );
+			return self::problem( new WP_Error( 'ftvs_empty', __( 'This category has nothing published yet.', 'faith-tv-series' ) ) );
 		}
 
 		self::enqueue();
 
+		// Label: this section's own, else the site default, else the category's name, else the church's.
 		$label = trim( (string) $atts['label'] );
 		if ( '' === $label ) {
-			$label = '' !== $found['title'] ? $found['title'] : __( 'Faith TV', 'faith-tv-series' );
+			$label = trim( (string) FTVS_Settings::get( 'label' ) );
+		}
+		if ( '' === $label ) {
+			$label = '' !== $found['title'] ? $found['title'] : FTVS_Catalog::title_of( $found['id'] );
+		}
+		if ( '' === $label ) {
+			$label = (string) FTVS_Settings::get( 'church_name' );
 		}
 		$ctx = array(
 			'play'  => $play,
 			'label' => $label,
-			'badge' => trim( (string) $atts['badge'] ),
+			'badge' => null === $atts['badge'] ? trim( (string) FTVS_Settings::get( 'badge' ) ) : trim( (string) $atts['badge'] ),
 			'descs' => $descs,
-			'more'  => FTVS_Settings::get( 'tv_url' ) . '/program-group/' . $found['id'],
+			'more'  => FTVS_Catalog::category_link( $found['id'] ),
+			'kinds' => $data['categories'] ? 'category' : 'video',
 		);
 
-		$mobile = self::mobile_layout( $atts['mobile_layout'], $layout );
+		$mobile_choice = null === $atts['mobile_layout'] || '' === $atts['mobile_layout'] || 'default' === $atts['mobile_layout'] ? FTVS_Settings::get( 'mobile_layout' ) : $atts['mobile_layout'];
+		$mobile        = self::mobile_layout( $mobile_choice, $layout );
 		$split  = $mobile !== $layout;
 		// Both versions are in the page when they differ; lazy images keep the hidden one from downloading.
 		$ctx['lazy'] = $split;
@@ -116,10 +131,11 @@ class FTVS_Renderer {
 			return $desktop;
 		}
 		$auto = array(
-			'showcase'  => 'coverflow',
-			'coverflow' => 'coverflow',
+			'showcase'  => 'list',
+			'coverflow' => 'list',
+			'list'      => 'list',
 			'row'       => 'row',
-			'grid'      => 'row',
+			'grid'      => 'list',
 		);
 		return $auto[ $desktop ];
 	}
@@ -137,6 +153,8 @@ class FTVS_Renderer {
 				self::showcase( $items, $ctx );
 			} elseif ( 'coverflow' === $layout ) {
 				self::coverflow( $items, $ctx );
+			} elseif ( 'list' === $layout ) {
+				self::featured_list( $items, $ctx );
 			} else {
 				self::cards( $items, $ctx, $layout );
 			}
@@ -145,27 +163,32 @@ class FTVS_Renderer {
 		<?php
 	}
 
-	/** Categories first, then videos, each with its Faith TV link and a short "3 episodes" / "6:35" line. */
+	/** Categories first, then videos, each with its channel link and a short "3 episodes" / "6:35" line. */
 	private static function items( $data, $category_id, $limit ) {
-		$tv    = FTVS_Settings::get( 'tv_url' );
 		$items = array();
 		foreach ( $data['categories'] as $cat ) {
-			$items[] = array(
+			$meta = '';
+			if ( $cat['videos'] > 0 ) {
+				/* translators: %d: number of episodes */
+				$meta = sprintf( _n( '%d episode', '%d episodes', $cat['videos'], 'faith-tv-series' ), $cat['videos'] );
+			} elseif ( $cat['subcategories'] > 0 ) {
+				/* translators: %d: number of series inside this category */
+				$meta = sprintf( _n( '%d series', '%d series', $cat['subcategories'], 'faith-tv-series' ), $cat['subcategories'] );
+			}
+			$cat['link'] = FTVS_Catalog::category_link( $cat['id'] );
+			$items[]     = array(
 				'kind' => 'category',
 				'item' => $cat,
-				'href' => $tv . '/program-group/' . $cat['id'],
-				'meta' => $cat['videos'] > 0
-					/* translators: %d: number of episodes */
-					? sprintf( _n( '%d episode', '%d episodes', $cat['videos'], 'faith-tv-series' ), $cat['videos'] )
-					/* translators: %d: number of series inside this category */
-					: sprintf( _n( '%d series', '%d series', $cat['subcategories'], 'faith-tv-series' ), $cat['subcategories'] ),
+				'href' => $cat['link'],
+				'meta' => $meta,
 			);
 		}
 		foreach ( $data['videos'] as $video ) {
-			$items[] = array(
+			$video['link'] = FTVS_Catalog::video_link( $video['id'], $video['parent'] ? $video['parent'] : $category_id );
+			$items[]       = array(
 				'kind' => 'video',
 				'item' => $video,
-				'href' => $tv . '/program-group/' . ( $video['parent'] ? $video['parent'] : $category_id ) . '/program/' . $video['id'],
+				'href' => $video['link'],
 				'meta' => self::duration( $video['length'] ),
 			);
 		}
@@ -204,7 +227,7 @@ class FTVS_Renderer {
 					<?php self::info( $first, $ctx, true ); ?>
 					<div class="ftvs-show__actions">
 						<?php self::watch_button( $first, $ctx ); ?>
-						<a class="ftvs-btn ftvs-btn--light" href="<?php echo esc_url( $ctx['more'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'More on Faith TV', 'faith-tv-series' ); ?></a>
+						<a class="ftvs-btn ftvs-btn--light" href="<?php echo esc_url( $ctx['more'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'More videos', 'faith-tv-series' ); ?></a>
 					</div>
 				</div>
 				<a class="ftvs-show__art" href="<?php echo esc_url( $first['href'] ); ?>"<?php echo self::target( $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput ?> data-ftvs-watch aria-label="<?php echo esc_attr( self::watch_label( $first ) ); ?>">
@@ -267,6 +290,66 @@ class FTVS_Renderer {
 					<span class="ftvs-cf__bar" aria-hidden="true"><span data-ftvs-timer></span></span>
 				<?php endif; ?>
 			</div>
+		</div>
+		<?php
+	}
+
+	/** Phones (and anywhere calm is better): the newest one big, the rest as a simple list. */
+	private static function featured_list( $items, $ctx ) {
+		$first = $items[0];
+		$rest  = array_slice( $items, 1 );
+		$attrs = self::card_attrs( $first, $ctx );
+		?>
+		<div class="ftvs-list">
+			<a class="ftvs__card ftvs-list__art" <?php echo $attrs; // phpcs:ignore WordPress.Security.EscapeOutput ?> aria-label="<?php echo esc_attr( self::watch_label( $first ) ); ?>">
+				<span class="ftvs__thumb">
+					<img src="<?php echo esc_url( self::art( $first ) ); ?>" alt=""<?php echo $ctx['lazy'] ? ' loading="lazy"' : ''; ?>>
+					<span class="ftvs__play ftvs__play--mid" aria-hidden="true"><?php echo self::play_icon( 26 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+				</span>
+			</a>
+			<p class="ftvs-list__meta">
+				<?php if ( '' !== $ctx['badge'] ) : ?>
+					<span class="ftvs-badge"><?php echo esc_html( $ctx['badge'] ); ?></span>
+				<?php endif; ?>
+				<?php if ( '' !== $first['meta'] ) : ?>
+					<span class="ftvs__meta"><?php echo esc_html( $first['meta'] ); ?></span>
+				<?php endif; ?>
+			</p>
+			<h3 class="ftvs-feature__title ftvs-list__title"><?php echo esc_html( $first['item']['title'] ); ?></h3>
+			<?php if ( '' !== $first['item']['description'] ) : ?>
+				<p class="ftvs-feature__desc ftvs-list__desc"><?php echo esc_html( $first['item']['description'] ); ?></p>
+			<?php endif; ?>
+			<a class="ftvs-btn ftvs-btn--primary ftvs-list__watch" data-ftvs-open <?php echo $attrs; // phpcs:ignore WordPress.Security.EscapeOutput ?>>
+				<?php echo self::play_icon( 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				<span><?php echo 'video' === $first['kind'] ? esc_html__( 'Watch now', 'faith-tv-series' ) : esc_html__( 'Watch the series', 'faith-tv-series' ); ?></span>
+			</a>
+			<?php if ( $rest ) : ?>
+				<p class="ftvs-list__label"><span><?php echo 'video' === $ctx['kinds'] ? esc_html__( 'More episodes', 'faith-tv-series' ) : esc_html__( 'More series', 'faith-tv-series' ); ?></span></p>
+				<ul class="ftvs-list__rows" role="list">
+					<?php foreach ( $rest as $i => $entry ) : ?>
+						<li class="<?php echo $i >= 5 ? 'is-extra' : ''; ?>">
+							<a class="ftvs__card ftvs-list__row" <?php echo self::card_attrs( $entry, $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput ?>>
+								<span class="ftvs__thumb"><img src="<?php echo esc_url( $entry['item']['image'] ); ?>" alt="" loading="lazy" decoding="async"></span>
+								<span class="ftvs-list__text">
+									<span class="ftvs__name"><?php echo esc_html( $entry['item']['title'] ); ?></span>
+									<?php if ( '' !== $entry['meta'] ) : ?>
+										<span class="ftvs__meta"><?php echo esc_html( $entry['meta'] ); ?></span>
+									<?php endif; ?>
+								</span>
+								<?php echo self::chevron( 'right' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							</a>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+				<?php if ( count( $rest ) > 5 ) : ?>
+					<button type="button" class="ftvs-btn ftvs-btn--ghost ftvs-list__more" data-ftvs-more>
+						<?php
+						/* translators: %d: how many there are in total */
+						printf( esc_html__( 'Show all %d', 'faith-tv-series' ), count( $items ) );
+						?>
+					</button>
+				<?php endif; ?>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -396,15 +479,16 @@ class FTVS_Renderer {
 	private static function script_config() {
 		return array(
 			'rest'    => esc_url_raw( rest_url( 'faith-tv/v1/' ) ),
-			'hls'     => FTVS_URL . 'assets/vendor/hls.light.min.js?ver=1.7.3',
-			'tv'      => FTVS_Settings::get( 'tv_url' ),
+			'hls'     => FTVS_URL . 'assets/vendor/hls.min.js?ver=1.7.3',
+			'powered' => (bool) FTVS_Settings::get( 'powered_by' ),
 			'strings' => array(
 				'close'     => __( 'Close', 'faith-tv-series' ),
 				'back'      => __( 'Back', 'faith-tv-series' ),
 				'episodes'  => __( 'Episodes', 'faith-tv-series' ),
 				'loading'   => __( 'Loading...', 'faith-tv-series' ),
 				'failed'    => __( 'This video could not be loaded right now.', 'faith-tv-series' ),
-				'watchOnTv' => __( 'Watch on Faith TV', 'faith-tv-series' ),
+				/* translators: %s: the church's video website, e.g. tv.faithtabernacle.com */
+				'watchOnTv' => FTVS_Catalog::channel_host() ? sprintf( __( 'Watch on %s', 'faith-tv-series' ), FTVS_Catalog::channel_host() ) : __( 'Watch on our channel', 'faith-tv-series' ),
 				'nowPlay'   => __( 'Now playing', 'faith-tv-series' ),
 				'play'      => __( 'Play', 'faith-tv-series' ),
 				/* translators: %d: episode number */

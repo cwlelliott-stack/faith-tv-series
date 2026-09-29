@@ -1,13 +1,11 @@
 <?php
 /**
- * Reads the public Faith TV catalog from Gideo and caches it.
+ * Reads a church's public catalog from Gideo (the platform behind tv.<church> TV sites and apps).
  *
  * Gideo's legacy API is public (no key):
- *   getCategoryChildren  XML list of a category's sub-categories and videos (empty id = home rows)
- *   getVideoUrls         JSON with the HLS address for one video
- *
- * Every successful answer is also kept as a backup, so if Gideo is down the
- * site keeps showing the last good list instead of an empty section.
+ *   getSettings          JSON: the account id and name behind a TV website (used while connecting)
+ *   getCategoryChildren  XML: a category's sub-categories and videos (empty id = home rows)
+ *   getVideoUrls         JSON: the HLS address for one video
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -16,55 +14,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class FTVS_Gideo_Client {
 
-	const API       = 'https://ott.gideo.video/api/legacy';
-	const TREE_TTL  = 6 * HOUR_IN_SECONDS;
-	const URL_TTL   = 12 * HOUR_IN_SECONDS;
-	const ERROR_TTL = 5 * MINUTE_IN_SECONDS;
+	const API     = 'https://ott.gideo.video/api/legacy';
+	const URL_TTL = 12 * HOUR_IN_SECONDS;
 
-	/**
-	 * Sub-categories and videos directly inside a category.
-	 *
-	 * @param string $category_id 32-character Gideo id, or '' for the home rows.
-	 * @return array|WP_Error { categories: array, videos: array }
-	 */
+	public static function account() {
+		return (string) FTVS_Settings::get( 'account_id' );
+	}
+
+	public static function is_id( $value ) {
+		return 1 === preg_match( '/^[a-f0-9]{32}$/i', $value );
+	}
+
 	public static function get_children( $category_id = '' ) {
-		if ( '' !== $category_id && ! self::is_id( $category_id ) ) {
-			return new WP_Error( 'ftvs_bad_id', __( 'That is not a Faith TV category id.', 'faith-tv-series' ) );
-		}
 		$ttl = 60 * (int) FTVS_Settings::get( 'cache_minutes' );
-		return self::cached(
+		return FTVS_Cache::remember(
 			'c_' . $category_id,
 			$ttl,
 			function () use ( $category_id ) {
-				$body = self::request(
-					array(
-						'cmd'        => 'getCategoryChildren',
-						'AccountID'  => FTVS_Settings::get( 'account_id' ),
-						'CategoryID' => $category_id,
-					)
-				);
-				return is_wp_error( $body ) ? $body : self::parse_children( $body );
+				return FTVS_Gideo_Client::fetch_children( FTVS_Gideo_Client::account(), $category_id );
 			}
 		);
 	}
 
-	/**
-	 * HLS address for one video.
-	 *
-	 * @return string|WP_Error
-	 */
 	public static function get_video_url( $video_id ) {
-		if ( ! self::is_id( $video_id ) ) {
-			return new WP_Error( 'ftvs_bad_id', __( 'That is not a Faith TV video id.', 'faith-tv-series' ) );
-		}
-		return self::cached(
+		return FTVS_Cache::remember(
 			'v_' . $video_id,
 			self::URL_TTL,
 			function () use ( $video_id ) {
-				$body = self::request(
+				$body = FTVS_Gideo_Client::request(
 					array(
 						'cmd'       => 'getVideoUrls',
-						'accountId' => FTVS_Settings::get( 'account_id' ),
+						'accountId' => FTVS_Gideo_Client::account(),
 						'videoId'   => $video_id,
 					)
 				);
@@ -80,125 +60,86 @@ class FTVS_Gideo_Client {
 						}
 					}
 				}
-				return new WP_Error( 'ftvs_no_stream', __( 'Faith TV has no playable stream for this video.', 'faith-tv-series' ) );
+				return new WP_Error( 'ftvs_no_stream', __( 'This video has no playable stream.', 'faith-tv-series' ) );
 			}
 		);
 	}
 
+	public static function category_link( $id ) {
+		return untrailingslashit( (string) FTVS_Settings::get( 'tv_url' ) ) . '/program-group/' . $id;
+	}
+
+	public static function video_link( $video_id, $category_id ) {
+		return self::category_link( $category_id ) . '/program/' . $video_id;
+	}
+
 	/**
-	 * Home rows plus one level of children. Used by the settings page and the
-	 * Elementor category picker, and to look categories up by name.
+	 * Finds the church behind a TV website address (used while connecting; not cached).
 	 *
-	 * @return array|WP_Error List of { id, title, videos, subcategories, children: [...] }.
+	 * @return array|WP_Error Settings to save plus 'rows' for the preview.
 	 */
-	public static function get_tree() {
-		return self::cached(
-			'tree',
-			self::TREE_TTL,
-			function () {
-				$home = self::get_children( '' );
-				if ( is_wp_error( $home ) ) {
-					return $home;
-				}
-				$tree = array();
-				foreach ( $home['categories'] as $row ) {
-					$row['children'] = array();
-					if ( $row['subcategories'] > 0 ) {
-						$inside = self::get_children( $row['id'] );
-						if ( ! is_wp_error( $inside ) ) {
-							$row['children'] = $inside['categories'];
-						}
-					}
-					$tree[] = $row;
-				}
-				return $tree;
-			}
+	public static function lookup_domain( $address ) {
+		$host = strtolower( trim( (string) $address ) );
+		$host = preg_replace( '#^https?://#', '', $host );
+		$host = preg_replace( '#[/?\#].*$#', '', $host );
+		if ( ! preg_match( '/^[a-z0-9.-]+\.[a-z]{2,}$/', $host ) ) {
+			return new WP_Error( 'ftvs_lookup', __( 'Type your TV website address, for example tv.yourchurch.com.', 'faith-tv-series' ) );
+		}
+		$response = wp_remote_get(
+			add_query_arg( array( 'cmd' => 'getSettings', 'domain' => rawurlencode( $host ) ), self::API ),
+			array(
+				'timeout' => 8,
+				'headers' => array( 'Accept' => 'application/json' ),
+			)
+		);
+		$data = is_wp_error( $response ) ? null : json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( empty( $data['accountId'] ) ) {
+			/* translators: %s: website address */
+			return new WP_Error( 'ftvs_lookup', sprintf( __( 'We could not find a Gideo channel at %s. Check the spelling, or use your Gideo account ID instead.', 'faith-tv-series' ), $host ) );
+		}
+		$account = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $data['accountId'] );
+		$home    = self::fetch_children( $account, '' );
+		return array(
+			'source'      => 'gideo',
+			'account_id'  => $account,
+			'tv_url'      => 'https://' . $host,
+			'church_name' => ! empty( $data['title'] ) ? sanitize_text_field( $data['title'] ) : $host,
+			'church_logo' => 'https://' . $host . '/webtv-assets/logo.png',
+			'rows'        => is_wp_error( $home ) ? array() : $home['categories'],
 		);
 	}
 
-	/**
-	 * Accepts a category id or a category name ("Faith TV Mini Series").
-	 *
-	 * @return array|WP_Error { id, title }
-	 */
-	public static function find_category( $needle ) {
-		$needle = trim( (string) $needle );
-		if ( self::is_id( $needle ) ) {
-			return array(
-				'id'    => strtolower( $needle ),
-				'title' => '',
-			);
+	/** Connecting with a Gideo account id instead of a website address. */
+	public static function lookup_account( $account ) {
+		$account = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $account );
+		$home    = '' === $account ? null : self::fetch_children( $account, '' );
+		if ( ! $home || is_wp_error( $home ) || ! $home['categories'] ) {
+			return new WP_Error( 'ftvs_lookup', __( 'That Gideo account ID did not work.', 'faith-tv-series' ) );
 		}
-		if ( '' === $needle ) {
-			return new WP_Error( 'ftvs_no_category', __( 'Pick a Faith TV category.', 'faith-tv-series' ) );
-		}
-		$tree = self::get_tree();
-		if ( is_wp_error( $tree ) ) {
-			return $tree;
-		}
-		$want = self::name_key( $needle );
-		// Home rows win over a same-named series further down.
-		foreach ( $tree as $row ) {
-			if ( self::name_key( $row['title'] ) === $want ) {
-				return array( 'id' => $row['id'], 'title' => $row['title'] );
-			}
-		}
-		foreach ( $tree as $row ) {
-			foreach ( $row['children'] as $child ) {
-				if ( self::name_key( $child['title'] ) === $want ) {
-					return array( 'id' => $child['id'], 'title' => $child['title'] );
-				}
-			}
-		}
-		/* translators: %s: category name typed by the site editor */
-		return new WP_Error( 'ftvs_not_found', sprintf( __( 'No Faith TV category is named "%s".', 'faith-tv-series' ), $needle ) );
+		return array(
+			'source'      => 'gideo',
+			'account_id'  => $account,
+			'tv_url'      => '',
+			'church_name' => $account,
+			'church_logo' => '',
+			'rows'        => $home['categories'],
+		);
 	}
 
-	public static function is_id( $value ) {
-		return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{32}$/i', $value );
+	/** @internal */
+	public static function fetch_children( $account, $category_id ) {
+		$body = self::request(
+			array(
+				'cmd'        => 'getCategoryChildren',
+				'AccountID'  => $account,
+				'CategoryID' => $category_id,
+			)
+		);
+		return is_wp_error( $body ) ? $body : self::parse_children( $body );
 	}
 
-	/**
-	 * Drops every cached answer (backups are kept as the outage fallback).
-	 * Bumping a generation number works with any object cache, not just the options table.
-	 */
-	public static function clear_cache() {
-		update_option( 'ftvs_cache_gen', (int) get_option( 'ftvs_cache_gen', 1 ) + 1, true );
-	}
-
-	private static function name_key( $title ) {
-		return strtolower( preg_replace( '/\s+/', ' ', trim( $title ) ) );
-	}
-
-	private static function cached( $key, $ttl, $fetch ) {
-		$hash      = md5( FTVS_Settings::get( 'account_id' ) . '|' . $key );
-		$transient = 'ftvs_' . (int) get_option( 'ftvs_cache_gen', 1 ) . '_' . $hash;
-		$backup    = 'ftvs_bk_' . $hash;
-
-		$hit = get_transient( $transient );
-		if ( false !== $hit ) {
-			return is_array( $hit ) && isset( $hit['__error'] ) ? new WP_Error( 'ftvs_upstream', $hit['__error'] ) : $hit;
-		}
-
-		$data = $fetch();
-
-		if ( is_wp_error( $data ) ) {
-			$last = get_option( $backup );
-			if ( false !== $last ) {
-				// Serve the last good copy and try Gideo again in a few minutes.
-				set_transient( $transient, $last, self::ERROR_TTL );
-				return $last;
-			}
-			set_transient( $transient, array( '__error' => $data->get_error_message() ), self::ERROR_TTL );
-			return $data;
-		}
-
-		set_transient( $transient, $data, $ttl );
-		update_option( $backup, $data, false );
-		return $data;
-	}
-
-	private static function request( $args ) {
+	/** @internal */
+	public static function request( $args ) {
 		$response = wp_remote_get(
 			add_query_arg( array_map( 'rawurlencode', $args ), self::API ),
 			array(
@@ -212,7 +153,7 @@ class FTVS_Gideo_Client {
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== (int) $code ) {
 			/* translators: %d: HTTP status code */
-			return new WP_Error( 'ftvs_http', sprintf( __( 'Faith TV answered with status %d.', 'faith-tv-series' ), $code ) );
+			return new WP_Error( 'ftvs_http', sprintf( __( 'Gideo answered with status %d.', 'faith-tv-series' ), $code ) );
 		}
 		return wp_remote_retrieve_body( $response );
 	}
@@ -224,11 +165,11 @@ class FTVS_Gideo_Client {
 		libxml_use_internal_errors( $previous );
 
 		if ( false === $xml ) {
-			return new WP_Error( 'ftvs_parse', __( 'Faith TV sent something we could not read.', 'faith-tv-series' ) );
+			return new WP_Error( 'ftvs_parse', __( 'Gideo sent something we could not read.', 'faith-tv-series' ) );
 		}
 		if ( isset( $xml->error ) ) {
 			$message = trim( (string) $xml->error->message );
-			return new WP_Error( 'ftvs_upstream', '' !== $message ? $message : __( 'Faith TV returned an error.', 'faith-tv-series' ) );
+			return new WP_Error( 'ftvs_upstream', '' !== $message ? $message : __( 'Gideo returned an error.', 'faith-tv-series' ) );
 		}
 
 		$out = array(
@@ -269,8 +210,7 @@ class FTVS_Gideo_Client {
 	}
 
 	private static function text( $node ) {
-		$text = str_replace( array( "\r\n", "\r" ), "\n", (string) $node );
-		return trim( $text );
+		return trim( str_replace( array( "\r\n", "\r" ), "\n", (string) $node ) );
 	}
 
 	/** First usable https image, skipping Gideo's "no-image" placeholder. */

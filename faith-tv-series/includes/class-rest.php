@@ -1,7 +1,7 @@
 <?php
 /**
  * Read-only endpoints the page script uses when a visitor opens a series or
- * presses play. Everything served here is already public on Faith TV.
+ * presses play. Everything served here is already public on the church's channel.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -11,11 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 class FTVS_Rest {
 
 	const NS = 'faith-tv/v1';
+	const ID = '(?P<id>[A-Za-z0-9_-]{1,128})';
 
 	public static function register_routes() {
 		register_rest_route(
 			self::NS,
-			'/category/(?P<id>[a-fA-F0-9]{32})',
+			'/category/' . self::ID,
 			array(
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'category' ),
@@ -24,7 +25,7 @@ class FTVS_Rest {
 		);
 		register_rest_route(
 			self::NS,
-			'/video/(?P<id>[a-fA-F0-9]{32})',
+			'/video/' . self::ID,
 			array(
 				'methods'             => 'GET',
 				'callback'            => array( __CLASS__, 'video' ),
@@ -34,17 +35,19 @@ class FTVS_Rest {
 	}
 
 	public static function category( WP_REST_Request $request ) {
-		$id   = strtolower( $request['id'] );
-		$data = FTVS_Gideo_Client::get_children( $id );
+		$id   = 'gideo' === FTVS_Catalog::source() ? strtolower( $request['id'] ) : $request['id'];
+		$data = FTVS_Catalog::get_children( $id );
 		if ( is_wp_error( $data ) ) {
 			return new WP_Error( $data->get_error_code(), $data->get_error_message(), array( 'status' => 502 ) );
 		}
-		$data['link'] = FTVS_Settings::get( 'tv_url' ) . '/program-group/' . $id;
+		$data         = FTVS_Catalog::with_links( $data, $id );
+		$data['link'] = FTVS_Catalog::category_link( $id );
 		return self::cacheable( $data );
 	}
 
 	public static function video( WP_REST_Request $request ) {
-		$url = FTVS_Gideo_Client::get_video_url( strtolower( $request['id'] ) );
+		$id  = 'gideo' === FTVS_Catalog::source() ? strtolower( $request['id'] ) : $request['id'];
+		$url = FTVS_Catalog::get_video_url( $id );
 		if ( is_wp_error( $url ) ) {
 			return new WP_Error( $url->get_error_code(), $url->get_error_message(), array( 'status' => 502 ) );
 		}
