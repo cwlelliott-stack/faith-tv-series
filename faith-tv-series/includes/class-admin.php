@@ -215,7 +215,7 @@ class FTVS_Admin {
 			</div>
 			<div class="ftvs-conn">
 				<?php if ( $connected ) : ?>
-					<span class="ftvs-avatar" style="background-image:url('<?php echo esc_url( $s['church_logo'] ); ?>')"></span>
+					<span class="ftvs-avatar" style="<?php echo esc_attr( self::bg( $s['church_logo'] ) ); ?>"></span>
 					<span><strong><?php echo esc_html( '' !== $s['church_name'] ? $s['church_name'] : __( 'Your church', 'faith-tv-series' ) ); ?></strong>
 					<small><span class="ftvs-dot"></span><?php echo esc_html( self::source_name() ); ?></small></span>
 				<?php else : ?>
@@ -273,7 +273,7 @@ class FTVS_Admin {
 		?>
 		<div class="ftvs-card ftvs-pad">
 			<div class="ftvs-church">
-				<span class="ftvs-logobox" style="background-image:url('<?php echo esc_url( $s['church_logo'] ); ?>')"></span>
+				<span class="ftvs-logobox" style="<?php echo esc_attr( self::bg( $s['church_logo'] ) ); ?>"></span>
 				<div>
 					<span class="ftvs-chip is-ok"><?php esc_html_e( 'Connected', 'faith-tv-series' ); ?></span>
 					<h2><?php echo esc_html( '' !== $s['church_name'] ? $s['church_name'] : __( 'Your church', 'faith-tv-series' ) ); ?></h2>
@@ -434,7 +434,7 @@ class FTVS_Admin {
 			$thumbs = array_slice( array_filter( wp_list_pluck( $found['rows'], 'image' ) ), 0, 6 );
 			?>
 			<div class="ftvs-found">
-				<span class="ftvs-logobox" style="background-image:url('<?php echo esc_url( $found['church_logo'] ); ?>')"></span>
+				<span class="ftvs-logobox" style="<?php echo esc_attr( self::bg( $found['church_logo'] ) ); ?>"></span>
 				<div>
 					<span class="ftvs-chip is-ok"><?php esc_html_e( 'Found it', 'faith-tv-series' ); ?></span>
 					<h3><?php echo esc_html( $found['church_name'] ); ?></h3>
@@ -523,7 +523,7 @@ class FTVS_Admin {
 				<?php foreach ( $rows as $candidate ) : ?>
 					<label class="ftvs-pick">
 						<input type="radio" name="pick" value="<?php echo esc_attr( $candidate['id'] ); ?>" required>
-						<span class="ftvs-pick__art" style="background-image:url('<?php echo esc_url( $candidate['image'] ); ?>')"></span>
+						<span class="ftvs-pick__art" style="<?php echo esc_attr( self::bg( $candidate['image'] ) ); ?>"></span>
 						<span class="ftvs-pick__txt"><strong><?php echo esc_html( $candidate['title'] ); ?></strong><span><?php echo esc_html( self::inside( $candidate ) ); ?></span></span>
 					</label>
 				<?php endforeach; ?>
@@ -554,7 +554,7 @@ class FTVS_Admin {
 			<?php foreach ( $tree as $row ) : ?>
 				<?php $code = '[faith_tv_series category="' . $row['id'] . '"]'; ?>
 				<div class="ftvs-row" data-ftvs-row="<?php echo esc_attr( strtolower( $row['title'] . ' ' . implode( ' ', wp_list_pluck( $row['children'], 'title' ) ) ) ); ?>">
-					<span class="ftvs-row__art" style="background-image:url('<?php echo esc_url( $row['image'] ); ?>')"></span>
+					<span class="ftvs-row__art" style="<?php echo esc_attr( self::bg( $row['image'] ) ); ?>"></span>
 					<div>
 						<h3><?php echo esc_html( $row['title'] ); ?></h3>
 						<span class="ftvs-muted"><?php echo esc_html( self::inside( $row ) ); ?></span>
@@ -647,6 +647,11 @@ class FTVS_Admin {
 				</div>
 				<input type="hidden" name="<?php echo esc_attr( $name ); ?>[powered_by]" value="0">
 				<label class="ftvs-switch"><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[powered_by]" value="1"<?php checked( ! empty( $s['powered_by'] ) ); ?> data-ftvs-in="powered"><span class="ftvs-switch__track"></span><span><?php esc_html_e( 'Show "Powered by FaithStream" under the player', 'faith-tv-series' ); ?></span></label>
+				<fieldset class="ftvs-field">
+					<legend><?php esc_html_e( 'Text sizes and colors', 'faith-tv-series' ); ?></legend>
+					<?php self::text_table( $name . '[text]', (array) $s['text'] ); ?>
+					<span class="ftvs-hint"><?php esc_html_e( 'For every section on the site. Leave a box empty for the built-in look. Each Elementor widget can still change its own under Style.', 'faith-tv-series' ); ?></span>
+				</fieldset>
 				<?php submit_button( __( 'Save', 'faith-tv-series' ), 'primary ftvs-btn-primary' ); ?>
 			</form>
 			<div>
@@ -663,7 +668,7 @@ class FTVS_Admin {
 								<div class="ftvs-mini__eps"><?php echo esc_html( $preview['meta'] ); ?></div>
 								<span class="ftvs-mini__go"><?php esc_html_e( 'Watch the series', 'faith-tv-series' ); ?></span>
 							</div>
-							<div class="ftvs-mini__frame" style="background-image:url('<?php echo esc_url( $preview['image'] ); ?>')"><i></i></div>
+							<div class="ftvs-mini__frame" style="<?php echo esc_attr( self::bg( $preview['image'] ) ); ?>"><i></i></div>
 						</div>
 						<div class="ftvs-mini__powered" data-ftvs-out="powered">Powered by <b>FAITHSTREAM</b></div>
 					</div>
@@ -760,7 +765,7 @@ class FTVS_Admin {
 		?>
 		<h2 class="ftvs-h2"><?php esc_html_e( 'Embed on another website', 'faith-tv-series' ); ?></h2>
 		<p class="ftvs-lead"><?php esc_html_e( 'Put a video section on any website that accepts HTML: Faith Central, a landing page, a partner church\'s site. It stays up to date by itself. Pick what to show, then copy the code.', 'faith-tv-series' ); ?></p>
-		<div class="ftvs-embed-builder" data-ftvs-embed data-base="<?php echo esc_url( home_url( '/' ) ); ?>" data-script="<?php echo esc_url( FTVS_URL . 'assets/embed.js' ); ?>" data-heights="<?php echo esc_attr( wp_json_encode( $heights ) ); ?>">
+		<div class="ftvs-embed-builder" data-ftvs-embed data-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'ftvs_embed_code' ) ); ?>" data-heights="<?php echo esc_attr( wp_json_encode( $heights ) ); ?>">
 			<form class="ftvs-card ftvs-pad" data-ftvs-embed-form onsubmit="return false">
 				<div class="ftvs-field">
 					<label for="ftvs-e-cat"><?php esc_html_e( 'What to show', 'faith-tv-series' ); ?></label>
@@ -810,6 +815,10 @@ class FTVS_Admin {
 					<legend><?php esc_html_e( 'When someone clicks', 'faith-tv-series' ); ?></legend>
 					<div class="ftvs-seg"><?php self::radios( 'open', array( '' => __( 'Play inside the embed', 'faith-tv-series' ), 'channel' => __( 'Open your channel', 'faith-tv-series' ) ), '' ); ?></div>
 				</fieldset>
+				<details class="ftvs-advanced">
+					<summary><?php esc_html_e( 'Text sizes and colors', 'faith-tv-series' ); ?></summary>
+					<?php self::text_table( '', array() ); ?>
+				</details>
 			</form>
 			<div class="ftvs-embed-out">
 				<div class="ftvs-preview-head"><strong><?php esc_html_e( 'Preview', 'faith-tv-series' ); ?></strong><a class="ftvs-link" href="<?php echo esc_url( FTVS_Embed::url( $args ) ); ?>" target="_blank" rel="noopener" data-ftvs-embed-open><?php esc_html_e( 'Open in a new tab', 'faith-tv-series' ); ?></a></div>
@@ -885,7 +894,7 @@ class FTVS_Admin {
 					<?php settings_fields( 'ftvs' ); ?>
 					<p class="ftvs-muted"><?php esc_html_e( 'Only needed if the plugin\'s GitHub repository is ever made private: a fine-grained token with read-only access to that one repository ("Contents: Read").', 'faith-tv-series' ); ?></p>
 					<div class="ftvs-inline">
-						<input class="ftvs-input" type="password" autocomplete="off" name="<?php echo esc_attr( FTVS_Settings::OPTION ); ?>[update_token]" value="" placeholder="<?php echo '' !== $s['update_token'] ? esc_attr__( 'Saved (hidden)', 'faith-tv-series' ) : ''; ?>">
+						<input class="ftvs-input" type="password" autocomplete="new-password" data-lpignore="true" name="<?php echo esc_attr( FTVS_Settings::OPTION ); ?>[update_token]" value="" placeholder="<?php echo '' !== $s['update_token'] ? esc_attr__( 'Saved (hidden)', 'faith-tv-series' ) : ''; ?>">
 						<?php if ( '' !== $s['update_token'] ) : ?>
 							<label><input type="checkbox" name="<?php echo esc_attr( FTVS_Settings::OPTION ); ?>[update_token_remove]" value="1"> <?php esc_html_e( 'Remove the saved token', 'faith-tv-series' ); ?></label>
 						<?php endif; ?>
@@ -898,6 +907,56 @@ class FTVS_Admin {
 	}
 
 	/* ---------- Bits ---------- */
+
+	/**
+	 * Size + color boxes for each part of a section.
+	 *
+	 * @param string $prefix Field name prefix: 'ftvs_settings[text]' posts part[size]; '' posts part_size (embed builder).
+	 * @param array  $values part => { size, color }.
+	 */
+	private static function text_table( $prefix, $values ) {
+		$parts = array(
+			'heading' => array( __( 'Heading', 'faith-tv-series' ), '44' ),
+			'eyebrow' => array( __( 'Small line above the heading', 'faith-tv-series' ), '14' ),
+			'series'  => array( __( 'Big series title', 'faith-tv-series' ), '64' ),
+			'card'    => array( __( 'Series names on cards', 'faith-tv-series' ), '16' ),
+			'text'    => array( __( 'Descriptions', 'faith-tv-series' ), '16' ),
+			'meta'    => array( __( 'Episode counts and labels', 'faith-tv-series' ), '12' ),
+		);
+		?>
+		<table class="ftvs-text-table">
+			<thead><tr><th><?php esc_html_e( 'Words', 'faith-tv-series' ); ?></th><th><?php esc_html_e( 'Size', 'faith-tv-series' ); ?></th><th><?php esc_html_e( 'Color', 'faith-tv-series' ); ?></th></tr></thead>
+			<tbody>
+				<?php foreach ( $parts as $part => $info ) : ?>
+					<?php
+					$size  = isset( $values[ $part ]['size'] ) ? $values[ $part ]['size'] : '';
+					$color = isset( $values[ $part ]['color'] ) ? $values[ $part ]['color'] : '';
+					$sname = '' === $prefix ? $part . '_size' : $prefix . '[' . $part . '][size]';
+					$cname = '' === $prefix ? $part . '_color' : $prefix . '[' . $part . '][color]';
+					?>
+					<tr>
+						<th scope="row"><?php echo esc_html( $info[0] ); ?></th>
+						<td><input class="ftvs-input ftvs-text-size" name="<?php echo esc_attr( $sname ); ?>" value="<?php echo esc_attr( $size ); ?>" placeholder="<?php echo esc_attr( $info[1] ); ?>" inputmode="decimal" aria-label="<?php echo esc_attr( $info[0] . ' ' . __( 'size', 'faith-tv-series' ) ); ?>" data-ftvs-text="<?php echo esc_attr( $part ); ?>-size"></td>
+						<td class="ftvs-text-color">
+							<input type="color" value="<?php echo esc_attr( preg_match( '/^#[0-9a-f]{6}$/i', $color ) ? $color : '#ffffff' ); ?>" data-ftvs-pick aria-label="<?php echo esc_attr( $info[0] . ' ' . __( 'color picker', 'faith-tv-series' ) ); ?>">
+							<input class="ftvs-input" name="<?php echo esc_attr( $cname ); ?>" value="<?php echo esc_attr( $color ); ?>" placeholder="<?php esc_attr_e( 'Built-in', 'faith-tv-series' ); ?>" aria-label="<?php echo esc_attr( $info[0] . ' ' . __( 'color', 'faith-tv-series' ) ); ?>" data-ftvs-text="<?php echo esc_attr( $part ); ?>-color">
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	/** background-image for a style attribute; quotes and parentheses in the URL are encoded so it can't escape the CSS. */
+	private static function bg( $url ) {
+		$url = esc_url_raw( (string) $url );
+		if ( '' === $url ) {
+			return '';
+		}
+		$url = str_replace( array( '"', "'", '(', ')', '\\', ' ' ), array( '%22', '%27', '%28', '%29', '%5C', '%20' ), $url );
+		return 'background-image:url("' . $url . '")';
+	}
 
 	private static function refresh_button() {
 		?>

@@ -231,6 +231,42 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 		);
 
 		$this->end_controls_section();
+
+		// Size, font and color for each part of the section's words.
+		$parts = array(
+			'heading' => array( __( 'Heading', 'faith-tv-series' ), '{{WRAPPER}} .ftvs__title' ),
+			'eyebrow' => array( __( 'Small line above the heading', 'faith-tv-series' ), '{{WRAPPER}} .ftvs__head .ftvs-kicker' ),
+			'series'  => array( __( 'Big series title', 'faith-tv-series' ), '{{WRAPPER}} .ftvs-feature__title' ),
+			'card'    => array( __( 'Series names on cards', 'faith-tv-series' ), '{{WRAPPER}} .ftvs__name' ),
+			'text'    => array( __( 'Descriptions', 'faith-tv-series' ), '{{WRAPPER}} .ftvs-feature__desc, {{WRAPPER}} .ftvs__desc' ),
+			'meta'    => array( __( 'Episode counts and labels', 'faith-tv-series' ), '{{WRAPPER}} .ftvs__meta, {{WRAPPER}} .ftvs-feature__meta, {{WRAPPER}} .ftvs-kicker__label, {{WRAPPER}} .ftvs-cf__count' ),
+		);
+		foreach ( $parts as $part => $info ) {
+			$this->start_controls_section(
+				'ftvs_text_' . $part,
+				array(
+					'label' => $info[0],
+					'tab'   => \Elementor\Controls_Manager::TAB_STYLE,
+				)
+			);
+			$this->add_control(
+				'ftvs_' . $part . '_color',
+				array(
+					'label'     => __( 'Color', 'faith-tv-series' ),
+					'type'      => \Elementor\Controls_Manager::COLOR,
+					'selectors' => array( $info[1] => 'color: {{VALUE}};' ),
+				)
+			);
+			$this->add_group_control(
+				\Elementor\Group_Control_Typography::get_type(),
+				array(
+					'name'     => 'ftvs_' . $part . '_type',
+					'label'    => __( 'Size and font', 'faith-tv-series' ),
+					'selector' => $info[1],
+				)
+			);
+			$this->end_controls_section();
+		}
 	}
 
 	protected function render() {
@@ -260,6 +296,11 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 	/** null = the site default; '' = no badge. */
 	private function badge( $s ) {
 		if ( ! empty( $s['hide_badge'] ) ) {
+			return '';
+		}
+		// Widgets from 1.1 hid the badge by emptying its text (its default was "New" then).
+		$raw = $this->get_data( 'settings' );
+		if ( is_array( $raw ) && array_key_exists( 'badge', $raw ) && '' === $raw['badge'] ) {
 			return '';
 		}
 		$text = isset( $s['badge'] ) ? trim( (string) $s['badge'] ) : '';

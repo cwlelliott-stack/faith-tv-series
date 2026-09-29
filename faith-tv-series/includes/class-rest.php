@@ -35,7 +35,10 @@ class FTVS_Rest {
 	}
 
 	public static function category( WP_REST_Request $request ) {
-		$id   = 'gideo' === FTVS_Catalog::source() ? strtolower( $request['id'] ) : $request['id'];
+		$id = 'gideo' === FTVS_Catalog::source() ? strtolower( $request['id'] ) : $request['id'];
+		if ( ! FTVS_Catalog::is_known( $id ) ) {
+			return self::unknown();
+		}
 		$data = FTVS_Catalog::get_children( $id );
 		if ( is_wp_error( $data ) ) {
 			return new WP_Error( $data->get_error_code(), $data->get_error_message(), array( 'status' => 502 ) );
@@ -46,12 +49,20 @@ class FTVS_Rest {
 	}
 
 	public static function video( WP_REST_Request $request ) {
-		$id  = 'gideo' === FTVS_Catalog::source() ? strtolower( $request['id'] ) : $request['id'];
+		$id = 'gideo' === FTVS_Catalog::source() ? strtolower( $request['id'] ) : $request['id'];
+		if ( ! FTVS_Catalog::is_known( $id ) ) {
+			return self::unknown();
+		}
 		$url = FTVS_Catalog::get_video_url( $id );
 		if ( is_wp_error( $url ) ) {
 			return new WP_Error( $url->get_error_code(), $url->get_error_message(), array( 'status' => 502 ) );
 		}
 		return self::cacheable( array( 'hls' => $url ) );
+	}
+
+	/** Only ids already seen on this site are fetched, so made-up ids never reach the platform. */
+	private static function unknown() {
+		return new WP_Error( 'ftvs_unknown', __( 'Not found on this channel.', 'faith-tv-series' ), array( 'status' => 404 ) );
 	}
 
 	private static function cacheable( $data ) {

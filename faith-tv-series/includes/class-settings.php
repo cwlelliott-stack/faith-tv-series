@@ -14,6 +14,9 @@ class FTVS_Settings {
 	const LAYOUTS  = array( 'showcase', 'coverflow', 'list', 'row', 'grid' );
 	const MLAYOUTS = array( 'auto', 'same', 'showcase', 'coverflow', 'list', 'row', 'grid' );
 
+	/** Parts of a section whose text size and color can be changed. */
+	const TEXT_PARTS = array( 'heading', 'eyebrow', 'series', 'card', 'text', 'meta' );
+
 	public static function defaults() {
 		return array(
 			// Which church, and where its videos live.
@@ -31,6 +34,8 @@ class FTVS_Settings {
 			'label'         => '',
 			'badge'         => 'New',
 			'powered_by'    => 1,
+			// Text sizes and colors: part => { size, color }; empty means the built-in look.
+			'text'          => array(),
 			// Plumbing.
 			'cache_minutes' => 15,
 			'update_token'  => '',
@@ -47,9 +52,9 @@ class FTVS_Settings {
 		return isset( $all[ $key ] ) ? $all[ $key ] : null;
 	}
 
-	/** Merge changes into the saved settings (runs through sanitize()). */
+	/** Merge changes into the saved settings, always through sanitize() (also outside the admin). */
 	public static function update( $changes ) {
-		update_option( self::OPTION, array_merge( self::all(), $changes ) );
+		update_option( self::OPTION, self::sanitize( array_merge( self::all(), $changes ) ) );
 	}
 
 	public static function sanitize( $input ) {
@@ -86,6 +91,9 @@ class FTVS_Settings {
 		if ( isset( $input['mobile_layout'] ) && in_array( $input['mobile_layout'], self::MLAYOUTS, true ) ) {
 			$out['mobile_layout'] = $input['mobile_layout'];
 		}
+		if ( isset( $input['text'] ) && is_array( $input['text'] ) ) {
+			$out['text'] = self::text_styles( $input['text'] );
+		}
 		if ( isset( $input['powered_by'] ) ) {
 			$out['powered_by'] = empty( $input['powered_by'] ) ? 0 : 1;
 		}
@@ -108,6 +116,74 @@ class FTVS_Settings {
 	}
 
 	/**
+	 * Keeps only valid sizes and colors, per part.
+	 *
+	 * @param array $raw part => { size, color }.
+	 * @return array
+	 */
+	public static function text_styles( $raw ) {
+		$out = array();
+		foreach ( self::TEXT_PARTS as $part ) {
+			$size  = isset( $raw[ $part ]['size'] ) ? self::size_value( $raw[ $part ]['size'] ) : '';
+			$color = isset( $raw[ $part ]['color'] ) ? self::color_value( $raw[ $part ]['color'] ) : '';
+			if ( '' !== $size || '' !== $color ) {
+				$out[ $part ] = array(
+					'size'  => $size,
+					'color' => $color,
+				);
+			}
+		}
+		return $out;
+	}
+
+	/** "40" becomes 40px; "2.5rem", "5vw" and clamp()/min()/max() pass; anything else is dropped. */
+	public static function size_value( $raw ) {
+		$v = strtolower( trim( (string) $raw ) );
+		if ( preg_match( '/^\d{1,3}(\.\d{1,2})?$/', $v ) ) {
+			return $v . 'px';
+		}
+		if ( preg_match( '/^\d{1,3}(\.\d{1,2})?(px|rem|em|vw|vh|%)$/', $v ) ) {
+			return $v;
+		}
+		if ( preg_match( '/^(clamp|min|max)\([0-9a-z%., +*\/-]{1,80}\)$/', $v ) ) {
+			return $v;
+		}
+		return '';
+	}
+
+	/** Hex, rgb()/rgba() or hsl()/hsla(); anything else is dropped. */
+	public static function color_value( $raw ) {
+		$v = trim( (string) $raw );
+		if ( preg_match( '/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i', $v ) ) {
+			return strtoupper( $v );
+		}
+		if ( preg_match( '/^(rgb|rgba|hsl|hsla)\([0-9.,%\s\/]{1,60}\)$/i', $v ) ) {
+			return strtolower( $v );
+		}
+		return '';
+	}
+
+	/**
+	 * CSS custom properties for text styles, e.g. "--ftvs-heading-size:40px;".
+	 *
+	 * @param array $styles part => { size, color } (already sanitized).
+	 */
+	public static function text_css_vars( $styles ) {
+		// Checked again here, whatever path the values took to get stored.
+		$styles = self::text_styles( is_array( $styles ) ? $styles : array() );
+		$css    = '';
+		foreach ( $styles as $part => $style ) {
+			if ( '' !== $style['size'] ) {
+				$css .= '--ftvs-' . $part . '-size:' . $style['size'] . ';';
+			}
+			if ( '' !== $style['color'] ) {
+				$css .= '--ftvs-' . $part . '-color:' . $style['color'] . ';';
+			}
+		}
+		return $css;
+	}
+
+	/**
 	 * Versions before 1.2 only worked with Faith Tabernacle's channel, and may never have saved
 	 * any settings. Keep those sites connected; brand-new installs start unconnected.
 	 */
@@ -115,7 +191,12 @@ class FTVS_Settings {
 		$saved = get_option( self::OPTION, false );
 		if ( is_array( $saved ) ) {
 			if ( ! isset( $saved['source'] ) ) {
+				// Saved with the 1.1 settings form (which defaulted to Faith Tabernacle's channel).
 				$saved['source'] = ! empty( $saved['account_id'] ) ? 'gideo' : '';
+				if ( isset( $saved['account_id'] ) && 'Faith-Tabernacle-1' === $saved['account_id'] && empty( $saved['church_name'] ) ) {
+					$saved['church_name'] = 'Faith Tabernacle';
+					$saved['church_logo'] = 'https://tv.faithtabernacle.com/webtv-assets/logo.png';
+				}
 				update_option( self::OPTION, $saved );
 			}
 			return;

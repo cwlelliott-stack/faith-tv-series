@@ -72,6 +72,18 @@ def main():
     if run('git', 'tag', '--list', f'v{new}', capture=True):
         sys.exit(f'Tag v{new} already exists.')
 
+    # Check everything that could fail later before changing anything.
+    try:
+        subprocess.run(['gh', 'auth', 'status'], cwd=HERE, check=True, capture_output=True, text=True)
+    except (OSError, subprocess.CalledProcessError):
+        sys.exit('The GitHub CLI (gh) is missing or not signed in. Run: gh auth login')
+    run('git', 'fetch', '--quiet', 'origin', 'main', '--tags')
+    behind = run('git', 'rev-list', '--count', 'HEAD..origin/main', capture=True)
+    if behind and behind != '0':
+        sys.exit(f'Your main is {behind} commit(s) behind GitHub. Run: git pull')
+    if run('git', 'ls-remote', '--tags', 'origin', f'refs/tags/v{new}', capture=True):
+        sys.exit(f'Tag v{new} already exists on GitHub.')
+
     main_text = read(MAIN)
     main_text = re.sub(r'(\* Version:\s+)[0-9.]+', lambda m: m.group(1) + new, main_text, count=1)
     main_text = main_text.replace(f"define( 'FTVS_VERSION', '{old}' );", f"define( 'FTVS_VERSION', '{new}' );")
@@ -94,12 +106,25 @@ def main():
     run('git', 'add', MAIN, README)
     run('git', 'commit', '-m', f'Release {new}: {note}')
     run('git', 'tag', '-a', f'v{new}', '-m', f'Faith TV Series {new}')
-    run('git', 'push', 'origin', 'main')
-    run('git', 'push', 'origin', f'v{new}')
-    run('gh', 'release', 'create', f'v{new}', zip_path, '--title', f'Faith TV Series {new}', '--notes', note)
+    steps = [
+        ['git', 'push', 'origin', 'main'],
+        ['git', 'push', 'origin', f'v{new}'],
+        ['gh', 'release', 'create', f'v{new}', zip_path, '--title', f'Faith TV Series {new}', '--notes', note],
+    ]
+    for i, step in enumerate(steps):
+        try:
+            run(*step)
+        except (OSError, subprocess.CalledProcessError) as err:
+            print()
+            print('This step failed: ' + ' '.join(step))
+            print(f'  ({err})')
+            print('The version commit and tag are made locally. Finish by running these yourself:')
+            for rest in steps[i:]:
+                print('  ' + ' '.join(f'"{a}"' if ' ' in a else a for a in rest))
+            sys.exit(1)
     print()
     print(f'Released {new}. Websites see it within 12 hours, or right away with')
-    print('Settings > Faith TV Series > Check for updates now.')
+    print('Faith Stream > Updates > Check for updates now.')
 
 
 if __name__ == '__main__':

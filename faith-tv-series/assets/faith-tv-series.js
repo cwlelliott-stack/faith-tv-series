@@ -116,6 +116,10 @@
 
 	function initFeature(root, layout) {
 		var cards = Array.prototype.slice.call(root.querySelectorAll('[data-ftvs-track] .ftvs__card'));
+		if (!cards.length) {
+			var solo = root.querySelector('[data-ftvs-watch][data-item]');
+			if (solo) cards = [solo];
+		}
 		var entries = cards.map(function (card) {
 			return { card: card, kind: card.getAttribute('data-kind'), meta: card.getAttribute('data-meta') || '', item: readItem(card), href: card.href };
 		});
@@ -252,7 +256,11 @@
 		// Hold still while someone is pointing at it or using the keyboard in it, or when it is off screen.
 		root.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') setPaused('hover', true); });
 		root.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') setPaused('hover', false); });
-		root.addEventListener('focusin', function () { setPaused('focus', true); });
+		root.addEventListener('focusin', function (e) {
+			var keyboard = false;
+			try { keyboard = e.target.matches(':focus-visible'); } catch (err) {}
+			if (keyboard) setPaused('focus', true);
+		});
 		root.addEventListener('focusout', function (e) {
 			if (!e.relatedTarget || !root.contains(e.relatedTarget)) setPaused('focus', false);
 		});
@@ -364,13 +372,17 @@
 	}
 
 	function pauseAll(on) {
-		features.forEach(function (f) { f.pause('dialog', on); });
+		features.forEach(function (f) {
+			f.pause('dialog', on);
+			// Closing the player hands focus back to the button that opened it.
+			if (!on) f.pause('focus', false);
+		});
 	}
 
 	/* ---------- The player dialog (one per page) ---------- */
 
 	var Player = (function () {
-		var dialog, grab, video, posterBtn, errorBox, backBtn, ambient, kickerEl, titleEl, nowEl, descEl, statusEl, catsEl, epsLabel, epsEl, tvLink;
+		var dialog, grab, playerWrap, video, posterBtn, errorBox, backBtn, ambient, kickerEl, titleEl, nowEl, descEl, statusEl, catsEl, epsLabel, epsEl, tvLink;
 		var stack = [];
 		var episodes = [];
 		var current = -1;
@@ -409,7 +421,7 @@
 			dialog = el('dialog', { 'class': 'ftvs-dialog', 'aria-labelledby': 'ftvs-dialog-title' }, [
 				grab,
 				el('div', { 'class': 'ftvs-dialog__bar' }, [backBtn, closeBtn]),
-				el('div', { 'class': 'ftvs-dialog__player' }, [video, posterBtn, errorBox]),
+				(playerWrap = el('div', { 'class': 'ftvs-dialog__player' }, [video, posterBtn, errorBox])),
 				el('div', { 'class': 'ftvs-dialog__body' }, [
 					ambient,
 					el('div', { 'class': 'ftvs-dialog__inner' }, [kickerEl, titleEl, nowEl, descEl, statusEl, catsEl, epsLabel, epsEl, tvLink, powered])
@@ -523,6 +535,7 @@
 			var amb = item.image || item.poster || '';
 			if (amb) ambient.src = amb;
 			ambient.hidden = !amb;
+			playerWrap.hidden = false;
 			setPoster(item.poster || item.image || '');
 			dialog.scrollTop = 0;
 
@@ -544,6 +557,7 @@
 				}
 				renderCategories(data.categories || []);
 				renderEpisodes(data.videos || []);
+				playerWrap.hidden = !episodes.length;
 				if (!episodes.length && !(data.categories || []).length) {
 					statusEl.hidden = false;
 					statusEl.textContent = str('failed', 'This video could not be loaded right now.');
@@ -683,6 +697,9 @@
 					hls.loadSource(url);
 					hls.attachMedia(video);
 				});
+			}).catch(function (err) {
+				if (!native) throw err;
+				video.src = url;
 			});
 		}
 

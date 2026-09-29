@@ -35,12 +35,15 @@ Everything lives under the Faith Stream menu in WordPress:
 
 * Church: connect (or switch) your church in three steps.
 * Videos: every category on your channel, with a shortcode to copy.
-* Look & feel: your church color, layouts for computers and phones, label, badge.
+* Look & feel: your church color, layouts for computers and phones, label, badge, and
+  text sizes and colors for every section.
 * Embed: put a video section on any other website (Faith Central, a landing page, a partner
   church) with a copy-and-paste code. The frame grows to fit, even while the player is open.
 * Updates: new versions install like any WordPress plugin update.
 
-Elementor: drag in the "Faith TV Series" widget (search "Faith TV").
+Elementor: drag in the "Faith TV Series" widget (search "Faith TV"). Its Style tab sets the
+size (per device), font and color of the heading, the small line, the big series title, the
+series names, descriptions, and episode counts.
 Anywhere else: [faith_tv_series category="<id>"] (copy it from Faith Stream > Videos).
 
 Shortcode options (leave any out to use the Look & feel defaults):
@@ -56,6 +59,12 @@ Shortcode options (leave any out to use the Look & feel defaults):
 * play: site (watch on the page) or faithtv (open your channel in a new tab)
 * theme: dark (for dark sections) or light
 * descriptions: yes to show a short description under each card (row and grid)
+* Text size and color, per part: heading_size / heading_color (the heading),
+  eyebrow_size / eyebrow_color (the small line above it), series_size / series_color
+  (the big series title), card_size / card_color (series names on cards), text_size /
+  text_color (descriptions), meta_size / meta_color (episode counts and labels).
+  Sizes like 48, 2.5rem or clamp(28px, 6vw, 56px); colors like #FFFFFF.
+  Example: [faith_tv_series category="<id>" heading_size="56" heading_color="#FFFFFF"]
 
 Your channel is checked for changes every 15 minutes (changeable), and "Refresh from your
 channel" pulls changes right away. If the channel is ever unreachable, the site keeps showing
@@ -78,6 +87,8 @@ updates now" and "Install updates automatically".
 == Third-party code ==
 
 assets/vendor/hls.min.js is hls.js 1.7.3 (Apache License 2.0, see hls.js-LICENSE.txt).
+assets/vendor/hls.light.min.js is the same file under the name version 1.1 used, so pages
+a cache saved before the update keep playing.
 It plays video streams in browsers without full built-in HLS support, and loads only when
 someone presses play.
 

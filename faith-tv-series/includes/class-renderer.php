@@ -19,6 +19,10 @@ class FTVS_Renderer {
 		if ( $accent ) {
 			wp_add_inline_style( 'faith-tv-series', '.ftvs,.ftvs-dialog{--ftvs-accent:' . $accent . '}' );
 		}
+		$text = FTVS_Settings::text_css_vars( (array) FTVS_Settings::get( 'text' ) );
+		if ( '' !== $text ) {
+			wp_add_inline_style( 'faith-tv-series', '.ftvs{' . $text . '}' );
+		}
 		add_shortcode( 'faith_tv_series', array( __CLASS__, 'shortcode' ) );
 	}
 
@@ -39,7 +43,32 @@ class FTVS_Renderer {
 			'autoplay'      => 7,
 			'descriptions'  => 'no',
 			'theme'         => 'dark',
+			// Text size / color per part, e.g. heading_size="48" heading_color="#ffffff".
+			'heading_size'  => null,
+			'heading_color' => null,
+			'eyebrow_size'  => null,
+			'eyebrow_color' => null,
+			'series_size'   => null,
+			'series_color'  => null,
+			'card_size'     => null,
+			'card_color'    => null,
+			'text_size'     => null,
+			'text_color'    => null,
+			'meta_size'     => null,
+			'meta_color'    => null,
 		);
+	}
+
+	/** This section's own text sizes and colors as CSS custom properties ('' when none). */
+	public static function text_vars( $atts ) {
+		$raw = array();
+		foreach ( FTVS_Settings::TEXT_PARTS as $part ) {
+			$raw[ $part ] = array(
+				'size'  => isset( $atts[ $part . '_size' ] ) ? $atts[ $part . '_size' ] : '',
+				'color' => isset( $atts[ $part . '_color' ] ) ? $atts[ $part . '_color' ] : '',
+			);
+		}
+		return FTVS_Settings::text_css_vars( FTVS_Settings::text_styles( $raw ) );
 	}
 
 	public static function shortcode( $atts ) {
@@ -105,11 +134,13 @@ class FTVS_Renderer {
 			'category' => $found['id'],
 			'label'    => $label,
 			'autoplay' => $autoplay,
+			// On each root too: the site-wide ".ftvs" rule would otherwise win over the wrapper's values.
+			'vars'     => self::text_vars( $atts ),
 		);
 
 		ob_start();
 		if ( $split ) {
-			echo '<div class="' . esc_attr( 'ftvs ftvs--' . $theme . ' ftvs-switch' ) . '">';
+			echo '<div class="' . esc_attr( 'ftvs ftvs--' . $theme . ' ftvs-switch' ) . '"' . ( '' !== $root['vars'] ? ' style="' . esc_attr( $root['vars'] ) . '"' : '' ) . '>';
 			self::header( $atts );
 			self::root( $layout, 'ftvs-only-desktop', $items, $ctx, $root );
 			self::root( $mobile, 'ftvs-only-mobile', $items, $ctx, $root );
@@ -144,7 +175,7 @@ class FTVS_Renderer {
 	private static function root( $layout, $extra_class, $items, $ctx, $root, $atts = null ) {
 		$classes = 'ftvs ftvs--' . $root['theme'] . ' ftvs--' . $layout . ( $root['autoplay'] ? '' : ' ftvs--no-autoplay' ) . ( $extra_class ? ' ' . $extra_class : '' );
 		?>
-		<div class="<?php echo esc_attr( $classes ); ?>" data-ftvs data-layout="<?php echo esc_attr( $layout ); ?>" data-play="<?php echo esc_attr( $root['play'] ); ?>" data-category="<?php echo esc_attr( $root['category'] ); ?>" data-label="<?php echo esc_attr( $root['label'] ); ?>" data-autoplay="<?php echo esc_attr( $root['autoplay'] ); ?>" style="--ftvs-autoplay: <?php echo esc_attr( max( 1, $root['autoplay'] ) ); ?>s">
+		<div class="<?php echo esc_attr( $classes ); ?>" data-ftvs data-layout="<?php echo esc_attr( $layout ); ?>" data-play="<?php echo esc_attr( $root['play'] ); ?>" data-category="<?php echo esc_attr( $root['category'] ); ?>" data-label="<?php echo esc_attr( $root['label'] ); ?>" data-autoplay="<?php echo esc_attr( $root['autoplay'] ); ?>" style="<?php echo esc_attr( '--ftvs-autoplay:' . max( 1, $root['autoplay'] ) . 's;' . $root['vars'] ); ?>">
 			<?php
 			if ( $atts ) {
 				self::header( $atts );
@@ -227,10 +258,12 @@ class FTVS_Renderer {
 					<?php self::info( $first, $ctx, true ); ?>
 					<div class="ftvs-show__actions">
 						<?php self::watch_button( $first, $ctx ); ?>
-						<a class="ftvs-btn ftvs-btn--light" href="<?php echo esc_url( $ctx['more'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'More videos', 'faith-tv-series' ); ?></a>
+						<?php if ( '' !== $ctx['more'] ) : ?>
+							<a class="ftvs-btn ftvs-btn--light" href="<?php echo esc_url( $ctx['more'] ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'More videos', 'faith-tv-series' ); ?></a>
+						<?php endif; ?>
 					</div>
 				</div>
-				<a class="ftvs-show__art" href="<?php echo esc_url( $first['href'] ); ?>"<?php echo self::target( $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput ?> data-ftvs-watch aria-label="<?php echo esc_attr( self::watch_label( $first ) ); ?>">
+				<a class="ftvs-show__art" <?php echo self::card_attrs( $first, $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput ?> data-ftvs-watch aria-label="<?php echo esc_attr( self::watch_label( $first ) ); ?>">
 					<img src="<?php echo esc_url( self::art( $first ) ); ?>" alt="" data-ftvs-art<?php echo $ctx['lazy'] ? ' loading="lazy"' : ''; ?>>
 					<span class="ftvs__play ftvs__play--big" aria-hidden="true"><?php echo self::play_icon( 34 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
 				</a>
@@ -416,7 +449,9 @@ class FTVS_Renderer {
 			<?php if ( '' !== $ctx['badge'] ) : ?>
 				<span class="ftvs-badge" data-ftvs-badge<?php echo $is_first ? '' : ' hidden'; ?>><?php echo esc_html( $ctx['badge'] ); ?></span>
 			<?php endif; ?>
-			<span><?php echo esc_html( $ctx['label'] ); ?></span>
+			<?php if ( '' !== $ctx['label'] ) : ?>
+				<span class="ftvs-kicker__label"><?php echo esc_html( $ctx['label'] ); ?></span>
+			<?php endif; ?>
 		</p>
 		<h3 class="ftvs-feature__title" data-ftvs-title><?php echo esc_html( $item['title'] ); ?></h3>
 		<p class="ftvs-feature__meta" data-ftvs-meta><?php echo esc_html( $entry['meta'] ); ?></p>
@@ -426,15 +461,17 @@ class FTVS_Renderer {
 
 	private static function watch_button( $entry, $ctx ) {
 		?>
-		<a class="ftvs-btn ftvs-btn--primary" href="<?php echo esc_url( $entry['href'] ); ?>"<?php echo self::target( $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput ?> data-ftvs-watch aria-label="<?php echo esc_attr( self::watch_label( $entry ) ); ?>">
+		<a class="ftvs-btn ftvs-btn--primary" <?php echo self::card_attrs( $entry, $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput ?> data-ftvs-watch aria-label="<?php echo esc_attr( self::watch_label( $entry ) ); ?>">
 			<?php echo self::play_icon( 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			<span><?php echo 'video' === $entry['kind'] ? esc_html__( 'Watch now', 'faith-tv-series' ) : esc_html__( 'Watch the series', 'faith-tv-series' ); ?></span>
 		</a>
 		<?php
 	}
 
+	/** Link plus the item data the page script needs. Without a channel link, the card opens the player. */
 	private static function card_attrs( $entry, $ctx ) {
-		return 'href="' . esc_url( $entry['href'] ) . '"' . self::target( $ctx )
+		$href = '' !== $entry['href'] ? $entry['href'] : '#faith-tv-' . $entry['item']['id'];
+		return 'href="' . esc_url( $href ) . '"' . ( '' !== $entry['href'] ? self::target( $ctx ) : '' )
 			. ' data-kind="' . esc_attr( $entry['kind'] ) . '"'
 			. ' data-meta="' . esc_attr( $entry['meta'] ) . '"'
 			. ' data-item="' . esc_attr( wp_json_encode( $entry['item'] ) ) . '"';

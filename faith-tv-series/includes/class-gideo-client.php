@@ -65,12 +65,15 @@ class FTVS_Gideo_Client {
 		);
 	}
 
+	/** '' when the church connected with an account id and no TV website. */
 	public static function category_link( $id ) {
-		return untrailingslashit( (string) FTVS_Settings::get( 'tv_url' ) ) . '/program-group/' . $id;
+		$tv = untrailingslashit( (string) FTVS_Settings::get( 'tv_url' ) );
+		return '' === $tv ? '' : $tv . '/program-group/' . $id;
 	}
 
 	public static function video_link( $video_id, $category_id ) {
-		return self::category_link( $category_id ) . '/program/' . $video_id;
+		$group = self::category_link( $category_id );
+		return '' === $group ? '' : $group . '/program/' . $video_id;
 	}
 
 	/**

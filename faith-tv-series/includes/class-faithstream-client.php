@@ -15,7 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class FTVS_FaithStream_Client {
 
-	const VIDEO_TTL = 12 * HOUR_IN_SECONDS;
+	// Short: a church using signed Mux playback gets tokens that expire after an hour.
+	const VIDEO_TTL = 5 * MINUTE_IN_SECONDS;
 
 	public static function base() {
 		return untrailingslashit( (string) FTVS_Settings::get( 'fs_url' ) );
@@ -59,11 +60,25 @@ class FTVS_FaithStream_Client {
 					'categories' => array(),
 					'videos'     => array(),
 				);
+				// A series without its own picture borrows its first episode's (from "sections").
+				$fallback = array();
+				foreach ( isset( $page['sections'] ) ? (array) $page['sections'] : array() as $section ) {
+					if ( ! empty( $section['category']['slug'] ) && ! empty( $section['videos'][0]['thumbnail_url'] ) ) {
+						$fallback[ $section['category']['slug'] ] = $section['videos'][0]['thumbnail_url'];
+					}
+				}
 				foreach ( isset( $page['children'] ) ? (array) $page['children'] : array() as $child ) {
+					if ( empty( $child['thumbnail_url'] ) && isset( $child['slug'], $fallback[ $child['slug'] ] ) ) {
+						$child['thumbnail_url'] = $fallback[ $child['slug'] ];
+					}
 					$out['categories'][] = FTVS_FaithStream_Client::category( $child );
 				}
-				foreach ( isset( $page['videos'] ) ? (array) $page['videos'] : array() as $video ) {
-					$out['videos'][] = FTVS_FaithStream_Client::video( $video, $slug );
+				// A folder with no videos of its own lists every episode below it; those belong to the series.
+				$own = ! ( isset( $page['has_own_videos'] ) && ! $page['has_own_videos'] && $out['categories'] );
+				if ( $own ) {
+					foreach ( isset( $page['videos'] ) ? (array) $page['videos'] : array() as $video ) {
+						$out['videos'][] = FTVS_FaithStream_Client::video( $video, $slug );
+					}
 				}
 				return $out;
 			}
@@ -79,7 +94,8 @@ class FTVS_FaithStream_Client {
 				if ( is_wp_error( $data ) ) {
 					return $data;
 				}
-				$url = isset( $data['video']['hls_url'] ) ? (string) $data['video']['hls_url'] : '';
+				// Churches on Faith Stream's own storage get a path on the Faith Stream server.
+				$url = isset( $data['video']['hls_url'] ) ? FTVS_FaithStream_Client::absolute( (string) $data['video']['hls_url'] ) : '';
 				return 0 === strpos( $url, 'https://' )
 					? esc_url_raw( $url )
 					: new WP_Error( 'ftvs_no_stream', __( 'This video is not ready to play yet.', 'faith-tv-series' ) );
@@ -190,7 +206,8 @@ class FTVS_FaithStream_Client {
 		);
 	}
 
-	private static function absolute( $url, $base = null ) {
+	/** @internal */
+	public static function absolute( $url, $base = null ) {
 		$url = (string) $url;
 		if ( 0 === strpos( $url, '/' ) ) {
 			$url = ( null === $base ? self::base() : $base ) . $url;

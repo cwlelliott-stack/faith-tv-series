@@ -33,12 +33,16 @@ class FTVS_Catalog {
 		return false;
 	}
 
-	/** Cache namespace: changes whenever a different church is connected. */
+	/**
+	 * Cache namespace: changes whenever a different church is connected.
+	 * For Gideo it is the bare account id, the same key 1.1 used, so caches and
+	 * outage backups carry over through the update.
+	 */
 	public static function identity() {
 		if ( 'faithstream' === self::source() ) {
 			return 'f:' . FTVS_Settings::get( 'fs_url' ) . '|' . FTVS_Settings::get( 'fs_tenant' );
 		}
-		return 'g:' . FTVS_Settings::get( 'account_id' );
+		return (string) FTVS_Settings::get( 'account_id' );
 	}
 
 	private static function client() {
@@ -61,7 +65,54 @@ class FTVS_Catalog {
 		if ( '' !== $id && ! self::is_id( $id ) ) {
 			return new WP_Error( 'ftvs_bad_id', __( 'That is not a category on your channel.', 'faith-tv-series' ) );
 		}
-		return call_user_func( array( self::client(), 'get_children' ), $id );
+		$data = call_user_func( array( self::client(), 'get_children' ), $id );
+		if ( ! is_wp_error( $data ) ) {
+			self::learn( $id, $data );
+		}
+		return $data;
+	}
+
+	/**
+	 * Whether an id has been seen in the church's catalog. Public endpoints (REST and embeds)
+	 * only fetch known ids, so a visitor can't make the site call the platform for made-up ones.
+	 */
+	public static function is_known( $id ) {
+		if ( ! self::is_id( $id ) ) {
+			return false;
+		}
+		$known = self::known();
+		if ( isset( $known[ $id ] ) ) {
+			return true;
+		}
+		// Not seen yet on this site: filling the category list teaches it every row and series.
+		self::get_tree();
+		$known = self::known();
+		return isset( $known[ $id ] );
+	}
+
+	private static function known_key() {
+		return 'ftvs_known_' . md5( self::identity() );
+	}
+
+	private static function known() {
+		$known = get_option( self::known_key(), array() );
+		return is_array( $known ) ? $known : array();
+	}
+
+	/** Remember the category and everything listed in it (writes only when something is new). */
+	private static function learn( $id, $data ) {
+		$known = self::known();
+		$ids   = array_merge( '' === $id ? array() : array( $id ), wp_list_pluck( $data['categories'], 'id' ), wp_list_pluck( $data['videos'], 'id' ) );
+		$new   = false;
+		foreach ( $ids as $one ) {
+			if ( is_string( $one ) && '' !== $one && ! isset( $known[ $one ] ) ) {
+				$known[ $one ] = 1;
+				$new           = true;
+			}
+		}
+		if ( $new ) {
+			update_option( self::known_key(), $known, false );
+		}
 	}
 
 	/** @return string|WP_Error HLS address. */
@@ -121,6 +172,10 @@ class FTVS_Catalog {
 					// Faith Stream's home feed doesn't say which rows hold series, so look inside every row.
 					if ( $row['subcategories'] > 0 || 'faithstream' === FTVS_Catalog::source() ) {
 						$inside = FTVS_Catalog::get_children( $row['id'] );
+						if ( is_wp_error( $inside ) ) {
+							// Don't keep a half list for hours; the last full one is served instead.
+							return $inside;
+						}
 						if ( ! is_wp_error( $inside ) ) {
 							$row['children']      = $inside['categories'];
 							$row['subcategories'] = count( $inside['categories'] );

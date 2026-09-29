@@ -2,10 +2,11 @@
 /**
  * Embeds: one video section as its own small page, to put on other websites with an iframe.
  *
- *   https://yourchurch.com/?ftvs_embed=<category>&ftvs_layout=row&ftvs_theme=dark ...
+ *   https://yourchurch.com/?ftvs_embed=<category>&ftvs_layout=row&ftvs_theme=dark&...&ftvs_sig=...
  *
  * The companion assets/embed.js (loaded by the host page) lets the frame grow to fit,
- * including while the player is open.
+ * including while the player is open. Links are signed by the admin's embed builder, so a
+ * heading or text on the church's own address can't be made up by someone else.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -14,19 +15,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class FTVS_Embed {
 
+	/** Options an embed can carry, in the order they appear in the address. */
+	const OPTIONS = array( 'layout', 'theme', 'bg', 'title', 'eyebrow', 'limit', 'open' );
+
 	public static function init() {
 		// Late on init: our scripts are registered, and WordPress's main query never runs.
 		add_action( 'init', array( __CLASS__, 'maybe_serve' ), 100 );
+		add_action( 'wp_ajax_ftvs_embed_code', array( __CLASS__, 'ajax_code' ) );
 	}
 
-	/** Web address of an embed with these options. */
+	private static function option_keys() {
+		$keys = self::OPTIONS;
+		foreach ( FTVS_Settings::TEXT_PARTS as $part ) {
+			$keys[] = $part . '_size';
+			$keys[] = $part . '_color';
+		}
+		return $keys;
+	}
+
+	/** Web address of an embed with these options, signed. */
 	public static function url( $args ) {
-		$query = array( 'ftvs_embed' => $args['category'] );
-		foreach ( array( 'layout', 'theme', 'bg', 'title', 'eyebrow', 'limit', 'open' ) as $key ) {
-			if ( isset( $args[ $key ] ) && '' !== (string) $args[ $key ] ) {
-				$query[ 'ftvs_' . $key ] = $args[ $key ];
+		$query = array( 'ftvs_embed' => (string) $args['category'] );
+		foreach ( self::option_keys() as $key ) {
+			if ( isset( $args[ $key ] ) && '' !== trim( (string) $args[ $key ] ) && ! ( 'limit' === $key && ! absint( $args[ $key ] ) ) ) {
+				$query[ 'ftvs_' . $key ] = trim( (string) $args[ $key ] );
 			}
 		}
+		$query['ftvs_sig'] = self::sign( $query );
 		return add_query_arg( array_map( 'rawurlencode', $query ), home_url( '/' ) );
 	}
 
@@ -49,35 +64,69 @@ class FTVS_Embed {
 		return isset( $heights[ $layout ] ) ? $heights[ $layout ] : 700;
 	}
 
+	/** The admin's embed builder asks for the signed address and code as options change. */
+	public static function ajax_code() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+		check_ajax_referer( 'ftvs_embed_code' );
+		$post = wp_unslash( $_POST );
+		$args = array( 'category' => isset( $post['category'] ) ? sanitize_text_field( $post['category'] ) : '' );
+		foreach ( self::option_keys() as $key ) {
+			if ( isset( $post[ $key ] ) ) {
+				$args[ $key ] = sanitize_text_field( $post[ $key ] );
+			}
+		}
+		wp_send_json_success(
+			array(
+				'url'  => self::url( $args ),
+				'code' => self::code( $args ),
+			)
+		);
+	}
+
 	public static function maybe_serve() {
 		// phpcs:disable WordPress.Security.NonceVerification -- a public, read-only page.
 		if ( ! isset( $_GET['ftvs_embed'] ) ) {
 			return;
 		}
-		$get      = wp_unslash( $_GET );
-		$value    = function ( $key, $default = '' ) use ( $get ) {
-			return isset( $get[ 'ftvs_' . $key ] ) ? sanitize_text_field( $get[ 'ftvs_' . $key ] ) : $default;
+		$get   = wp_unslash( $_GET );
+		$query = array( 'ftvs_embed' => sanitize_text_field( $get['ftvs_embed'] ) );
+		foreach ( self::option_keys() as $key ) {
+			if ( isset( $get[ 'ftvs_' . $key ] ) ) {
+				$query[ 'ftvs_' . $key ] = sanitize_text_field( $get[ 'ftvs_' . $key ] );
+			}
+		}
+		// phpcs:enable
+		$signed = isset( $get['ftvs_sig'] ) && hash_equals( self::sign( $query ), (string) $get['ftvs_sig'] );
+		$value  = function ( $key, $default = '' ) use ( $query ) {
+			return isset( $query[ 'ftvs_' . $key ] ) ? $query[ 'ftvs_' . $key ] : $default;
 		};
-		$category = sanitize_text_field( $get['ftvs_embed'] );
-		$layout   = in_array( $value( 'layout' ), FTVS_Renderer::LAYOUTS, true ) ? $value( 'layout' ) : null;
+
+		$category = $query['ftvs_embed'];
 		$theme    = 'light' === $value( 'theme' ) ? 'light' : 'dark';
 		$clear    = 'clear' === $value( 'bg' );
-		$open     = 'channel' === $value( 'open' ) ? 'faithtv' : 'site';
-		// phpcs:enable
-
-		$html = FTVS_Renderer::render(
-			array(
-				'category' => $category,
-				'layout'   => $layout,
-				'theme'    => $theme,
-				'title'    => $value( 'title' ),
-				'eyebrow'  => $value( 'eyebrow' ),
-				'limit'    => absint( $value( 'limit', '0' ) ),
-				'play'     => $open,
-			)
+		$atts     = array(
+			'category' => $category,
+			'layout'   => in_array( $value( 'layout' ), FTVS_Renderer::LAYOUTS, true ) ? $value( 'layout' ) : null,
+			'theme'    => $theme,
+			'limit'    => absint( $value( 'limit', '0' ) ),
+			'play'     => 'channel' === $value( 'open' ) ? 'faithtv' : 'site',
+			// Words shown on the church's address only when the link came from its own builder.
+			'title'    => $signed ? $value( 'title' ) : '',
+			'eyebrow'  => $signed ? $value( 'eyebrow' ) : '',
 		);
-		if ( false !== strpos( $html, 'ftvs-notice' ) || 0 === strpos( $html, '<!--' ) ) {
-			// Nothing to show (bad category, or no church connected): say so plainly.
+		foreach ( FTVS_Settings::TEXT_PARTS as $part ) {
+			$atts[ $part . '_size' ]  = $value( $part . '_size' );
+			$atts[ $part . '_color' ] = $value( $part . '_color' );
+		}
+
+		$html = '';
+		if ( FTVS_Catalog::is_known( 'gideo' === FTVS_Catalog::source() ? strtolower( $category ) : $category ) ) {
+			$html = FTVS_Renderer::render( $atts );
+		}
+		if ( '' === $html || false !== strpos( $html, 'ftvs-notice' ) || 0 === strpos( $html, '<!--' ) ) {
+			// Unknown category, or no church connected: say so plainly without calling the platform.
 			$html = '<p style="margin:0;padding:24px;font:15px/1.5 system-ui,sans-serif;color:#888">' . esc_html__( 'These videos are not available right now.', 'faith-tv-series' ) . '</p>';
 		}
 
@@ -114,5 +163,12 @@ body{padding:16px;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Robo
 </html>
 		<?php
 		exit;
+	}
+
+	/** Short signature over the embed's options, keyed with this site's secret salt. */
+	private static function sign( $query ) {
+		unset( $query['ftvs_sig'] );
+		ksort( $query );
+		return substr( hash_hmac( 'sha256', http_build_query( $query ), wp_salt( 'auth' ) ), 0, 20 );
 	}
 }
