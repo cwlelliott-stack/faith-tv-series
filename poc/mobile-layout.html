@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Faith TV Phone Layouts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* POC: cleaner phone layouts for the Faith TV Series plugin. Live data from Gideo. */
+:root {
+	--accent: #c40d3c;
+	--accent-dark: #a00a31;
+	--accent-text: #e57a93;
+	--section: #222;
+	--text: #fff;
+	--muted: rgba(255, 255, 255, 0.68);
+	--line: rgba(255, 255, 255, 0.1);
+	--font: Roboto, "Helvetica Neue", Arial, sans-serif;
+	--page: #0e0e0f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+	background: var(--page);
+	color: var(--text);
+	font-family: var(--font);
+	-webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+img { display: block; max-width: 100%; }
+
+/* ---------- Page chrome (desktop preview only) ---------- */
+.chrome {
+	min-height: 100%;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	gap: 40px;
+	align-items: center;
+	padding: 32px 40px;
+}
+.intro { justify-self: end; max-width: 340px; }
+.intro h1 { margin: 0 0 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; color: var(--accent-text); }
+.intro h2 { margin: 0 0 18px; font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; }
+.intro p { margin: 0 0 22px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.picker { display: grid; gap: 8px; }
+.picker button {
+	display: grid;
+	grid-template-columns: 32px 1fr;
+	gap: 12px;
+	align-items: start;
+	padding: 14px 16px;
+	border: 0;
+	background: #1a1a1c;
+	text-align: left;
+	cursor: pointer;
+	box-shadow: inset 0 0 0 1px var(--line);
+	transition: background-color 0.15s ease;
+}
+.picker button:hover { background: #222225; }
+.picker button[aria-pressed="true"] { background: #26262a; box-shadow: inset 4px 0 0 var(--accent), inset 0 0 0 1px var(--line); }
+.picker b { display: grid; place-items: center; width: 32px; height: 32px; background: #000; font-size: 14px; font-weight: 900; }
+.picker button[aria-pressed="true"] b { background: var(--accent); }
+.picker strong { display: block; font-size: 14px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.picker span span { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.notes { justify-self: start; max-width: 300px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.notes h3 { margin: 0 0 8px; color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+.notes ul { margin: 0 0 20px; padding-left: 18px; }
+
+.phone {
+	position: relative;
+	width: 390px;
+	height: 844px;
+	border-radius: 48px;
+	padding: 12px;
+	background: #000;
+	box-shadow: 0 0 0 2px #2a2a2d, 0 40px 90px rgba(0, 0, 0, 0.6);
+}
+.screen {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	border-radius: 36px;
+	background: var(--section);
+	isolation: isolate;
+}
+.scroller {
+	height: 100%;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+}
+.scroller::-webkit-scrollbar { display: none; }
+
+/* On a real phone the frame disappears and the picker becomes a bar at the top. */
+@media (max-width: 760px) {
+	.chrome { display: block; padding: 0; }
+	.intro, .notes { display: none; }
+	.phone { width: 100%; height: 100dvh; border-radius: 0; padding: 0; box-shadow: none; }
+	.screen { border-radius: 0; }
+	.mobile-picker { display: flex !important; }
+}
+.mobile-picker {
+	display: none;
+	position: sticky;
+	top: 0;
+	z-index: 20;
+	gap: 6px;
+	padding: 8px 10px;
+	background: #000;
+}
+.mobile-picker button {
+	flex: 1;
+	padding: 9px 4px;
+	border: 0;
+	background: #1c1c1e;
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+.mobile-picker button[aria-pressed="true"] { background: var(--accent); }
+
+/* ---------- Fake site header, so the section sits in context ---------- */
+.site-top {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 60px;
+	padding: 0 20px;
+	padding-top: env(safe-area-inset-top);
+	background: #fff;
+	color: #222;
+	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+}
+.site-top .mark { font-size: 13px; font-weight: 800; letter-spacing: 0.32em; }
+.site-top .mark span { color: var(--accent); }
+.site-top .burger { width: 22px; height: 14px; border-top: 2px solid #222; border-bottom: 2px solid #222; position: relative; }
+.site-top .burger::after { content: ""; position: absolute; left: 0; right: 0; top: 4px; border-top: 2px solid #222; }
+
+/* ---------- The section ---------- */
+.section { padding: 34px 20px 40px; }
+.eyebrow { margin: 0 0 8px; color: var(--accent-text); font-size: 11px; font-weight: 800; letter-spacing: 0.24em; line-height: 1.5; text-transform: uppercase; }
+.title { margin: 0 0 24px; font-size: 30px; font-weight: 800; line-height: 0.98; letter-spacing: -0.025em; text-transform: uppercase; }
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 8px;
+	background: var(--accent);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 800;
+	letter-spacing: 0.16em;
+	line-height: 1;
+	text-transform: uppercase;
+}
+.count { color: var(--accent-text); font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
+
+.art {
+	position: relative;
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background: #111;
+}
+.art img { width: 100%; height: 100%; object-fit: cover; }
+
+.play {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 56px;
+	height: 56px;
+	margin: -28px 0 0 -28px;
+	display: grid;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--accent);
+	color: #fff;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+.play svg { margin-left: 3px; }
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 17px 22px;
+	border: 0;
+	font-size: 13px;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+	line-height: 1;
+	text-transform: uppercase;
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+	box-shadow: 0 0 15px rgba(0, 0, 0, 0.21);
+}
+.btn--primary { background: var(--accent); color: #fff; }
+.btn--primary:active { background: var(--accent-dark); }
+.btn--light { background: rgba(255, 255, 255, 0.94); color: #222; }
+.btn--ghost { background: transparent; color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
+.btn--block { width: 100%; }
+
+button.tap { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; }
+button.tap:focus-visible, .btn:focus-visible, .picker button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+/* Featured (A and C) */
+.feat__art { box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45); }
+.feat__meta { display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; }
+.feat__title { margin: 0; font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; }
+.feat__desc {
+	display: -webkit-box;
+	margin: 10px 0 18px;
+	overflow: hidden;
+	color: var(--muted);
+	font-size: 15px;
+	line-height: 1.5;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.label {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 36px 0 6px;
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.22em;
+	text-transform: uppercase;
+}
+.label::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+
+/* A: list */
+.list { list-style: none; margin: 0 0 18px; padding: 0; }
+.list li + li { border-top: 1px solid var(--line); }
+.row {
+	display: grid !important;
+	grid-template-columns: 128px 1fr 16px;
+	gap: 14px;
+	align-items: center;
+	padding: 12px 0 !important;
+}
+.row .art { box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35); }
+.row__title { display: block; font-size: 15px; font-weight: 800; line-height: 1.2; letter-spacing: 0.01em; text-transform: uppercase; }
+.row .count { display: block; margin-top: 5px; font-size: 10px; }
+.row svg { color: rgba(255, 255, 255, 0.4); }
+.row:active { background: rgba(255, 255, 255, 0.04); }
+
+/* B: swipe cards */
+.swipe { margin: 0 -20px; }
+.swipe__track {
+	list-style: none;
+	margin: 0;
+	padding: 0 20px 4px;
+	display: flex;
+	gap: 12px;
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	scroll-padding-inline: 20px;
+	scrollbar-width: none;
+}
+.swipe__track::-webkit-scrollbar { display: none; }
+.swipe__card { flex: 0 0 84%; scroll-snap-align: start; }
+.swipe__card .art { box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45); }
+.swipe__card .badge { position: absolute; top: 10px; left: 10px; }
+.swipe__text { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.swipe__title { font-size: 18px; font-weight: 800; line-height: 1.15; text-transform: uppercase; }
+.swipe__text .count { flex: none; font-size: 10px; }
+.swipe__desc {
+	display: -webkit-box;
+	margin-top: 6px;
+	overflow: hidden;
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1.45;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+.swipe__foot { display: flex; align-items: center; gap: 14px; margin: 22px 20px 0; }
+.swipe__bar { position: relative; flex: 1; height: 3px; background: rgba(255, 255, 255, 0.14); }
+.swipe__bar span { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); transition: left 0.15s linear; }
+.swipe__num { flex: none; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; }
+
+/* C: grid */
+.grid { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 22px 12px; }
+.grid .art { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
+.grid__title { display: block; margin-top: 9px; font-size: 13px; font-weight: 800; line-height: 1.2; text-transform: uppercase; }
+.grid .count { display: block; margin-top: 4px; font-size: 9px; }
+
+/* Loading placeholders */
+.skel { background: linear-gradient(90deg, #2a2a2a 0%, #333 50%, #2a2a2a 100%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+.skel-art { aspect-ratio: 16 / 9; }
+.skel-line { height: 14px; margin-top: 12px; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.error { padding: 18px; background: #2b1a1e; color: #fff; font-size: 14px; line-height: 1.5; }
+
+/* ---------- Player sheet ---------- */
+.sheet { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+.sheet__scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.7); opacity: 0; transition: opacity 0.3s ease; }
+.sheet__panel {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: calc(100% - 44px);
+	display: flex;
+	flex-direction: column;
+	background: #141414;
+	border-top: 4px solid var(--accent);
+	transform: translateY(100%);
+	transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+	box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
+}
+.sheet.is-open { pointer-events: auto; }
+.sheet.is-open .sheet__scrim { opacity: 1; }
+.sheet.is-open .sheet__panel { transform: translateY(0); }
+.sheet.is-dragging .sheet__panel { transition: none; }
+.sheet__grab { position: relative; flex: none; height: 30px; touch-action: none; cursor: grab; }
+.sheet__grab::before { content: ""; position: absolute; left: 50%; top: 11px; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: rgba(255, 255, 255, 0.3); }
+.sheet__close {
+	position: absolute;
+	top: 0;
+	right: 6px;
+	width: 44px;
+	height: 30px;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: rgba(255, 255, 255, 0.8);
+	cursor: pointer;
+}
+.sheet__scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.sheet__scroll::-webkit-scrollbar { display: none; }
+.sheet__player { position: relative; aspect-ratio: 16 / 9; background: #000; }
+.sheet__player video { display: block; width: 100%; height: 100%; background: #000; }
+.sheet__poster { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: #000 center / cover no-repeat; cursor: pointer; }
+.sheet__poster .play { width: 68px; height: 68px; margin: -34px 0 0 -34px; }
+.sheet__err { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 10px 14px; background: rgba(0, 0, 0, 0.85); font-size: 13px; }
+.sheet__body { padding: 20px 20px 34px; padding-bottom: calc(34px + env(safe-area-inset-bottom)); }
+.sheet__kicker { margin: 0 0 8px; color: var(--accent-text); font-size: 11px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; }
+.sheet__title { margin: 0; font-size: 26px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; }
+.sheet__now { margin: 10px 0 0; color: var(--accent-text); font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+.sheet__desc { margin: 12px 0 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+.sheet__desc.is-clamped { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.sheet__more { margin-top: 6px; padding: 0; border: 0; background: none; color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
+.eps { list-style: none; margin: 8px 0 24px; padding: 0; }
+.ep {
+	display: grid !important;
+	grid-template-columns: 116px 1fr;
+	gap: 14px;
+	align-items: center;
+	padding: 10px 8px !important;
+}
+.ep[aria-current="true"] { background: rgba(255, 255, 255, 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.ep .art { box-shadow: none; }
+.ep__len { position: absolute; right: 5px; bottom: 5px; padding: 2px 5px; background: rgba(0, 0, 0, 0.82); font-size: 11px; font-weight: 700; }
+.ep__num { display: block; color: var(--accent-text); font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+.ep__title { display: block; margin-top: 3px; font-size: 14px; font-weight: 800; line-height: 1.2; text-transform: uppercase; }
+.ep__date { display: block; margin-top: 3px; color: rgba(255, 255, 255, 0.5); font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+	.sheet__panel, .sheet__scrim, .swipe__bar span { transition: none; }
+	.skel { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="chrome">
+	<div class="intro">
+		<h1>Faith TV Series</h1>
+		<h2>Cleaner phone layouts</h2>
+		<p>Three simpler ways to show the Mini Series on a phone. Real series from Faith TV. Tap any series to open the player.</p>
+		<div class="picker" role="group" aria-label="Layout">
+			<button type="button" data-pick="a"><b>A</b><span><strong>Featured + list</strong><span>Newest series up top, the rest in a simple list. Nothing moves on its own.</span></span></button>
+			<button type="button" data-pick="b"><b>B</b><span><strong>Swipe cards</strong><span>One row of big cards you swipe through. The next card peeks in.</span></span></button>
+			<button type="button" data-pick="c"><b>C</b><span><strong>Grid</strong><span>Newest series up top, the rest in two columns you can scan at once.</span></span></button>
+		</div>
+	</div>
+
+	<div class="phone">
+		<div class="screen" id="screen">
+			<div class="scroller" id="scroller">
+				<div class="mobile-picker" role="group" aria-label="Layout">
+					<button type="button" data-pick="a">A · List</button>
+					<button type="button" data-pick="b">B · Swipe</button>
+					<button type="button" data-pick="c">C · Grid</button>
+				</div>
+				<header class="site-top"><span class="mark"><span>FAITH</span> TABERNACLE</span><span class="burger" aria-hidden="true"></span></header>
+				<section class="section">
+					<p class="eyebrow">Everyday issues that challenge our faith</p>
+					<h2 class="title">Faith Mini Series</h2>
+					<div id="view"></div>
+				</section>
+			</div>
+			<div class="sheet" id="sheet" aria-hidden="true">
+				<div class="sheet__scrim" data-close></div>
+				<div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+					<div class="sheet__grab" id="grab"><button type="button" class="sheet__close" data-close aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></div>
+					<div class="sheet__scroll" id="sheet-scroll">
+						<div class="sheet__player">
+							<video id="video" controls playsinline preload="none"></video>
+							<button type="button" class="sheet__poster" id="poster" aria-label="Play"><span class="play"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span></button>
+							<p class="sheet__err" id="err" hidden>This video could not be loaded right now.</p>
+						</div>
+						<div class="sheet__body">
+							<p class="sheet__kicker">Faith TV Mini Series</p>
+							<h2 class="sheet__title" id="sheet-title"></h2>
+							<p class="sheet__now" id="now" hidden></p>
+							<p class="sheet__desc is-clamped" id="desc"></p>
+							<button type="button" class="sheet__more" id="more" hidden>More</button>
+							<div class="label">Episodes</div>
+							<ol class="eps" id="eps"></ol>
+							<a class="btn btn--light btn--block" id="tv" target="_blank" rel="noopener">Watch on Faith TV</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="notes">
+		<h3>What changed from today's phone view</h3>
+		<ul>
+			<li>No 3D tilt, no arrows, nothing rotating by itself.</li>
+			<li>One clear red button per screen.</li>
+			<li>Episode counts stay; long descriptions are cut to two lines.</li>
+			<li>The player slides up from the bottom and swipes down to close, like a phone app.</li>
+		</ul>
+		<h3>Red play button</h3>
+		<ul><li>Kept on the featured artwork and in the player.</li></ul>
+	</div>
+</div>
+
+<script>
+(function () {
+	'use strict';
+
+	var API = 'https://ott.gideo.video/api/legacy';
+	var ACCOUNT = 'Faith-Tabernacle-1';
+	var MINI_SERIES = '781898cc9c88dc2250d54cbe7bb22866';
+	var TV = 'https://tv.faithtabernacle.com';
+	var HLS_JS = '../faith-tv-series/assets/vendor/hls.light.min.js';
+
+	var PLAY = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>';
+	var PLAY_SM = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>';
+	var CHEV = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+	var view = document.getElementById('view');
+	var series = [];
+	var layout = 'a';
+	var showAll = false;
+
+	function esc(s) {
+		return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+			return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+		});
+	}
+	function text(node, tag) {
+		var n = node.getElementsByTagName(tag)[0];
+		return n ? n.textContent.replace(/\r\n?/g, '\n').trim() : '';
+	}
+	function image() {
+		for (var i = 0; i < arguments.length; i++) {
+			var u = arguments[i];
+			if (u && u.indexOf('https://') === 0 && u.indexOf('/no-image.') === -1) return u;
+		}
+		return '';
+	}
+	function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+	function pad(n) { return (n < 10 ? '0' : '') + n; }
+	function duration(s) {
+		s = Math.round(+s || 0);
+		if (!s) return '';
+		var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+		return h ? h + ':' + pad(m) + ':' + pad(s % 60) : m + ':' + pad(s % 60);
+	}
+	function shortDate(iso) {
+		var d = iso ? new Date(iso) : null;
+		return d && !isNaN(d) ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+	}
+
+	function children(id) {
+		var url = API + '?cmd=getCategoryChildren&AccountID=' + ACCOUNT + '&CategoryID=' + id;
+		return fetch(url).then(function (r) { return r.text(); }).then(function (xml) {
+			var doc = new DOMParser().parseFromString(xml, 'text/xml');
+			var cats = Array.prototype.map.call(doc.getElementsByTagName('category'), function (c) {
+				return {
+					id: c.getAttribute('id'),
+					title: text(c, 'title'),
+					description: text(c, 'description'),
+					image: image(text(c, 'fhdimage'), text(c, 'image')),
+					videos: +text(c, 'videos') || 0
+				};
+			});
+			var vids = Array.prototype.filter.call(doc.getElementsByTagName('video'), function (v) {
+				return text(v, 'placeholder') !== '1' && text(v, 'ad') !== '1';
+			}).map(function (v) {
+				return {
+					id: v.getAttribute('id'),
+					title: text(v, 'title'),
+					description: text(v, 'description'),
+					thumb: image(text(v, 'image'), text(v, 'fhdimage')),
+					poster: image(text(v, 'fhdimage'), text(v, 'image')),
+					length: +text(v, 'length') || 0,
+					added: text(v, 'added')
+				};
+			});
+			return { categories: cats, videos: vids };
+		});
+	}
+
+	/* ---------- Layouts ---------- */
+
+	function featured(s, i) {
+		return '' +
+			'<button type="button" class="tap" data-open="' + i + '" aria-label="Watch ' + esc(s.title) + '">' +
+				'<span class="art feat__art"><img src="' + esc(s.image) + '" alt=""><span class="play">' + PLAY + '</span></span>' +
+			'</button>' +
+			'<div class="feat__meta"><span class="badge">New</span><span class="count">' + plural(s.videos, 'episode', 'episodes') + '</span></div>' +
+			'<h3 class="feat__title">' + esc(s.title) + '</h3>' +
+			'<p class="feat__desc">' + esc(s.description) + '</p>' +
+			'<button type="button" class="btn btn--primary btn--block" data-open="' + i + '">' + PLAY_SM + 'Watch the series</button>';
+	}
+
+	function renderA() {
+		var rest = series.slice(1);
+		var shown = showAll ? rest : rest.slice(0, 5);
+		var html = featured(series[0], 0) + '<div class="label">More mini series</div><ul class="list">';
+		shown.forEach(function (s, k) {
+			var i = k + 1;
+			html += '<li><button type="button" class="tap row" data-open="' + i + '">' +
+				'<span class="art"><img src="' + esc(s.image) + '" alt="" loading="lazy"></span>' +
+				'<span><span class="row__title">' + esc(s.title) + '</span><span class="count">' + plural(s.videos, 'episode', 'episodes') + '</span></span>' +
+				CHEV + '</button></li>';
+		});
+		html += '</ul>';
+		if (!showAll && rest.length > 5) {
+			html += '<button type="button" class="btn btn--ghost btn--block" data-all>Show all ' + series.length + ' series</button>';
+		}
+		view.innerHTML = html;
+	}
+
+	function renderB() {
+		var html = '<div class="swipe"><ul class="swipe__track" id="track">';
+		series.forEach(function (s, i) {
+			html += '<li class="swipe__card"><button type="button" class="tap" data-open="' + i + '">' +
+				'<span class="art"><img src="' + esc(s.image) + '" alt=""' + (i > 2 ? ' loading="lazy"' : '') + '>' + (i === 0 ? '<span class="badge">New</span>' : '') + '</span>' +
+				'<span class="swipe__text"><span class="swipe__title">' + esc(s.title) + '</span><span class="count">' + plural(s.videos, 'episode', 'episodes') + '</span></span>' +
+				'<span class="swipe__desc">' + esc(s.description) + '</span>' +
+				'</button></li>';
+		});
+		html += '</ul><div class="swipe__foot"><span class="swipe__bar"><span id="bar"></span></span><span class="swipe__num" id="num">01 / ' + pad(series.length) + '</span></div></div>';
+		view.innerHTML = html;
+
+		var track = document.getElementById('track');
+		var bar = document.getElementById('bar');
+		var num = document.getElementById('num');
+		var w = 100 / series.length;
+		bar.style.width = w + '%';
+		track.addEventListener('scroll', function () {
+			var max = track.scrollWidth - track.clientWidth;
+			var p = max > 0 ? track.scrollLeft / max : 0;
+			bar.style.left = (p * (100 - w)) + '%';
+			num.textContent = pad(Math.round(p * (series.length - 1)) + 1) + ' / ' + pad(series.length);
+		}, { passive: true });
+	}
+
+	function renderC() {
+		var html = featured(series[0], 0) + '<div class="label">All mini series</div><ul class="grid">';
+		series.slice(1).forEach(function (s, k) {
+			html += '<li><button type="button" class="tap" data-open="' + (k + 1) + '">' +
+				'<span class="art"><img src="' + esc(s.image) + '" alt="" loading="lazy"></span>' +
+				'<span class="grid__title">' + esc(s.title) + '</span>' +
+				'<span class="count">' + plural(s.videos, 'episode', 'episodes') + '</span>' +
+				'</button></li>';
+		});
+		view.innerHTML = html + '</ul>';
+	}
+
+	function render() {
+		if (!series.length) return;
+		({ a: renderA, b: renderB, c: renderC })[layout]();
+	}
+
+	function pick(which) {
+		layout = which;
+		showAll = false;
+		Array.prototype.forEach.call(document.querySelectorAll('[data-pick]'), function (b) {
+			b.setAttribute('aria-pressed', b.getAttribute('data-pick') === which ? 'true' : 'false');
+		});
+		try { localStorage.setItem('ftvs-poc-layout', which); } catch (e) {}
+		if (window.history.replaceState) window.history.replaceState(null, '', '#' + which);
+		render();
+		document.getElementById('scroller').scrollTop = 0;
+	}
+
+	document.addEventListener('click', function (e) {
+		var p = e.target.closest('[data-pick]');
+		if (p) { pick(p.getAttribute('data-pick')); return; }
+		if (e.target.closest('[data-all]')) { showAll = true; render(); return; }
+		var o = e.target.closest('[data-open]');
+		if (o && view.contains(o)) Sheet.open(series[+o.getAttribute('data-open')]);
+	});
+
+	/* ---------- Player sheet ---------- */
+
+	var Sheet = (function () {
+		var sheet = document.getElementById('sheet');
+		var panel = sheet.querySelector('.sheet__panel');
+		var scroll = document.getElementById('sheet-scroll');
+		var video = document.getElementById('video');
+		var poster = document.getElementById('poster');
+		var err = document.getElementById('err');
+		var titleEl = document.getElementById('sheet-title');
+		var nowEl = document.getElementById('now');
+		var descEl = document.getElementById('desc');
+		var moreBtn = document.getElementById('more');
+		var epsEl = document.getElementById('eps');
+		var tv = document.getElementById('tv');
+		var eps = [];
+		var current = 0;
+		var token = 0;
+		var hls = null;
+		var hlsLoad = null;
+
+		function open(s) {
+			token++;
+			stop();
+			eps = [];
+			current = 0;
+			titleEl.textContent = s.title;
+			descEl.textContent = s.description;
+			descEl.classList.add('is-clamped');
+			moreBtn.hidden = s.description.length < 140;
+			nowEl.hidden = true;
+			err.hidden = true;
+			tv.href = TV + '/program-group/' + s.id;
+			setPoster(s.image);
+			epsEl.innerHTML = '<li><div class="skel skel-line" style="height:64px"></div></li><li><div class="skel skel-line" style="height:64px"></div></li><li><div class="skel skel-line" style="height:64px"></div></li>';
+			scroll.scrollTop = 0;
+			sheet.setAttribute('aria-hidden', 'false');
+			sheet.classList.add('is-open');
+			var mine = token;
+			children(s.id).then(function (d) {
+				if (mine !== token) return;
+				eps = d.videos;
+				epsEl.innerHTML = eps.map(function (ep, i) {
+					return '<li><button type="button" class="tap ep" data-ep="' + i + '"' + (i === 0 ? ' aria-current="true"' : '') + '>' +
+						'<span class="art"><img src="' + esc(ep.thumb) + '" alt="" loading="lazy">' + (duration(ep.length) ? '<span class="ep__len">' + duration(ep.length) + '</span>' : '') + '</span>' +
+						'<span><span class="ep__num">Episode ' + (i + 1) + '</span><span class="ep__title">' + esc(ep.title) + '</span><span class="ep__date">' + shortDate(ep.added) + '</span></span>' +
+						'</button></li>';
+				}).join('');
+				if (eps[0]) setPoster(eps[0].poster || s.image);
+			}).catch(function () {
+				if (mine === token) epsEl.innerHTML = '<li class="error">Could not load the episodes right now.</li>';
+			});
+		}
+
+		function close() {
+			token++;
+			stop();
+			sheet.classList.remove('is-open');
+			sheet.setAttribute('aria-hidden', 'true');
+			panel.style.transform = '';
+		}
+
+		function setPoster(url) {
+			poster.hidden = false;
+			poster.style.backgroundImage = url ? 'url("' + url + '")' : '';
+		}
+
+		function mark() {
+			Array.prototype.forEach.call(epsEl.querySelectorAll('[data-ep]'), function (b) {
+				if (+b.getAttribute('data-ep') === current) b.setAttribute('aria-current', 'true');
+				else b.removeAttribute('aria-current');
+			});
+		}
+
+		function play(i) {
+			var ep = eps[i];
+			if (!ep) return;
+			current = i;
+			mark();
+			nowEl.hidden = false;
+			nowEl.textContent = 'Now playing: ' + ep.title;
+			err.hidden = true;
+			stop();
+			video.poster = ep.poster;
+			poster.hidden = true;
+			var mine = ++token;
+			fetch(API + '?cmd=getVideoUrls&accountId=' + ACCOUNT + '&videoId=' + ep.id).then(function (r) { return r.json(); }).then(function (d) {
+				if (mine !== token) return;
+				var u = (d.urls || []).filter(function (x) { return x.streamFormat === 'hls'; })[0];
+				if (!u) throw new Error('no stream');
+				return attach(u.url).then(function () {
+					if (mine !== token) return;
+					var p = video.play();
+					if (p && p.catch) p.catch(function () { if (mine === token) poster.hidden = false; });
+				});
+			}).catch(function () {
+				if (mine !== token) return;
+				err.hidden = false;
+				poster.hidden = false;
+			});
+		}
+
+		function attach(url) {
+			if (video.canPlayType('application/vnd.apple.mpegurl')) {
+				video.src = url;
+				return Promise.resolve();
+			}
+			if (!hlsLoad) {
+				hlsLoad = new Promise(function (res, rej) {
+					var s = document.createElement('script');
+					s.src = HLS_JS;
+					s.onload = function () { res(window.Hls); };
+					s.onerror = rej;
+					document.head.appendChild(s);
+				});
+			}
+			return hlsLoad.then(function (Hls) {
+				return new Promise(function (res, rej) {
+					hls = new Hls({ capLevelToPlayerSize: true });
+					hls.on(Hls.Events.MANIFEST_PARSED, function () { res(); });
+					hls.on(Hls.Events.ERROR, function (e, d) { if (d && d.fatal) rej(new Error('stream')); });
+					hls.loadSource(url);
+					hls.attachMedia(video);
+				});
+			});
+		}
+
+		function stop() {
+			if (hls) { hls.destroy(); hls = null; }
+			video.pause();
+			video.removeAttribute('src');
+			video.load();
+		}
+
+		poster.addEventListener('click', function () { play(current); });
+		video.addEventListener('ended', function () { if (current < eps.length - 1) play(current + 1); });
+		epsEl.addEventListener('click', function (e) {
+			var b = e.target.closest('[data-ep]');
+			if (!b) return;
+			play(+b.getAttribute('data-ep'));
+			scroll.scrollTo({ top: 0, behavior: 'smooth' });
+		});
+		moreBtn.addEventListener('click', function () {
+			var open = descEl.classList.toggle('is-clamped');
+			moreBtn.textContent = open ? 'More' : 'Less';
+		});
+		sheet.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) close(); });
+		document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && sheet.classList.contains('is-open')) close(); });
+
+		// Drag the top of the sheet down to close it.
+		var grab = document.getElementById('grab');
+		var startY = null;
+		grab.addEventListener('pointerdown', function (e) {
+			if (e.target.closest('[data-close]')) return;
+			startY = e.clientY;
+			grab.setPointerCapture(e.pointerId);
+			sheet.classList.add('is-dragging');
+		});
+		grab.addEventListener('pointermove', function (e) {
+			if (startY === null) return;
+			var dy = Math.max(0, e.clientY - startY);
+			panel.style.transform = 'translateY(' + dy + 'px)';
+		});
+		function endDrag(e) {
+			if (startY === null) return;
+			var dy = e.clientY - startY;
+			startY = null;
+			sheet.classList.remove('is-dragging');
+			panel.style.transform = '';
+			if (dy > 110) close();
+		}
+		grab.addEventListener('pointerup', endDrag);
+		grab.addEventListener('pointercancel', endDrag);
+
+		return { open: open };
+	})();
+
+	/* ---------- Start ---------- */
+
+	var start = (location.hash || '').replace('#', '');
+	if (!/^[abc]$/.test(start)) {
+		try { start = localStorage.getItem('ftvs-poc-layout') || 'a'; } catch (e) { start = 'a'; }
+	}
+	view.innerHTML = '<div class="skel skel-art"></div><div class="skel skel-line" style="width:40%"></div><div class="skel skel-line" style="width:80%;height:26px"></div><div class="skel skel-line"></div>';
+	pick(/^[abc]$/.test(start) ? start : 'a');
+
+	children(MINI_SERIES).then(function (d) {
+		series = d.categories;
+		render();
+		// ?open=N opens series N's player straight away (for screenshots).
+		var m = location.search.match(/[?&]open=(\d+)/);
+		if (m && series[+m[1]]) Sheet.open(series[+m[1]]);
+	}).catch(function () {
+		view.innerHTML = '<p class="error">Could not reach Faith TV. Check the internet connection and reload.</p>';
+	});
+})();
+</script>
+</body>
+</html>

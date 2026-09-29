@@ -4,7 +4,7 @@ Tags: video, gideo, church, series, hls
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 
 Puts a Faith TV (Gideo) category, like the Mini Series, live on the church website.
@@ -70,7 +70,18 @@ assets/vendor/hls.light.min.js is hls.js 1.7.3 (Apache License 2.0, see hls.js-L
 It plays the Faith TV video streams in browsers without built-in HLS support, and loads
 only when someone presses play.
 
+== Updates ==
+
+New versions come from GitHub releases (github.com/cwlelliott-stack/faith-tv-series) and
+show up on the Plugins page like any other plugin update. "Check for updates now" is on
+Settings > Faith TV Series. While that repository is private, save a read-only GitHub
+token on the same page.
+
 == Changelog ==
+
+= 1.1.0 =
+* Updates itself from GitHub releases (Plugins page shows "Update available").
+* Settings page: Updates section, Check for updates now, optional GitHub token.
 
 = 1.0.0 =
 * First version.

@@ -61,6 +61,10 @@ class FTVS_Admin {
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Faith TV Series', 'faith-tv-series' ); ?></h1>
 
+			<?php if ( isset( $_GET['ftvs_checked'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification ?>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Checked GitHub for a new version. The result is under Updates below.', 'faith-tv-series' ); ?></p></div>
+			<?php endif; ?>
+
 			<?php if ( isset( $_GET['ftvs_refreshed'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification ?>
 				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Done. The list below and every Faith TV section on the site now show the latest from Faith TV.', 'faith-tv-series' ); ?></p></div>
 			<?php endif; ?>
@@ -109,6 +113,8 @@ class FTVS_Admin {
 				</p>
 			<?php endif; ?>
 
+			<?php self::updates_box(); ?>
+
 			<h2 style="margin-top:32px"><?php esc_html_e( 'Settings', 'faith-tv-series' ); ?></h2>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'ftvs' ); ?>
@@ -127,6 +133,16 @@ class FTVS_Admin {
 						<th scope="row"><label for="ftvs-cache"><?php esc_html_e( 'Check Faith TV every', 'faith-tv-series' ); ?></label></th>
 						<td><input id="ftvs-cache" class="small-text" type="number" min="1" max="1440" name="<?php echo esc_attr( $name ); ?>[cache_minutes]" value="<?php echo esc_attr( $s['cache_minutes'] ); ?>"> <?php esc_html_e( 'minutes', 'faith-tv-series' ); ?></td>
 					</tr>
+					<tr>
+						<th scope="row"><label for="ftvs-token"><?php esc_html_e( 'GitHub access token', 'faith-tv-series' ); ?></label></th>
+						<td>
+							<input id="ftvs-token" class="regular-text" type="password" autocomplete="off" name="<?php echo esc_attr( $name ); ?>[update_token]" value="" placeholder="<?php echo '' !== $s['update_token'] ? esc_attr__( 'Saved (hidden)', 'faith-tv-series' ) : ''; ?>">
+							<?php if ( '' !== $s['update_token'] ) : ?>
+								<label style="margin-left:8px"><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[update_token_remove]" value="1"> <?php esc_html_e( 'Remove the saved token', 'faith-tv-series' ); ?></label>
+							<?php endif; ?>
+							<p class="description"><?php esc_html_e( 'Only needed while the plugin\'s GitHub repository is private: a fine-grained token with read-only access to that one repository ("Contents: Read"). Leave empty if the repository is public.', 'faith-tv-series' ); ?></p>
+						</td>
+					</tr>
 				</table>
 				<?php submit_button(); ?>
 			</form>
@@ -142,6 +158,44 @@ class FTVS_Admin {
 			else { document.execCommand('copy'); done(); }
 		});
 		</script>
+		<?php
+	}
+
+	private static function updates_box() {
+		$release = FTVS_Updater::latest();
+		?>
+		<h2 style="margin-top:32px"><?php esc_html_e( 'Updates', 'faith-tv-series' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Installed version', 'faith-tv-series' ); ?></th>
+				<td><?php echo esc_html( FTVS_VERSION ); ?></td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Newest on GitHub', 'faith-tv-series' ); ?></th>
+				<td>
+					<?php if ( is_wp_error( $release ) ) : ?>
+						<?php echo esc_html( $release->get_error_message() ); ?>
+					<?php else : ?>
+						<?php
+						echo esc_html( $release['version'] );
+						if ( $release['published'] ) {
+							echo ' <span class="description">(' . esc_html( mysql2date( get_option( 'date_format' ), $release['published'] ) ) . ')</span>';
+						}
+						?>
+						<?php if ( version_compare( $release['version'], FTVS_VERSION, '>' ) ) : ?>
+							<p><strong><?php esc_html_e( 'A new version is ready.', 'faith-tv-series' ); ?></strong>
+							<a class="button button-primary" style="margin-left:8px" href="<?php echo esc_url( admin_url( 'plugins.php?plugin_status=upgrade' ) ); ?>"><?php esc_html_e( 'Go to Plugins to update', 'faith-tv-series' ); ?></a></p>
+						<?php else : ?>
+							<span class="description" style="margin-left:6px"><?php esc_html_e( 'You have the newest version.', 'faith-tv-series' ); ?></span>
+						<?php endif; ?>
+					<?php endif; ?>
+				</td>
+			</tr>
+		</table>
+		<p>
+			<a class="button" href="<?php echo esc_url( FTVS_Updater::check_url() ); ?>"><?php esc_html_e( 'Check for updates now', 'faith-tv-series' ); ?></a>
+			<span class="description" style="margin-left:8px"><?php esc_html_e( 'WordPress also checks on its own twice a day. To install updates without clicking, use "Enable auto-updates" next to Faith TV Series on the Plugins page.', 'faith-tv-series' ); ?></span>
+		</p>
 		<?php
 	}
 
