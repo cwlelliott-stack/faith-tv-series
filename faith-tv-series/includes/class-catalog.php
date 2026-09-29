@@ -2,10 +2,13 @@
 /**
  * The connected church's video catalog, whichever platform it lives on.
  *
- * Both clients return the same shapes:
+ * Every source returns the same shapes:
  *   category { id, title, description, image, videos, subcategories }
- *   video    { id, parent, title, description, image, poster, length, added, live }
- * Ids are Gideo's 32-character ids or Faith Stream slugs.
+ *   video    { id, parent, title, description, image, poster, length, added, live, speaker, scripture, tags }
+ * Ids are Gideo's 32-character ids, Faith Stream slugs or YouTube ids. Series built by hand in
+ * WordPress (FTVS_Manual) sit alongside any source, and two automatic picks ride on top:
+ *   @newest    the newest messages from the whole channel
+ *   @featured  what the church features on its channel's home page
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -14,23 +17,53 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class FTVS_Catalog {
 
-	const TREE_TTL = 6 * HOUR_IN_SECONDS;
+	const TREE_TTL    = 6 * HOUR_IN_SECONDS;
+	const LIBRARY_TTL = HOUR_IN_SECONDS;
+	const NEWEST      = '@newest';
+	const FEATURED    = '@featured';
 
-	/** 'gideo', 'faithstream', or '' when no church is connected yet. */
+	public static function init() {
+		add_action( 'ftvs_gone', array( __CLASS__, 'on_gone' ) );
+		add_action( 'ftvs_cache_changed', array( __CLASS__, 'on_changed' ), 10, 3 );
+	}
+
+	/** Every platform the plugin can read, as source id => client class. */
+	public static function sources() {
+		return apply_filters(
+			'ftvs_sources',
+			array(
+				'faithstream' => 'FTVS_FaithStream_Client',
+				'gideo'       => 'FTVS_Gideo_Client',
+				'youtube'     => 'FTVS_YouTube_Client',
+				'demo'        => 'FTVS_Demo_Client',
+			)
+		);
+	}
+
+	/** 'gideo', 'faithstream', 'youtube', 'demo', or '' when no church is connected yet. */
 	public static function source() {
 		$source = (string) FTVS_Settings::get( 'source' );
-		return in_array( $source, array( 'gideo', 'faithstream' ), true ) ? $source : '';
+		$all    = self::sources();
+		return isset( $all[ $source ] ) && class_exists( $all[ $source ] ) ? $source : '';
 	}
 
 	public static function connected() {
-		$source = self::source();
-		if ( 'gideo' === $source ) {
-			return '' !== (string) FTVS_Settings::get( 'account_id' );
-		}
-		if ( 'faithstream' === $source ) {
-			return '' !== (string) FTVS_Settings::get( 'fs_url' ) && '' !== (string) FTVS_Settings::get( 'fs_tenant' );
+		switch ( self::source() ) {
+			case 'gideo':
+				return '' !== (string) FTVS_Settings::get( 'account_id' );
+			case 'faithstream':
+				return '' !== (string) FTVS_Settings::get( 'fs_url' ) && '' !== (string) FTVS_Settings::get( 'fs_tenant' );
+			case 'youtube':
+				return (bool) FTVS_Settings::get( 'yt_playlists' ) || '' !== (string) FTVS_Settings::get( 'yt_channel' );
+			case 'demo':
+				return true;
 		}
 		return false;
+	}
+
+	/** Sample videos only ever show to editors. */
+	public static function is_demo() {
+		return 'demo' === self::source();
 	}
 
 	/**
@@ -39,18 +72,35 @@ class FTVS_Catalog {
 	 * outage backups carry over through the update.
 	 */
 	public static function identity() {
-		if ( 'faithstream' === self::source() ) {
-			return 'f:' . FTVS_Settings::get( 'fs_url' ) . '|' . FTVS_Settings::get( 'fs_tenant' );
+		switch ( self::source() ) {
+			case 'faithstream':
+				return 'f:' . FTVS_Settings::get( 'fs_url' ) . '|' . FTVS_Settings::get( 'fs_tenant' );
+			case 'youtube':
+				return 'y:' . md5( wp_json_encode( array( FTVS_Settings::get( 'yt_channel' ), FTVS_Settings::get( 'yt_playlists' ) ) ) );
+			case 'demo':
+				return 'demo';
 		}
 		return (string) FTVS_Settings::get( 'account_id' );
 	}
 
-	private static function client() {
-		return 'faithstream' === self::source() ? 'FTVS_FaithStream_Client' : 'FTVS_Gideo_Client';
+	/** Client class of the connected source. */
+	public static function client() {
+		$all    = self::sources();
+		$source = self::source();
+		return '' !== $source ? $all[ $source ] : 'FTVS_Gideo_Client';
+	}
+
+	private static function has( $method ) {
+		return method_exists( self::client(), $method );
 	}
 
 	private static function not_connected() {
 		return new WP_Error( 'ftvs_not_connected', __( 'No church is connected yet. Go to Faith Stream > Church in the WordPress admin.', 'faith-tv-series' ) );
+	}
+
+	/** Can this source tell us what's live? */
+	public static function has_live() {
+		return self::connected() && self::has( 'get_live' );
 	}
 
 	/**
@@ -59,6 +109,15 @@ class FTVS_Catalog {
 	 * @return array|WP_Error { categories: array, videos: array }
 	 */
 	public static function get_children( $id = '' ) {
+		if ( self::NEWEST === $id ) {
+			return self::newest();
+		}
+		if ( self::FEATURED === $id ) {
+			return self::featured();
+		}
+		if ( FTVS_Manual::owns( $id ) ) {
+			return FTVS_Manual::get_children( $id );
+		}
 		if ( ! self::connected() ) {
 			return self::not_connected();
 		}
@@ -72,11 +131,218 @@ class FTVS_Catalog {
 		return $data;
 	}
 
+	/** The newest messages across the whole channel. */
+	public static function newest( $limit = 24 ) {
+		$videos = array();
+		if ( 'faithstream' === self::source() ) {
+			$home = FTVS_FaithStream_Client::get_home();
+			if ( is_wp_error( $home ) ) {
+				return $home;
+			}
+			if ( $home['newest'] ) {
+				$videos[] = $home['newest'];
+			}
+			foreach ( $home['rows'] as $row ) {
+				$videos = array_merge( $videos, $row['videos'] );
+			}
+		} else {
+			$videos = self::library();
+			if ( is_wp_error( $videos ) ) {
+				return $videos;
+			}
+		}
+		$videos = self::sort_newest( self::unique( $videos ) );
+		$data   = array(
+			'categories' => array(),
+			'videos'     => array_slice( $videos, 0, $limit ),
+		);
+		self::learn( '', $data );
+		return $data;
+	}
+
+	/** What the church features at the top of its channel (Faith Stream), or its first home row. */
+	public static function featured() {
+		if ( ! self::connected() ) {
+			return self::not_connected();
+		}
+		if ( 'faithstream' === self::source() ) {
+			$home = FTVS_FaithStream_Client::get_home();
+			if ( is_wp_error( $home ) ) {
+				return $home;
+			}
+			$out = array(
+				'categories' => array(),
+				'videos'     => array(),
+			);
+			foreach ( $home['rows'] as $row ) {
+				if ( 'hero' === $row['style'] ) {
+					$out['videos'] = array_merge( $out['videos'], $row['videos'] );
+				} elseif ( 'slider' === $row['style'] ) {
+					$out['categories'] = array_merge( $out['categories'], $row['children'] );
+				}
+			}
+			if ( $out['categories'] || $out['videos'] ) {
+				self::learn( '', $out );
+				return $out;
+			}
+		}
+		$home = self::get_children( '' );
+		if ( is_wp_error( $home ) || ! $home['categories'] ) {
+			return is_wp_error( $home ) ? $home : new WP_Error( 'ftvs_empty', __( 'This category has nothing published yet.', 'faith-tv-series' ) );
+		}
+		return self::get_children( $home['categories'][0]['id'] );
+	}
+
+	/**
+	 * Every video on the channel, newest first (for search, "newest" on sources without a
+	 * newest list, the sermon library, watch pages and the podcast feed).
+	 *
+	 * @return array|WP_Error List of videos, each with 'series' (its series' title).
+	 */
+	public static function library() {
+		if ( ! self::connected() ) {
+			return self::not_connected();
+		}
+		$list = FTVS_Cache::remember( 'library', self::LIBRARY_TTL, array( __CLASS__, 'fetch_library', array() ) );
+		if ( ! is_wp_error( $list ) ) {
+			$list = array_merge( $list, FTVS_Manual::library() );
+			self::learn( '', array( 'categories' => array(), 'videos' => $list ) );
+		}
+		return $list;
+	}
+
+	/** @internal */
+	public static function fetch_library() {
+		$client = self::client();
+		$titles = array();
+		$all    = array();
+		$tree   = self::get_tree();
+		if ( is_wp_error( $tree ) ) {
+			return $tree;
+		}
+		foreach ( $tree as $row ) {
+			$titles[ $row['id'] ] = $row['title'];
+			foreach ( $row['children'] as $child ) {
+				$titles[ $child['id'] ] = $child['title'];
+			}
+		}
+		if ( method_exists( $client, 'fetch_all_under' ) ) {
+			// Faith Stream: one listing per home row covers every episode below it.
+			foreach ( $tree as $row ) {
+				$videos = call_user_func( array( $client, 'fetch_all_under' ), $row['id'] );
+				if ( is_wp_error( $videos ) ) {
+					return $videos;
+				}
+				$all = array_merge( $all, $videos );
+			}
+		} else {
+			$budget = 80; // requests; each one is cached on its own too
+			foreach ( $tree as $row ) {
+				$ids = $row['children'] ? wp_list_pluck( $row['children'], 'id' ) : array( $row['id'] );
+				foreach ( $ids as $id ) {
+					if ( --$budget < 0 ) {
+						break 2;
+					}
+					$data = call_user_func( array( $client, 'get_children' ), $id );
+					if ( ! is_wp_error( $data ) ) {
+						foreach ( $data['videos'] as $video ) {
+							$video['parent'] = '' !== $video['parent'] ? $video['parent'] : $id;
+							$all[]           = $video;
+						}
+					}
+				}
+			}
+		}
+		$all = self::sort_newest( self::unique( $all ) );
+		foreach ( $all as $i => $video ) {
+			$all[ $i ]['series'] = isset( $titles[ $video['parent'] ] ) ? $titles[ $video['parent'] ] : '';
+		}
+		return $all;
+	}
+
+	/**
+	 * Search titles, speakers, scripture, descriptions and series.
+	 *
+	 * @return array|WP_Error List of videos.
+	 */
+	public static function search( $q ) {
+		$q = trim( (string) $q );
+		if ( strlen( $q ) < 2 ) {
+			return array();
+		}
+		$library = self::library();
+		if ( is_wp_error( $library ) ) {
+			return $library;
+		}
+		$found = array();
+		$words = preg_split( '/\s+/', strtolower( $q ) );
+		foreach ( $library as $video ) {
+			$hay = strtolower( $video['title'] . ' ' . $video['description'] . ' ' . $video['speaker'] . ' ' . $video['scripture'] . ' ' . implode( ' ', $video['tags'] ) . ' ' . ( isset( $video['series'] ) ? $video['series'] : '' ) );
+			$hit = true;
+			foreach ( $words as $word ) {
+				if ( '' !== $word && false === strpos( $hay, $word ) ) {
+					$hit = false;
+					break;
+				}
+			}
+			if ( $hit ) {
+				$found[ $video['id'] ] = $video;
+			}
+		}
+		// Faith Stream also searches words the lists don't carry (scripture, tags) server-side.
+		if ( self::has( 'search' ) ) {
+			$more = call_user_func( array( self::client(), 'search' ), $q );
+			if ( ! is_wp_error( $more ) ) {
+				$by_id = array();
+				foreach ( $library as $video ) {
+					$by_id[ $video['id'] ] = $video;
+				}
+				foreach ( $more['videos'] as $video ) {
+					if ( ! isset( $found[ $video['id'] ] ) ) {
+						$found[ $video['id'] ] = isset( $by_id[ $video['id'] ] ) ? $by_id[ $video['id'] ] : $video;
+					}
+				}
+			}
+		}
+		return self::sort_newest( array_values( $found ) );
+	}
+
+	/** One video's details and stream (Faith Stream also sends related videos). @return array|WP_Error */
+	public static function get_video( $id ) {
+		if ( FTVS_Manual::owns( $id ) ) {
+			return FTVS_Manual::get_video( $id );
+		}
+		if ( ! self::connected() ) {
+			return self::not_connected();
+		}
+		if ( ! self::is_id( $id ) ) {
+			return new WP_Error( 'ftvs_bad_id', __( 'That is not a video on your channel.', 'faith-tv-series' ) );
+		}
+		return call_user_func( array( self::client(), 'get_video' ), $id );
+	}
+
+	/** A video's details from the library (for pages that need its title without playing it). */
+	public static function find_video( $id ) {
+		$library = self::library();
+		if ( is_wp_error( $library ) ) {
+			return null;
+		}
+		foreach ( $library as $video ) {
+			if ( $video['id'] === $id ) {
+				return $video;
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * Whether an id has been seen in the church's catalog. Public endpoints (REST and embeds)
 	 * only fetch known ids, so a visitor can't make the site call the platform for made-up ones.
 	 */
 	public static function is_known( $id ) {
+		if ( FTVS_Manual::owns( $id ) ) {
+			return FTVS_Manual::exists( $id );
+		}
 		if ( ! self::is_id( $id ) ) {
 			return false;
 		}
@@ -102,7 +368,7 @@ class FTVS_Catalog {
 	/** Remember the category and everything listed in it (writes only when something is new). */
 	private static function learn( $id, $data ) {
 		$known = self::known();
-		$ids   = array_merge( '' === $id ? array() : array( $id ), wp_list_pluck( $data['categories'], 'id' ), wp_list_pluck( $data['videos'], 'id' ) );
+		$ids   = array_merge( '' === $id || '@' === $id[0] ? array() : array( $id ), wp_list_pluck( $data['categories'], 'id' ), wp_list_pluck( $data['videos'], 'id' ) );
 		$new   = false;
 		foreach ( $ids as $one ) {
 			if ( is_string( $one ) && '' !== $one && ! isset( $known[ $one ] ) ) {
@@ -115,32 +381,110 @@ class FTVS_Catalog {
 		}
 	}
 
+	/** Something was removed from the channel: forget it, so links to it stop working here too. */
+	public static function on_gone( $key ) {
+		if ( preg_match( '/^[cv]_(.+)$/', (string) $key, $m ) ) {
+			$known = self::known();
+			if ( isset( $known[ $m[1] ] ) ) {
+				unset( $known[ $m[1] ] );
+				update_option( self::known_key(), $known, false );
+			}
+			FTVS_Purge::soon();
+		}
+	}
+
+	/**
+	 * The catalog changed (new series, new sermon, a rename, a removal). Page caches may hold the
+	 * old list, so ask them to clear, and tell anything listening about brand-new videos.
+	 */
+	public static function on_changed( $key, $data, $old ) {
+		if ( null === $old || ! in_array( $key[0], array( 'c', 'h', 't', 'l' ), true ) ) {
+			return; // first fetch ever, or a single video's stream address
+		}
+		FTVS_Purge::soon();
+		$before = self::video_ids( $old );
+		$added  = array();
+		foreach ( self::videos_in( $data ) as $video ) {
+			if ( ! isset( $before[ $video['id'] ] ) ) {
+				$added[ $video['id'] ] = $video;
+			}
+		}
+		if ( $added ) {
+			/**
+			 * New videos appeared on the channel (not on the first check after connecting).
+			 *
+			 * @param array $videos Video shapes.
+			 */
+			do_action( 'ftvs_new_videos', array_values( $added ) );
+		}
+	}
+
+	private static function videos_in( $data ) {
+		if ( ! is_array( $data ) ) {
+			return array();
+		}
+		if ( isset( $data['videos'] ) && is_array( $data['videos'] ) ) {
+			return $data['videos'];
+		}
+		if ( isset( $data['rows'] ) ) {
+			$all = array();
+			foreach ( $data['rows'] as $row ) {
+				$all = array_merge( $all, $row['videos'] );
+			}
+			return $all;
+		}
+		if ( isset( $data[0]['id'], $data[0]['length'] ) ) {
+			return $data; // the library
+		}
+		return array();
+	}
+
+	private static function video_ids( $data ) {
+		$ids = array();
+		foreach ( self::videos_in( $data ) as $video ) {
+			$ids[ $video['id'] ] = 1;
+		}
+		return $ids;
+	}
+
 	/** @return string|WP_Error HLS address. */
 	public static function get_video_url( $id ) {
-		if ( ! self::connected() ) {
-			return self::not_connected();
+		$video = self::get_video( $id );
+		if ( is_wp_error( $video ) ) {
+			return $video;
 		}
-		if ( ! self::is_id( $id ) ) {
-			return new WP_Error( 'ftvs_bad_id', __( 'That is not a video on your channel.', 'faith-tv-series' ) );
-		}
-		return call_user_func( array( self::client(), 'get_video_url' ), $id );
+		return ! empty( $video['hls'] ) ? $video['hls'] : new WP_Error( 'ftvs_no_stream', __( 'This video is not ready to play yet.', 'faith-tv-series' ) );
 	}
 
 	public static function is_id( $value ) {
-		return is_string( $value ) && call_user_func( array( self::client(), 'is_id' ), $value );
+		return is_string( $value ) && ( FTVS_Manual::owns( $value ) || call_user_func( array( self::client(), 'is_id' ), $value ) );
 	}
 
 	public static function category_link( $id ) {
+		if ( FTVS_Manual::owns( $id ) || '' === $id || '@' === $id[0] ) {
+			return '';
+		}
 		return call_user_func( array( self::client(), 'category_link' ), $id );
 	}
 
 	public static function video_link( $video_id, $category_id ) {
+		if ( FTVS_Manual::owns( $video_id ) ) {
+			return '';
+		}
 		return call_user_func( array( self::client(), 'video_link' ), $video_id, $category_id );
 	}
 
 	/** Web address of the church's channel, for "Watch on ..." links. */
 	public static function channel_url() {
-		return 'faithstream' === self::source() ? (string) FTVS_Settings::get( 'fs_url' ) : (string) FTVS_Settings::get( 'tv_url' );
+		switch ( self::source() ) {
+			case 'faithstream':
+				return add_query_arg( 'tenant', FTVS_Settings::get( 'fs_tenant' ), trailingslashit( (string) FTVS_Settings::get( 'fs_url' ) ) );
+			case 'youtube':
+				return FTVS_YouTube_Client::channel_url();
+			case 'gideo':
+				return (string) FTVS_Settings::get( 'tv_url' );
+		}
+		return '';
 	}
 
 	public static function channel_host() {
@@ -156,43 +500,25 @@ class FTVS_Catalog {
 	 */
 	public static function get_tree() {
 		if ( ! self::connected() ) {
-			return self::not_connected();
+			$manual = FTVS_Manual::tree_row();
+			return $manual ? array( $manual ) : self::not_connected();
 		}
-		return FTVS_Cache::remember(
-			'tree',
-			self::TREE_TTL,
-			function () {
-				$home = FTVS_Catalog::get_children( '' );
-				if ( is_wp_error( $home ) ) {
-					return $home;
-				}
-				$tree = array();
-				foreach ( $home['categories'] as $row ) {
-					$row['children'] = array();
-					// Faith Stream's home feed doesn't say which rows hold series, so look inside every row.
-					if ( $row['subcategories'] > 0 || 'faithstream' === FTVS_Catalog::source() ) {
-						$inside = FTVS_Catalog::get_children( $row['id'] );
-						if ( is_wp_error( $inside ) ) {
-							// Don't keep a half list for hours; the last full one is served instead.
-							return $inside;
-						}
-						if ( ! is_wp_error( $inside ) ) {
-							$row['children']      = $inside['categories'];
-							$row['subcategories'] = count( $inside['categories'] );
-							if ( '' === $row['image'] ) {
-								$row['image'] = $inside['categories'] ? $inside['categories'][0]['image'] : ( $inside['videos'] ? $inside['videos'][0]['image'] : '' );
-							}
-						}
-					}
-					$tree[] = $row;
-				}
-				return $tree;
-			}
-		);
+		$tree = FTVS_Cache::remember( 'tree', self::TREE_TTL, array( self::client(), 'fetch_tree', array() ) );
+		if ( is_wp_error( $tree ) ) {
+			return $tree;
+		}
+		foreach ( $tree as $row ) {
+			self::learn( $row['id'], array( 'categories' => $row['children'], 'videos' => array() ) );
+		}
+		$manual = FTVS_Manual::tree_row();
+		if ( $manual ) {
+			$tree[] = $manual;
+		}
+		return $tree;
 	}
 
 	/**
-	 * Accepts a category id or a category name ("Faith TV Mini Series").
+	 * Accepts a category id, a category name ("Faith TV Mini Series"), or @newest / @featured.
 	 *
 	 * @return array|WP_Error { id, title }
 	 */
@@ -200,6 +526,19 @@ class FTVS_Catalog {
 		$needle = trim( (string) $needle );
 		if ( '' === $needle ) {
 			return new WP_Error( 'ftvs_no_category', __( 'Pick a category.', 'faith-tv-series' ) );
+		}
+		$auto = array(
+			self::NEWEST   => __( 'Latest messages', 'faith-tv-series' ),
+			self::FEATURED => __( 'Featured', 'faith-tv-series' ),
+		);
+		if ( isset( $auto[ strtolower( $needle ) ] ) ) {
+			return array(
+				'id'    => strtolower( $needle ),
+				'title' => $auto[ strtolower( $needle ) ],
+			);
+		}
+		if ( FTVS_Manual::owns( $needle ) ) {
+			return FTVS_Manual::exists( $needle ) ? array( 'id' => $needle, 'title' => FTVS_Manual::title( $needle ) ) : new WP_Error( 'ftvs_not_found', __( 'That series was deleted.', 'faith-tv-series' ) );
 		}
 		if ( ! self::connected() ) {
 			return self::not_connected();
@@ -257,9 +596,38 @@ class FTVS_Catalog {
 			$data['categories'][ $i ]['link'] = self::category_link( $cat['id'] );
 		}
 		foreach ( $data['videos'] as $i => $video ) {
-			$data['videos'][ $i ]['link'] = self::video_link( $video['id'], $video['parent'] ? $video['parent'] : $category_id );
+			$data['videos'][ $i ]['link']  = self::video_link( $video['id'], $video['parent'] ? $video['parent'] : $category_id );
+			$data['videos'][ $i ]['watch'] = FTVS_Watch::url( $video['id'] );
 		}
 		return $data;
+	}
+
+	private static function unique( $videos ) {
+		$seen = array();
+		$out  = array();
+		foreach ( $videos as $video ) {
+			if ( ! isset( $seen[ $video['id'] ] ) ) {
+				$seen[ $video['id'] ] = 1;
+				$out[]                = $video;
+			}
+		}
+		return $out;
+	}
+
+	private static function sort_newest( $videos ) {
+		usort(
+			$videos,
+			function ( $a, $b ) {
+				return strcmp( self::sortable_date( $b['added'] ), self::sortable_date( $a['added'] ) );
+			}
+		);
+		return $videos;
+	}
+
+	/** Gideo sends "2023-05-14 10:00:00", Faith Stream ISO 8601; both sort as UTC timestamps. */
+	private static function sortable_date( $raw ) {
+		$t = $raw ? strtotime( (string) $raw ) : false;
+		return false === $t ? '0000000000' : str_pad( (string) $t, 10, '0', STR_PAD_LEFT );
 	}
 
 	private static function name_key( $title ) {

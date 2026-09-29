@@ -1,6 +1,7 @@
 <?php
 /**
- * The Faith Stream admin menu: Church (connect), Videos, Look & feel, Updates.
+ * The Faith Stream admin menu: Church (connect), Videos, Look & feel, Player, Live, Embed,
+ * Health, Updates.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -14,9 +15,14 @@ class FTVS_Admin {
 		'faith-stream'         => 'church',
 		'faith-stream-videos'  => 'videos',
 		'faith-stream-look'    => 'look',
+		'faith-stream-player'  => 'player',
+		'faith-stream-live'    => 'live',
 		'faith-stream-embed'   => 'embed',
+		'faith-stream-health'  => 'health',
 		'faith-stream-updates' => 'updates',
 	);
+	// Tabs that need a connected church.
+	const NEEDS_CHURCH = array( 'videos', 'look', 'player', 'live', 'embed' );
 
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
@@ -24,23 +30,49 @@ class FTVS_Admin {
 		// WordPress refuses unknown pages before admin_init runs; this fires just before that refusal.
 		add_action( 'admin_page_access_denied', array( __CLASS__, 'redirect_old_page' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
-		add_action( 'admin_post_ftvs_refresh', array( __CLASS__, 'refresh' ) );
-		add_action( 'admin_post_ftvs_lookup', array( __CLASS__, 'lookup' ) );
-		add_action( 'admin_post_ftvs_connect', array( __CLASS__, 'connect' ) );
-		add_action( 'admin_post_ftvs_autoupdate', array( __CLASS__, 'toggle_autoupdate' ) );
+		foreach ( array( 'refresh', 'lookup', 'connect', 'autoupdate', 'demo', 'watch_page', 'secret', 'purge', 'recheck' ) as $action ) {
+			add_action( 'admin_post_ftvs_' . $action, array( __CLASS__, 'do_' . $action ) );
+		}
+		add_action( 'wp_ajax_ftvs_preview_url', array( __CLASS__, 'ajax_preview_url' ) );
 	}
 
 	public static function url( $page = self::PAGE, $args = array() ) {
 		return add_query_arg( array_merge( array( 'page' => $page ), $args ), admin_url( 'admin.php' ) );
 	}
 
+	/**
+	 * Who the plugin says it's from. Agencies can use their own name and link:
+	 * define( 'FTVS_BRAND_NAME', 'Your Agency' ); define( 'FTVS_BRAND_URL', 'https://...' );
+	 * (FTVS_BRAND_NAME '' hides "Powered by" everywhere), or the ftvs_brand filter.
+	 */
+	public static function brand() {
+		$host  = wp_parse_url( home_url(), PHP_URL_HOST );
+		$brand = array(
+			'name'    => defined( 'FTVS_BRAND_NAME' ) ? (string) FTVS_BRAND_NAME : 'FAITHSTREAM',
+			'url'     => defined( 'FTVS_BRAND_URL' ) ? (string) FTVS_BRAND_URL : add_query_arg( array( 'ref' => 'wp', 'host' => $host ), 'https://faithstream.video/' ),
+			'support' => defined( 'FTVS_SUPPORT_URL' ) ? (string) FTVS_SUPPORT_URL : 'https://faithstream.video/',
+		);
+		return apply_filters( 'ftvs_brand', $brand );
+	}
+
 	public static function menu() {
 		add_menu_page( __( 'Faith Stream', 'faith-tv-series' ), __( 'Faith Stream', 'faith-tv-series' ), 'manage_options', self::PAGE, array( __CLASS__, 'page' ), self::menu_icon(), 58 );
-		add_submenu_page( self::PAGE, __( 'Church', 'faith-tv-series' ), __( 'Church', 'faith-tv-series' ), 'manage_options', self::PAGE, array( __CLASS__, 'page' ) );
-		add_submenu_page( self::PAGE, __( 'Videos', 'faith-tv-series' ), __( 'Videos', 'faith-tv-series' ), 'manage_options', 'faith-stream-videos', array( __CLASS__, 'page' ) );
-		add_submenu_page( self::PAGE, __( 'Look & feel', 'faith-tv-series' ), __( 'Look & feel', 'faith-tv-series' ), 'manage_options', 'faith-stream-look', array( __CLASS__, 'page' ) );
-		add_submenu_page( self::PAGE, __( 'Embed', 'faith-tv-series' ), __( 'Embed', 'faith-tv-series' ), 'manage_options', 'faith-stream-embed', array( __CLASS__, 'page' ) );
-		add_submenu_page( self::PAGE, __( 'Updates', 'faith-tv-series' ), __( 'Updates', 'faith-tv-series' ), 'manage_options', 'faith-stream-updates', array( __CLASS__, 'page' ) );
+		foreach ( self::tab_names() as $slug => $name ) {
+			add_submenu_page( self::PAGE, $name, $name, 'manage_options', $slug, array( __CLASS__, 'page' ) );
+		}
+	}
+
+	private static function tab_names() {
+		return array(
+			'faith-stream'         => __( 'Church', 'faith-tv-series' ),
+			'faith-stream-videos'  => __( 'Videos', 'faith-tv-series' ),
+			'faith-stream-look'    => __( 'Look & feel', 'faith-tv-series' ),
+			'faith-stream-player'  => __( 'Player', 'faith-tv-series' ),
+			'faith-stream-live'    => __( 'Sunday live', 'faith-tv-series' ),
+			'faith-stream-embed'   => __( 'Embed', 'faith-tv-series' ),
+			'faith-stream-health'  => __( 'Health', 'faith-tv-series' ),
+			'faith-stream-updates' => __( 'Updates', 'faith-tv-series' ),
+		);
 	}
 
 	public static function register_settings() {
@@ -71,7 +103,16 @@ class FTVS_Admin {
 		wp_enqueue_style( 'ftvs-admin-font', 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800&family=Roboto:wght@700;800&display=swap', array(), null ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
 		wp_enqueue_style( 'ftvs-admin', FTVS_URL . 'assets/admin.css', array(), FTVS_VERSION );
 		wp_enqueue_script( 'ftvs-admin', FTVS_URL . 'assets/admin.js', array(), FTVS_VERSION, true );
-		if ( 'faith-stream-embed' === $page ) {
+		wp_localize_script(
+			'ftvs-admin',
+			'FTVS_ADMIN',
+			array(
+				'copied'   => __( 'Copied', 'faith-tv-series' ),
+				'lowText'  => __( 'Hard to read: the words on buttons will be switched to dark so they stay readable.', 'faith-tv-series' ),
+				'okText'   => '',
+			)
+		);
+		if ( in_array( $page, array( 'faith-stream-embed', 'faith-stream-look' ), true ) ) {
 			// Same helper other websites load, so the preview frame grows to fit.
 			wp_enqueue_script( 'ftvs-embed-host', FTVS_URL . 'assets/embed.js', array(), FTVS_VERSION, true );
 		}
@@ -79,24 +120,31 @@ class FTVS_Admin {
 
 	/* ---------- Actions ---------- */
 
-	public static function refresh() {
+	/** "Refresh from your channel": fetch everything now, and clear page caches. */
+	public static function do_refresh() {
 		self::guard( 'ftvs_refresh' );
 		FTVS_Cache::clear();
-		wp_safe_redirect( self::url( 'faith-stream-videos', array( 'ftvs_refreshed' => '1' ) ) );
+		FTVS_Health::warm();
+		FTVS_Purge::now();
+		wp_safe_redirect( add_query_arg( 'ftvs_refreshed', '1', wp_get_referer() ? wp_get_referer() : self::url( 'faith-stream-videos' ) ) );
 		exit;
 	}
 
 	/** Step 2 of connecting: find the church, keep it aside until the admin confirms. */
-	public static function lookup() {
+	public static function do_lookup() {
 		self::guard( 'ftvs_lookup' );
 		$post   = wp_unslash( $_POST );
-		$source = isset( $post['source'] ) && 'faithstream' === $post['source'] ? 'faithstream' : 'gideo';
+		$source = isset( $post['source'] ) && in_array( $post['source'], array( 'faithstream', 'youtube' ), true ) ? $post['source'] : 'gideo';
 		$field  = function ( $key ) use ( $post ) {
 			return isset( $post[ $key ] ) ? sanitize_text_field( $post[ $key ] ) : '';
 		};
 		if ( 'faithstream' === $source ) {
 			$found = FTVS_FaithStream_Client::lookup( $field( 'fs_url' ), $field( 'fs_tenant' ) );
 			$input = array( 'fs_url' => $field( 'fs_url' ), 'fs_tenant' => $field( 'fs_tenant' ) );
+		} elseif ( 'youtube' === $source ) {
+			$links = isset( $post['yt'] ) ? sanitize_textarea_field( $post['yt'] ) : '';
+			$found = FTVS_YouTube_Client::lookup( $links, $field( 'yt_key' ) );
+			$input = array( 'yt' => $links );
 		} elseif ( ! empty( $post['by_account'] ) ) {
 			$found = FTVS_Gideo_Client::lookup_account( $field( 'account_id' ) );
 			$input = array( 'account_id' => $field( 'account_id' ) );
@@ -114,7 +162,7 @@ class FTVS_Admin {
 	}
 
 	/** "Yes, this is my church." */
-	public static function connect() {
+	public static function do_connect() {
 		self::guard( 'ftvs_connect' );
 		$pending = get_transient( self::pending_key() );
 		if ( empty( $pending['found'] ) ) {
@@ -122,22 +170,82 @@ class FTVS_Admin {
 			exit;
 		}
 		$found  = $pending['found'];
-		$fields = array( 'source', 'account_id', 'tv_url', 'fs_url', 'fs_tenant', 'church_name', 'church_logo' );
+		$fields = array( 'source', 'account_id', 'tv_url', 'fs_url', 'fs_tenant', 'yt_channel', 'church_name', 'church_logo' );
 		$save   = array_fill_keys( $fields, '' );
 		foreach ( $fields as $key ) {
 			if ( isset( $found[ $key ] ) ) {
 				$save[ $key ] = $found[ $key ];
 			}
 		}
+		$save['yt_playlists'] = isset( $found['yt_playlists'] ) ? $found['yt_playlists'] : array();
+		if ( ! empty( $found['yt_key'] ) ) {
+			$save['yt_key'] = $found['yt_key'];
+		} else {
+			$save['yt_key_remove'] = 1;
+		}
+		$save['features'] = isset( $found['features'] ) ? $found['features'] : null;
+		// The church's own color and light/dark look, unless the admin says no.
+		if ( ! empty( $_POST['use_colors'] ) && ! empty( $found['colors']['primary'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+			$save['accent'] = $found['colors']['primary'];
+			$save['theme']  = $found['colors']['scheme'];
+		}
 		FTVS_Settings::update( $save );
 		FTVS_Cache::clear();
 		delete_transient( self::pending_key() );
+		FTVS_Health::warm_soon();
 		wp_safe_redirect( self::url( self::PAGE, array( 'connect' => 1, 'step' => 3 ) ) );
 		exit;
 	}
 
+	/** "Just looking? Try it with sample videos." Editors see them; visitors never do. */
+	public static function do_demo() {
+		self::guard( 'ftvs_demo' );
+		FTVS_Settings::update(
+			array(
+				'source'      => 'demo',
+				'church_name' => __( 'Sample Church', 'faith-tv-series' ),
+				'church_logo' => '',
+			)
+		);
+		FTVS_Cache::clear();
+		wp_safe_redirect( self::url( self::PAGE, array( 'connect' => 1, 'step' => 3 ) ) );
+		exit;
+	}
+
+	public static function do_watch_page() {
+		self::guard( 'ftvs_watch_page', 'publish_pages' );
+		$id = FTVS_Blocks::create_watch_page();
+		if ( is_wp_error( $id ) ) {
+			wp_die( esc_html( $id->get_error_message() ) );
+		}
+		wp_safe_redirect( get_edit_post_link( $id, 'raw' ) );
+		exit;
+	}
+
+	public static function do_secret() {
+		self::guard( 'ftvs_secret' );
+		update_option( 'ftvs_refresh_secret', wp_generate_password( 48, false ), false );
+		wp_safe_redirect( self::url( self::PAGE, array( 'ftvs_secret' => 1 ) ) . '#ftvs-instant' );
+		exit;
+	}
+
+	public static function do_purge() {
+		self::guard( 'ftvs_purge' );
+		FTVS_Purge::now();
+		wp_safe_redirect( self::url( 'faith-stream-health', array( 'ftvs_purged' => 1 ) ) );
+		exit;
+	}
+
+	public static function do_recheck() {
+		self::guard( 'ftvs_recheck' );
+		FTVS_Health::where_used( true );
+		FTVS_Health::check_used( true );
+		wp_safe_redirect( self::url( 'faith-stream-health', array( 'ftvs_rechecked' => 1 ) ) );
+		exit;
+	}
+
 	/** Same switch as "Enable auto-updates" on the Plugins page. */
-	public static function toggle_autoupdate() {
+	public static function do_autoupdate() {
 		self::guard( 'ftvs_autoupdate', 'update_plugins' );
 		$file = plugin_basename( FTVS_FILE );
 		$list = (array) get_site_option( 'auto_update_plugins', array() );
@@ -145,6 +253,33 @@ class FTVS_Admin {
 		update_site_option( 'auto_update_plugins', $list );
 		wp_safe_redirect( self::url( 'faith-stream-updates' ) );
 		exit;
+	}
+
+	/** Look & feel: a signed preview address carrying the settings being tried (not saved yet). */
+	public static function ajax_preview_url() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( null, 403 );
+		}
+		check_ajax_referer( 'ftvs_preview_url' );
+		$post = wp_unslash( $_POST );
+		$look = isset( $post[ FTVS_Settings::OPTION ] ) && is_array( $post[ FTVS_Settings::OPTION ] ) ? $post[ FTVS_Settings::OPTION ] : array();
+		$args = array(
+			'category' => isset( $post['preview_category'] ) ? sanitize_text_field( $post['preview_category'] ) : '',
+			'preview'  => 1,
+		);
+		foreach ( array( 'accent', 'layout', 'mobile_layout', 'theme', 'style', 'font', 'label', 'badge', 'powered_by' ) as $key ) {
+			if ( isset( $look[ $key ] ) ) {
+				$args[ 'look_' . $key ] = sanitize_text_field( $look[ $key ] );
+			}
+		}
+		foreach ( FTVS_Settings::TEXT_PARTS as $part ) {
+			foreach ( array( 'size', 'color' ) as $what ) {
+				if ( ! empty( $look['text'][ $part ][ $what ] ) ) {
+					$args[ $part . '_' . $what ] = sanitize_text_field( $look['text'][ $part ][ $what ] );
+				}
+			}
+		}
+		wp_send_json_success( array( 'url' => FTVS_Embed::url( $args ) ) );
 	}
 
 	private static function guard( $action, $cap = 'manage_options' ) {
@@ -158,6 +293,19 @@ class FTVS_Admin {
 		return 'ftvs_pending_' . get_current_user_id();
 	}
 
+	private static function post_button( $action, $label, $class = 'button ftvs-btn-secondary', $extra = array() ) {
+		?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ftvs-inline-form">
+			<input type="hidden" name="action" value="<?php echo esc_attr( $action ); ?>">
+			<?php foreach ( $extra as $k => $v ) : ?>
+				<input type="hidden" name="<?php echo esc_attr( $k ); ?>" value="<?php echo esc_attr( $v ); ?>">
+			<?php endforeach; ?>
+			<?php wp_nonce_field( $action ); ?>
+			<button class="<?php echo esc_attr( $class ); ?>"><?php echo esc_html( $label ); ?></button>
+		</form>
+		<?php
+	}
+
 	/* ---------- Page ---------- */
 
 	public static function page() {
@@ -166,7 +314,7 @@ class FTVS_Admin {
 		}
 		$page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : self::PAGE; // phpcs:ignore WordPress.Security.NonceVerification
 		$tab  = isset( self::PAGES[ $page ] ) ? self::PAGES[ $page ] : 'church';
-		if ( ! FTVS_Catalog::connected() && in_array( $tab, array( 'videos', 'look', 'embed' ), true ) ) {
+		if ( ! FTVS_Catalog::connected() && in_array( $tab, self::NEEDS_CHURCH, true ) ) {
 			$tab = 'church';
 		}
 		$tree = FTVS_Catalog::connected() ? FTVS_Catalog::get_tree() : array();
@@ -183,8 +331,17 @@ class FTVS_Admin {
 			case 'look':
 				self::look( $tree );
 				break;
+			case 'player':
+				self::player();
+				break;
+			case 'live':
+				self::live();
+				break;
 			case 'embed':
 				self::embed( $tree );
+				break;
+			case 'health':
+				self::health();
 				break;
 			case 'updates':
 				self::updates();
@@ -200,13 +357,6 @@ class FTVS_Admin {
 	private static function header( $tab, $tree ) {
 		$s         = FTVS_Settings::all();
 		$connected = FTVS_Catalog::connected();
-		$tabs      = array(
-			'faith-stream'         => __( 'Church', 'faith-tv-series' ),
-			'faith-stream-videos'  => __( 'Videos', 'faith-tv-series' ),
-			'faith-stream-look'    => __( 'Look & feel', 'faith-tv-series' ),
-			'faith-stream-embed'   => __( 'Embed', 'faith-tv-series' ),
-			'faith-stream-updates' => __( 'Updates', 'faith-tv-series' ),
-		);
 		?>
 		<header class="ftvs-brand">
 			<span class="ftvs-logo"><?php echo self::gear( 50 ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="ftvs-logo__word"><strong>FAITHSTREAM</strong><span><?php esc_html_e( 'a division of FaithWorks Image Consulting', 'faith-tv-series' ); ?></span></span></span>
@@ -218,7 +368,7 @@ class FTVS_Admin {
 				<?php if ( $connected ) : ?>
 					<span class="ftvs-avatar" style="<?php echo esc_attr( self::bg( $s['church_logo'] ) ); ?>"></span>
 					<span><strong><?php echo esc_html( '' !== $s['church_name'] ? $s['church_name'] : __( 'Your church', 'faith-tv-series' ) ); ?></strong>
-					<small><span class="ftvs-dot"></span><?php echo esc_html( self::source_name() ); ?></small></span>
+					<small><span class="ftvs-dot<?php echo self::failing() ? ' is-off' : ''; ?>"></span><?php echo esc_html( self::source_name() ); ?></small></span>
 				<?php else : ?>
 					<span class="ftvs-avatar is-empty">?</span>
 					<span><strong><?php esc_html_e( 'No church yet', 'faith-tv-series' ); ?></strong><small><span class="ftvs-dot is-off"></span><?php esc_html_e( 'Not connected', 'faith-tv-series' ); ?></small></span>
@@ -227,15 +377,20 @@ class FTVS_Admin {
 			<span class="ftvs-ver">v<?php echo esc_html( FTVS_VERSION ); ?></span>
 		</header>
 		<nav class="ftvs-tabs" aria-label="<?php esc_attr_e( 'Faith Stream', 'faith-tv-series' ); ?>">
-			<?php foreach ( $tabs as $slug => $name ) : ?>
+			<?php foreach ( self::tab_names() as $slug => $name ) : ?>
 				<?php
+				if ( 'updates' === self::PAGES[ $slug ] && ! class_exists( 'FTVS_Updater' ) ) {
+					continue;
+				}
 				$is  = self::PAGES[ $slug ] === $tab;
-				$off = ! $connected && in_array( self::PAGES[ $slug ], array( 'videos', 'look', 'embed' ), true );
+				$off = ! $connected && in_array( self::PAGES[ $slug ], self::NEEDS_CHURCH, true );
 				?>
 				<a href="<?php echo esc_url( self::url( $slug ) ); ?>" class="<?php echo esc_attr( trim( ( $is ? 'is-current' : '' ) . ( $off ? ' is-off' : '' ) ) ); ?>"<?php echo $is ? ' aria-current="page"' : ''; ?>>
 					<?php echo esc_html( $name ); ?>
 					<?php if ( 'videos' === self::PAGES[ $slug ] && $connected && is_array( $tree ) ) : ?>
 						<span class="ftvs-count"><?php echo (int) count( $tree ); ?></span>
+					<?php elseif ( 'health' === self::PAGES[ $slug ] && self::problems() ) : ?>
+						<span class="ftvs-count is-alert"><?php echo (int) self::problems(); ?></span>
 					<?php endif; ?>
 				</a>
 			<?php endforeach; ?>
@@ -243,11 +398,32 @@ class FTVS_Admin {
 		<?php
 	}
 
+	/** Has the channel been failing for a while? */
+	private static function failing() {
+		$h = FTVS_Cache::health();
+		return $h['fails'] && $h['failing_at'] && time() - $h['failing_at'] > 30 * MINUTE_IN_SECONDS;
+	}
+
+	/** How many things need attention (for the Health tab's count). */
+	private static function problems() {
+		$n      = self::failing() ? 1 : 0;
+		$status = get_option( 'ftvs_used_status', array() );
+		foreach ( isset( $status['rows'] ) ? $status['rows'] : array() as $row ) {
+			if ( empty( $row['ok'] ) && 'publish' === $row['status'] ) {
+				++$n;
+			}
+		}
+		return $n;
+	}
+
 	private static function notices() {
 		// phpcs:disable WordPress.Security.NonceVerification
 		$messages = array(
-			'ftvs_refreshed' => __( 'Done. Every video section on the site now shows the latest from your channel.', 'faith-tv-series' ),
+			'ftvs_refreshed' => __( 'Done. Every video section on the site now shows the latest from your channel, and page caches were cleared.', 'faith-tv-series' ),
 			'ftvs_checked'   => __( 'Checked for a new version. The result is below.', 'faith-tv-series' ),
+			'ftvs_purged'    => __( 'Page caches were asked to clear.', 'faith-tv-series' ),
+			'ftvs_rechecked' => __( 'Checked every page with a video section.', 'faith-tv-series' ),
+			'ftvs_secret'    => __( 'New secret made. Paste it into Faith Stream again.', 'faith-tv-series' ),
 		);
 		foreach ( $messages as $key => $text ) {
 			if ( isset( $_GET[ $key ] ) ) {
@@ -255,6 +431,9 @@ class FTVS_Admin {
 			}
 		}
 		// phpcs:enable
+		if ( FTVS_Catalog::is_demo() ) {
+			echo '<div class="notice notice-info"><p><strong>' . esc_html__( 'You are trying the plugin with sample videos.', 'faith-tv-series' ) . '</strong> ' . esc_html__( 'Only people who can edit the site see video sections until you connect your church.', 'faith-tv-series' ) . ' <a href="' . esc_url( self::url( self::PAGE, array( 'connect' => 1 ) ) ) . '">' . esc_html__( 'Connect your church', 'faith-tv-series' ) . '</a></p></div>';
+		}
 	}
 
 	/* ---------- Church ---------- */
@@ -271,12 +450,13 @@ class FTVS_Admin {
 		foreach ( $rows as $row ) {
 			$series += count( $row['children'] );
 		}
+		$h = FTVS_Cache::health();
 		?>
 		<div class="ftvs-card ftvs-pad">
 			<div class="ftvs-church">
 				<span class="ftvs-logobox" style="<?php echo esc_attr( self::bg( $s['church_logo'] ) ); ?>"></span>
 				<div>
-					<span class="ftvs-chip is-ok"><?php esc_html_e( 'Connected', 'faith-tv-series' ); ?></span>
+					<span class="ftvs-chip is-ok"><?php echo FTVS_Catalog::is_demo() ? esc_html__( 'Sample videos', 'faith-tv-series' ) : esc_html__( 'Connected', 'faith-tv-series' ); ?></span>
 					<h2><?php echo esc_html( '' !== $s['church_name'] ? $s['church_name'] : __( 'Your church', 'faith-tv-series' ) ); ?></h2>
 					<dl class="ftvs-dl">
 						<dt><?php esc_html_e( 'Videos come from', 'faith-tv-series' ); ?></dt>
@@ -285,19 +465,28 @@ class FTVS_Admin {
 								&middot; <a href="<?php echo esc_url( FTVS_Catalog::channel_url() ); ?>" target="_blank" rel="noopener"><?php echo esc_html( FTVS_Catalog::channel_host() ); ?></a>
 							<?php endif; ?>
 						</dd>
-						<dt><?php echo 'gideo' === $s['source'] ? esc_html__( 'Gideo account', 'faith-tv-series' ) : esc_html__( 'Church ID', 'faith-tv-series' ); ?></dt>
-						<dd><code><?php echo esc_html( 'gideo' === $s['source'] ? $s['account_id'] : $s['fs_tenant'] ); ?></code></dd>
-						<dt><?php esc_html_e( 'Checks for new videos', 'faith-tv-series' ); ?></dt>
+						<?php if ( in_array( $s['source'], array( 'gideo', 'faithstream' ), true ) ) : ?>
+							<dt><?php echo 'gideo' === $s['source'] ? esc_html__( 'Gideo account', 'faith-tv-series' ) : esc_html__( 'Church ID', 'faith-tv-series' ); ?></dt>
+							<dd><code><?php echo esc_html( 'gideo' === $s['source'] ? $s['account_id'] : $s['fs_tenant'] ); ?></code></dd>
+						<?php endif; ?>
+						<dt><?php esc_html_e( 'Last checked', 'faith-tv-series' ); ?></dt>
 						<dd>
 							<?php
-							/* translators: %d: minutes */
-							printf( esc_html__( 'Every %d minutes', 'faith-tv-series' ), (int) $s['cache_minutes'] );
+							if ( self::failing() ) {
+								/* translators: %s: how long */
+								echo '<span class="ftvs-bad">' . esc_html( sprintf( __( 'Not answering for %s. Visitors see the last list the site saved.', 'faith-tv-series' ), human_time_diff( $h['failing_at'] ) ) ) . '</span>';
+							} elseif ( $h['last_ok'] ) {
+								/* translators: 1: how long ago, 2: minutes */
+								printf( esc_html__( '%1$s ago. Checks every %2$d minutes, in the background.', 'faith-tv-series' ), esc_html( human_time_diff( $h['last_ok'] ) ), (int) $s['cache_minutes'] );
+							} else {
+								esc_html_e( 'Not yet.', 'faith-tv-series' );
+							}
 							?>
 						</dd>
 					</dl>
 				</div>
 				<div class="ftvs-stack">
-					<a class="button ftvs-btn-secondary" href="<?php echo esc_url( self::url( self::PAGE, array( 'connect' => 1 ) ) ); ?>"><?php esc_html_e( 'Connect a different church', 'faith-tv-series' ); ?></a>
+					<a class="button ftvs-btn-secondary" href="<?php echo esc_url( self::url( self::PAGE, array( 'connect' => 1 ) ) ); ?>"><?php echo FTVS_Catalog::is_demo() ? esc_html__( 'Connect your church', 'faith-tv-series' ) : esc_html__( 'Connect a different church', 'faith-tv-series' ); ?></a>
 					<?php self::refresh_button(); ?>
 				</div>
 			</div>
@@ -311,16 +500,127 @@ class FTVS_Admin {
 					<div><strong><?php echo esc_html( self::layout_name( FTVS_Settings::get( 'mobile_layout' ) ) ); ?></strong><span><?php esc_html_e( 'Layout on phones', 'faith-tv-series' ); ?></span></div>
 				</div>
 			<?php endif; ?>
-			<details class="ftvs-advanced">
-				<summary><?php esc_html_e( 'Advanced', 'faith-tv-series' ); ?></summary>
-				<form method="post" action="options.php" class="ftvs-inline">
-					<?php settings_fields( 'ftvs' ); ?>
-					<label for="ftvs-cache"><?php esc_html_e( 'Check for new videos every', 'faith-tv-series' ); ?></label>
-					<input id="ftvs-cache" class="small-text" type="number" min="1" max="1440" name="<?php echo esc_attr( FTVS_Settings::OPTION ); ?>[cache_minutes]" value="<?php echo esc_attr( $s['cache_minutes'] ); ?>">
-					<span><?php esc_html_e( 'minutes', 'faith-tv-series' ); ?></span>
-					<?php submit_button( __( 'Save', 'faith-tv-series' ), 'secondary', 'submit', false ); ?>
-				</form>
-			</details>
+		</div>
+
+		<?php self::watch_card(); ?>
+		<?php if ( 'faithstream' === $s['source'] ) : ?>
+			<?php self::instant_card(); ?>
+		<?php endif; ?>
+
+		<div class="ftvs-card ftvs-pad ftvs-gap">
+			<h3 class="ftvs-h2"><?php esc_html_e( 'Advanced', 'faith-tv-series' ); ?></h3>
+			<form method="post" action="options.php" class="ftvs-inline">
+				<?php settings_fields( 'ftvs' ); ?>
+				<label for="ftvs-cache"><?php esc_html_e( 'Check for new videos every', 'faith-tv-series' ); ?></label>
+				<input id="ftvs-cache" class="small-text" type="number" min="1" max="1440" name="<?php echo esc_attr( FTVS_Settings::OPTION ); ?>[cache_minutes]" value="<?php echo esc_attr( $s['cache_minutes'] ); ?>">
+				<span><?php esc_html_e( 'minutes', 'faith-tv-series' ); ?></span>
+				<?php if ( 'youtube' === $s['source'] ) : ?>
+					<label for="ftvs-yt-key" style="margin-left:18px"><?php esc_html_e( 'YouTube API key (optional)', 'faith-tv-series' ); ?></label>
+					<input id="ftvs-yt-key" class="ftvs-input" style="max-width:280px" type="password" autocomplete="off" name="<?php echo esc_attr( FTVS_Settings::OPTION ); ?>[yt_key]" placeholder="<?php echo '' !== $s['yt_key'] ? esc_attr__( 'Saved (hidden)', 'faith-tv-series' ) : ''; ?>">
+				<?php endif; ?>
+				<?php submit_button( __( 'Save', 'faith-tv-series' ), 'secondary', 'submit', false ); ?>
+			</form>
+			<?php if ( 'youtube' === $s['source'] ) : ?>
+				<p class="ftvs-hint"><?php esc_html_e( 'Without a key, each playlist shows its newest 15 videos. With a free YouTube Data API key from Google Cloud, whole playlists show, and if you connected a channel with no playlists picked, every playlist on it becomes a series.', 'faith-tv-series' ); ?></p>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/** Watch page (a page for every message) and the podcast feed. */
+	private static function watch_card() {
+		$s     = FTVS_Settings::all();
+		$page  = FTVS_Watch::page_id();
+		$name  = FTVS_Settings::OPTION;
+		$pages = get_pages( array( 'post_status' => 'publish,draft' ) );
+		?>
+		<div class="ftvs-card ftvs-pad ftvs-gap">
+			<h3 class="ftvs-h2"><?php esc_html_e( 'Watch page and a page for every message', 'faith-tv-series' ); ?></h3>
+			<p class="ftvs-lead"><?php esc_html_e( 'Pick the page where people watch (or let us make one). Every message then also gets its own page under it, like yourchurch.com/watch/message-name, that shows up in Google and looks right when someone texts or posts the link.', 'faith-tv-series' ); ?></p>
+			<form method="post" action="options.php" class="ftvs-inline">
+				<?php settings_fields( 'ftvs' ); ?>
+				<label for="ftvs-watch-page" class="screen-reader-text"><?php esc_html_e( 'Watch page', 'faith-tv-series' ); ?></label>
+				<select id="ftvs-watch-page" class="ftvs-input" name="<?php echo esc_attr( $name ); ?>[watch_page_id]">
+					<option value="0"><?php esc_html_e( '- No Watch page -', 'faith-tv-series' ); ?></option>
+					<?php foreach ( $pages as $p ) : ?>
+						<option value="<?php echo esc_attr( $p->ID ); ?>"<?php selected( (int) $s['watch_page_id'], $p->ID ); ?>><?php echo esc_html( $p->post_title . ( 'draft' === $p->post_status ? ' (' . __( 'draft', 'faith-tv-series' ) . ')' : '' ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<?php submit_button( __( 'Save', 'faith-tv-series' ), 'secondary', 'submit', false ); ?>
+			</form>
+			<p class="ftvs-inline" style="margin-top:12px">
+				<?php self::post_button( 'ftvs_watch_page', __( 'Create my Watch page', 'faith-tv-series' ), 'button button-primary ftvs-btn-primary' ); ?>
+				<span class="ftvs-hint"><?php esc_html_e( 'Makes a draft page with Sunday live, the newest messages, your series and a sermon search, then opens it so you can look it over and publish.', 'faith-tv-series' ); ?></span>
+			</p>
+			<?php if ( $page ) : ?>
+				<p class="ftvs-msg is-ok">
+					<?php
+					$lib   = FTVS_Catalog::library();
+					$first = ! is_wp_error( $lib ) && $lib ? $lib[0] : null;
+					/* translators: %s: page address */
+					printf( esc_html__( 'Message pages are on: %s', 'faith-tv-series' ), '<a href="' . esc_url( get_permalink( $page ) ) . '" target="_blank" rel="noopener">' . esc_html( get_permalink( $page ) ) . '</a>' );
+					if ( $first ) {
+						echo '<br>' . esc_html__( 'For example:', 'faith-tv-series' ) . ' <a href="' . esc_url( FTVS_Watch::url( $first['id'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $first['title'] ) . '</a>';
+					}
+					?>
+				</p>
+			<?php elseif ( $s['watch_page_id'] ) : ?>
+				<p class="ftvs-msg"><?php esc_html_e( 'Publish the Watch page to turn on message pages.', 'faith-tv-series' ); ?></p>
+			<?php endif; ?>
+
+			<h3 class="ftvs-h3" style="margin-top:26px"><?php esc_html_e( 'Podcast', 'faith-tv-series' ); ?></h3>
+			<form method="post" action="options.php">
+				<?php settings_fields( 'ftvs' ); ?>
+				<input type="hidden" name="<?php echo esc_attr( $name ); ?>[podcast]" value="0">
+				<label class="ftvs-switch"><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[podcast]" value="1"<?php checked( ! empty( $s['podcast'] ) ); ?>><span class="ftvs-switch__track"></span><span><?php esc_html_e( 'Publish a podcast feed of the messages', 'faith-tv-series' ); ?></span></label>
+				<div class="ftvs-grid2">
+					<label><span><?php esc_html_e( 'Podcast name', 'faith-tv-series' ); ?></span><input class="ftvs-input" name="<?php echo esc_attr( $name ); ?>[podcast_title]" value="<?php echo esc_attr( $s['podcast_title'] ); ?>" placeholder="<?php echo esc_attr( $s['church_name'] ); ?>"></label>
+					<label><span><?php esc_html_e( 'Author', 'faith-tv-series' ); ?></span><input class="ftvs-input" name="<?php echo esc_attr( $name ); ?>[podcast_author]" value="<?php echo esc_attr( $s['podcast_author'] ); ?>" placeholder="<?php echo esc_attr( $s['church_name'] ); ?>"></label>
+					<label><span><?php esc_html_e( 'Square picture (address, 1400 to 3000 pixels)', 'faith-tv-series' ); ?></span><input class="ftvs-input" name="<?php echo esc_attr( $name ); ?>[podcast_image]" value="<?php echo esc_attr( $s['podcast_image'] ); ?>" placeholder="https://"></label>
+				</div>
+				<?php submit_button( __( 'Save', 'faith-tv-series' ), 'secondary', 'submit', false ); ?>
+			</form>
+			<?php if ( ! empty( $s['podcast'] ) ) : ?>
+				<?php $n = count( FTVS_Podcast::episodes( 5 ) ); ?>
+				<p class="ftvs-inline"><span><?php esc_html_e( 'Feed address for Apple Podcasts and Spotify:', 'faith-tv-series' ); ?></span> <code><?php echo esc_html( FTVS_Podcast::url() ); ?></code> <button type="button" class="button ftvs-btn-secondary" data-copy="<?php echo esc_attr( FTVS_Podcast::url() ); ?>"><?php esc_html_e( 'Copy', 'faith-tv-series' ); ?></button></p>
+				<?php if ( ! $n ) : ?>
+					<p class="ftvs-msg"><?php echo 'faithstream' === $s['source'] ? esc_html__( 'No messages have audio yet. Turn on "Make an audio file of each new video" in Faith Stream\'s Settings; new messages will then appear in the feed.', 'faith-tv-series' ) : esc_html__( 'Podcasts need an audio file of each message, which Faith Stream makes. Your current platform does not provide one.', 'faith-tv-series' ); ?></p>
+				<?php endif; ?>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/** Faith Stream tells the site the moment something is published (a signed ping). */
+	private static function instant_card() {
+		$secret = (string) get_option( 'ftvs_refresh_secret', '' );
+		if ( '' === $secret ) {
+			$secret = wp_generate_password( 48, false );
+			update_option( 'ftvs_refresh_secret', $secret, false );
+		}
+		$ping = get_option( 'ftvs_last_ping', array() );
+		$url  = rest_url( 'faith-tv/v1/refresh' );
+		?>
+		<div class="ftvs-card ftvs-pad ftvs-gap" id="ftvs-instant">
+			<h3 class="ftvs-h2"><?php esc_html_e( 'Instant updates from Faith Stream', 'faith-tv-series' ); ?></h3>
+			<p class="ftvs-lead"><?php esc_html_e( 'So a new or removed video shows on the website within seconds (instead of at the next check), paste these two into Faith Stream: Settings > Your website (WordPress plugin).', 'faith-tv-series' ); ?></p>
+			<div class="ftvs-grid2">
+				<label><span><?php esc_html_e( 'Refresh address', 'faith-tv-series' ); ?></span><span class="ftvs-code"><input readonly value="<?php echo esc_attr( $url ); ?>"><button type="button" class="button ftvs-btn-secondary" data-copy="<?php echo esc_attr( $url ); ?>"><?php esc_html_e( 'Copy', 'faith-tv-series' ); ?></button></span></label>
+				<label><span><?php esc_html_e( 'Secret', 'faith-tv-series' ); ?></span><span class="ftvs-code"><input readonly type="password" value="<?php echo esc_attr( $secret ); ?>" onfocus="this.type='text'" onblur="this.type='password'"><button type="button" class="button ftvs-btn-secondary" data-copy="<?php echo esc_attr( $secret ); ?>"><?php esc_html_e( 'Copy', 'faith-tv-series' ); ?></button></span></label>
+			</div>
+			<p class="ftvs-inline">
+				<span class="ftvs-hint">
+					<?php
+					if ( ! empty( $ping['t'] ) ) {
+						/* translators: %s: how long ago */
+						printf( esc_html__( 'Last update from Faith Stream: %s ago.', 'faith-tv-series' ), esc_html( human_time_diff( $ping['t'] ) ) );
+					} else {
+						esc_html_e( 'No update received yet. Faith Stream\'s "Send a test ping" button checks it.', 'faith-tv-series' );
+					}
+					?>
+				</span>
+				<?php self::post_button( 'ftvs_secret', __( 'Make a new secret', 'faith-tv-series' ), 'button-link' ); ?>
+			</p>
 		</div>
 		<?php
 	}
@@ -330,7 +630,7 @@ class FTVS_Admin {
 		$step   = isset( $_GET['step'] ) ? max( 1, min( 3, absint( $_GET['step'] ) ) ) : 1;
 		$source = '';
 		if ( isset( $_GET['source'] ) ) {
-			$source = 'faithstream' === $_GET['source'] ? 'faithstream' : 'gideo';
+			$source = in_array( $_GET['source'], array( 'faithstream', 'youtube' ), true ) ? sanitize_key( $_GET['source'] ) : 'gideo';
 		}
 		$pick = isset( $_GET['pick'] ) ? sanitize_text_field( wp_unslash( $_GET['pick'] ) ) : '';
 		// phpcs:enable
@@ -343,6 +643,7 @@ class FTVS_Admin {
 		$was_connected = FTVS_Catalog::connected() && 3 !== $step;
 		$pending       = 2 === $step ? get_transient( self::pending_key() ) : false;
 		$steps         = array( __( 'Where your videos live', 'faith-tv-series' ), __( 'Find your church', 'faith-tv-series' ), __( 'Pick what to show', 'faith-tv-series' ) );
+		$brand         = self::brand();
 		?>
 		<div class="ftvs-card ftvs-pad">
 			<h2 class="ftvs-h2"><?php echo $was_connected ? esc_html__( 'Connect a different church', 'faith-tv-series' ) : esc_html__( 'Connect your church', 'faith-tv-series' ); ?></h2>
@@ -358,17 +659,38 @@ class FTVS_Admin {
 					<input type="hidden" name="page" value="<?php echo esc_attr( self::PAGE ); ?>">
 					<input type="hidden" name="connect" value="1">
 					<input type="hidden" name="step" value="2">
-					<div class="ftvs-choices">
-						<button type="submit" name="source" value="gideo" class="ftvs-choice">
-							<span class="ftvs-choice__ic is-gideo"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 21h8M12 17.5V21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 8.5v5l4.5-2.5z" fill="currentColor"/></svg></span>
-							<span><strong><?php esc_html_e( 'A Gideo TV channel', 'faith-tv-series' ); ?></strong><span class="ftvs-choice__p"><?php esc_html_e( 'Your church has a TV website and apps on Gideo, for example tv.yourchurch.com.', 'faith-tv-series' ); ?></span><span class="ftvs-chip"><?php esc_html_e( 'Most churches today', 'faith-tv-series' ); ?></span></span>
-						</button>
+					<div class="ftvs-choices ftvs-choices--3">
 						<button type="submit" name="source" value="faithstream" class="ftvs-choice">
 							<span class="ftvs-choice__ic"><?php echo self::gear( 38 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
-							<span><strong><?php esc_html_e( 'Faith Stream', 'faith-tv-series' ); ?></strong><span class="ftvs-choice__p"><?php esc_html_e( 'Your church streams and keeps its video library on Faith Stream.', 'faith-tv-series' ); ?></span><span class="ftvs-chip is-new"><?php esc_html_e( 'New', 'faith-tv-series' ); ?></span></span>
+							<span><strong><?php esc_html_e( 'Faith Stream', 'faith-tv-series' ); ?></strong><span class="ftvs-choice__p"><?php esc_html_e( 'Your church streams and keeps its video library on Faith Stream. Sunday live, instant updates and play counts work automatically.', 'faith-tv-series' ); ?></span></span>
+						</button>
+						<button type="submit" name="source" value="gideo" class="ftvs-choice">
+							<span class="ftvs-choice__ic is-gideo"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 21h8M12 17.5V21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 8.5v5l4.5-2.5z" fill="currentColor"/></svg></span>
+							<span><strong><?php esc_html_e( 'A Gideo TV channel', 'faith-tv-series' ); ?></strong><span class="ftvs-choice__p"><?php esc_html_e( 'Your church has a TV website and apps on Gideo, for example tv.yourchurch.com.', 'faith-tv-series' ); ?></span></span>
+						</button>
+						<button type="submit" name="source" value="youtube" class="ftvs-choice">
+							<span class="ftvs-choice__ic is-gideo"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 9v6l5-3z" fill="currentColor"/></svg></span>
+							<span><strong><?php esc_html_e( 'YouTube', 'faith-tv-series' ); ?></strong><span class="ftvs-choice__p"><?php esc_html_e( 'Your videos are on YouTube. Each playlist becomes a series, and new uploads appear by themselves.', 'faith-tv-series' ); ?></span></span>
 						</button>
 					</div>
 				</form>
+				<div class="ftvs-alt">
+					<div>
+						<strong><?php esc_html_e( 'Just looking?', 'faith-tv-series' ); ?></strong>
+						<span class="ftvs-muted"><?php esc_html_e( 'See every layout on your own site with sample videos. Only people who can edit the site see them.', 'faith-tv-series' ); ?></span>
+					</div>
+					<?php self::post_button( 'ftvs_demo', __( 'Try it with sample videos', 'faith-tv-series' ) ); ?>
+				</div>
+				<div class="ftvs-alt">
+					<div>
+						<strong><?php esc_html_e( 'No video platform yet?', 'faith-tv-series' ); ?></strong>
+						<span class="ftvs-muted"><?php esc_html_e( 'You can build series by hand from any video links (Faith Stream > Build a series), or talk to us about hosting your videos and Sunday stream.', 'faith-tv-series' ); ?></span>
+					</div>
+					<span class="ftvs-inline">
+						<a class="button ftvs-btn-secondary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=' . FTVS_Manual::TYPE ) ); ?>"><?php esc_html_e( 'Build a series', 'faith-tv-series' ); ?></a>
+						<a class="ftvs-link" href="<?php echo esc_url( add_query_arg( array( 'intent' => 'start', 'site' => home_url() ), $brand['url'] ) ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Talk to us', 'faith-tv-series' ); ?></a>
+					</span>
+				</div>
 			<?php elseif ( 2 === $step ) : ?>
 				<?php self::find_form( $source, $pending ); ?>
 			<?php else : ?>
@@ -411,19 +733,33 @@ class FTVS_Admin {
 						<button class="button ftvs-btn-secondary" name="by_account" value="1"><?php esc_html_e( 'Use this ID', 'faith-tv-series' ); ?></button>
 					</div>
 				</details>
+			<?php elseif ( 'youtube' === $source ) : ?>
+				<div class="ftvs-field">
+					<label for="ftvs-yt"><?php esc_html_e( 'Your playlist links, or your channel link', 'faith-tv-series' ); ?></label>
+					<textarea class="ftvs-input" id="ftvs-yt" name="yt" rows="4" style="max-width:640px;padding:8px 12px" placeholder="https://www.youtube.com/playlist?list=...&#10;https://www.youtube.com/@yourchurch"><?php echo esc_textarea( isset( $input['yt'] ) ? $input['yt'] : '' ); ?></textarea>
+					<span class="ftvs-hint"><?php esc_html_e( 'One per line. Each playlist becomes a series; a channel link adds "Latest videos".', 'faith-tv-series' ); ?></span>
+				</div>
+				<details class="ftvs-advanced">
+					<summary><?php esc_html_e( 'I have a YouTube API key (optional)', 'faith-tv-series' ); ?></summary>
+					<div style="margin-top:10px"><input class="ftvs-input" name="yt_key" type="password" autocomplete="off" placeholder="AIza..."><p class="ftvs-hint"><?php esc_html_e( 'Without one, each playlist shows its newest 15 videos.', 'faith-tv-series' ); ?></p></div>
+				</details>
+				<p><button class="button button-primary button-hero ftvs-btn-primary"><?php esc_html_e( 'Find my videos', 'faith-tv-series' ); ?></button></p>
 			<?php else : ?>
 				<div class="ftvs-field">
 					<label for="ftvs-fs-url"><?php esc_html_e( 'Your Faith Stream address', 'faith-tv-series' ); ?></label>
-					<input class="ftvs-input" id="ftvs-fs-url" name="fs_url" placeholder="stream.yourchurch.com" autocomplete="off" spellcheck="false" value="<?php echo esc_attr( isset( $input['fs_url'] ) ? $input['fs_url'] : '' ); ?>">
-				</div>
-				<div class="ftvs-field">
-					<label for="ftvs-fs-id"><?php esc_html_e( 'Church ID', 'faith-tv-series' ); ?></label>
 					<div class="ftvs-inline">
-						<input class="ftvs-input" id="ftvs-fs-id" name="fs_tenant" placeholder="yourchurch" autocomplete="off" spellcheck="false" style="max-width:240px" value="<?php echo esc_attr( isset( $input['fs_tenant'] ) ? $input['fs_tenant'] : '' ); ?>">
+						<input class="ftvs-input" id="ftvs-fs-url" name="fs_url" placeholder="stream.yourchurch.com" autocomplete="off" spellcheck="false" value="<?php echo esc_attr( isset( $input['fs_url'] ) ? $input['fs_url'] : '' ); ?>">
 						<button class="button button-primary button-hero ftvs-btn-primary"><?php esc_html_e( 'Find my church', 'faith-tv-series' ); ?></button>
 					</div>
-					<span class="ftvs-hint"><?php esc_html_e( 'Faith Stream shows both under Settings in your church\'s admin.', 'faith-tv-series' ); ?></span>
+					<span class="ftvs-hint"><?php esc_html_e( 'The address people use to watch, as it appears in the browser. We work out the rest.', 'faith-tv-series' ); ?></span>
 				</div>
+				<details class="ftvs-advanced"<?php echo ! empty( $input['fs_tenant'] ) ? ' open' : ''; ?>>
+					<summary><?php esc_html_e( 'I have a church ID', 'faith-tv-series' ); ?></summary>
+					<div class="ftvs-inline" style="margin-top:10px">
+						<input class="ftvs-input" name="fs_tenant" placeholder="yourchurch" autocomplete="off" spellcheck="false" style="max-width:240px" value="<?php echo esc_attr( isset( $input['fs_tenant'] ) ? $input['fs_tenant'] : '' ); ?>">
+						<span class="ftvs-hint"><?php esc_html_e( 'Only needed with the main Faith Stream address. Faith Stream shows it under Settings.', 'faith-tv-series' ); ?></span>
+					</div>
+				</details>
 			<?php endif; ?>
 		</form>
 
@@ -433,6 +769,7 @@ class FTVS_Admin {
 			<?php
 			$names  = wp_list_pluck( array_slice( $found['rows'], 0, 4 ), 'title' );
 			$thumbs = array_slice( array_filter( wp_list_pluck( $found['rows'], 'image' ) ), 0, 6 );
+			$color  = ! empty( $found['colors']['primary'] ) ? $found['colors']['primary'] : '';
 			?>
 			<div class="ftvs-found">
 				<span class="ftvs-logobox" style="<?php echo esc_attr( self::bg( $found['church_logo'] ) ); ?>"></span>
@@ -455,6 +792,14 @@ class FTVS_Admin {
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ftvs-confirm">
 				<input type="hidden" name="action" value="ftvs_connect">
 				<?php wp_nonce_field( 'ftvs_connect' ); ?>
+				<?php if ( '' !== $color ) : ?>
+					<label class="ftvs-check" style="margin-bottom:12px"><input type="checkbox" name="use_colors" value="1" checked> <span class="ftvs-swatch-dot" style="background:<?php echo esc_attr( $color ); ?>"></span>
+						<?php
+						/* translators: %s: color like #C40D3C */
+						printf( esc_html__( 'Use our church color (%s) and our light or dark look', 'faith-tv-series' ), esc_html( $color ) );
+						?>
+					</label>
+				<?php endif; ?>
 				<button class="button button-primary button-hero ftvs-btn-primary"><?php esc_html_e( 'Yes, this is my church', 'faith-tv-series' ); ?></button>
 			</form>
 		<?php endif; ?>
@@ -484,6 +829,13 @@ class FTVS_Admin {
 				printf( esc_html__( '%s is ready to go on your site.', 'faith-tv-series' ), esc_html( $row['title'] ) );
 				?>
 			</p>
+			<div class="ftvs-alt ftvs-alt--strong">
+				<div>
+					<strong><?php esc_html_e( 'The fastest way: a ready-made Watch page', 'faith-tv-series' ); ?></strong>
+					<span class="ftvs-muted"><?php esc_html_e( 'Sunday live, the newest messages, your series and a sermon search, on one page. You look it over, then press Publish.', 'faith-tv-series' ); ?></span>
+				</div>
+				<?php self::post_button( 'ftvs_watch_page', __( 'Create my Watch page', 'faith-tv-series' ), 'button button-primary ftvs-btn-primary' ); ?>
+			</div>
 			<div class="ftvs-done">
 				<div class="ftvs-how">
 					<h4><?php esc_html_e( 'With Elementor', 'faith-tv-series' ); ?></h4>
@@ -499,14 +851,28 @@ class FTVS_Admin {
 					</ol>
 				</div>
 				<div class="ftvs-how">
+					<h4><?php esc_html_e( 'With the block editor', 'faith-tv-series' ); ?></h4>
+					<ol>
+						<li><?php esc_html_e( 'Edit a page and press + to add a block.', 'faith-tv-series' ); ?></li>
+						<li><?php esc_html_e( 'Search "Faith TV" (or "Sunday Live", "Sermon Library").', 'faith-tv-series' ); ?></li>
+						<li>
+							<?php
+							/* translators: %s: category name */
+							printf( esc_html__( 'Pick %s in the sidebar.', 'faith-tv-series' ), '<strong>' . esc_html( $row['title'] ) . '</strong>' );
+							?>
+						</li>
+					</ol>
+				</div>
+				<div class="ftvs-how">
 					<h4><?php esc_html_e( 'Anywhere else', 'faith-tv-series' ); ?></h4>
 					<p class="ftvs-muted"><?php esc_html_e( 'Paste this shortcode into a page or post:', 'faith-tv-series' ); ?></p>
 					<div class="ftvs-code"><input readonly value="<?php echo esc_attr( $code ); ?>"><button type="button" class="button ftvs-btn-secondary" data-copy="<?php echo esc_attr( $code ); ?>"><?php esc_html_e( 'Copy', 'faith-tv-series' ); ?></button></div>
 				</div>
 			</div>
 			<p class="ftvs-inline" style="margin-top:18px">
-				<a class="button button-primary ftvs-btn-primary" href="<?php echo esc_url( self::url( 'faith-stream-videos' ) ); ?>"><?php esc_html_e( 'See all your videos', 'faith-tv-series' ); ?></a>
+				<a class="button ftvs-btn-secondary" href="<?php echo esc_url( self::url( 'faith-stream-videos' ) ); ?>"><?php esc_html_e( 'See all your videos', 'faith-tv-series' ); ?></a>
 				<a class="ftvs-link" href="<?php echo esc_url( self::url( 'faith-stream-look' ) ); ?>"><?php esc_html_e( 'Set your church color', 'faith-tv-series' ); ?></a>
+				<a class="ftvs-link" href="<?php echo esc_url( self::url( 'faith-stream-live' ) ); ?>"><?php esc_html_e( 'Set up Sunday live', 'faith-tv-series' ); ?></a>
 			</p>
 			<?php
 			return;
@@ -539,10 +905,11 @@ class FTVS_Admin {
 	private static function videos( $tree ) {
 		?>
 		<h2 class="ftvs-h2"><?php esc_html_e( 'Your videos', 'faith-tv-series' ); ?></h2>
-		<p class="ftvs-lead"><?php esc_html_e( 'Everything on your channel. Put any of these on a page with the Elementor widget "Faith TV Series", or copy its shortcode.', 'faith-tv-series' ); ?></p>
+		<p class="ftvs-lead"><?php esc_html_e( 'Everything on your channel. Put any of these on a page with the Elementor widget or block "Faith TV Series", or copy its shortcode.', 'faith-tv-series' ); ?></p>
 		<div class="ftvs-toolbar">
 			<input class="ftvs-input" type="search" data-ftvs-filter placeholder="<?php esc_attr_e( 'Search', 'faith-tv-series' ); ?>" aria-label="<?php esc_attr_e( 'Search categories', 'faith-tv-series' ); ?>">
 			<span class="ftvs-grow"></span>
+			<a class="button ftvs-btn-secondary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=' . FTVS_Manual::TYPE ) ); ?>"><?php esc_html_e( 'Build a series', 'faith-tv-series' ); ?></a>
 			<?php self::refresh_button(); ?>
 		</div>
 		<?php if ( is_wp_error( $tree ) ) : ?>
@@ -550,8 +917,25 @@ class FTVS_Admin {
 			<?php
 			return;
 		endif;
+		$auto = array(
+			FTVS_Catalog::NEWEST   => array( __( 'Newest messages (automatic)', 'faith-tv-series' ), __( 'Always the latest messages from the whole channel.', 'faith-tv-series' ) ),
+			FTVS_Catalog::FEATURED => array( __( 'What we feature (automatic)', 'faith-tv-series' ), 'faithstream' === FTVS_Catalog::source() ? __( 'Whatever you mark as featured on your Faith Stream home page.', 'faith-tv-series' ) : __( 'Your channel\'s first row.', 'faith-tv-series' ) ),
+		);
 		?>
 		<div class="ftvs-rows">
+			<?php foreach ( $auto as $id => $info ) : ?>
+				<?php $code = '[faith_tv_series category="' . $id . '"]'; ?>
+				<div class="ftvs-row" data-ftvs-row="<?php echo esc_attr( strtolower( $info[0] ) ); ?>">
+					<span class="ftvs-row__art ftvs-row__art--auto" aria-hidden="true"><?php echo self::gear( 34, '#fff' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+					<div>
+						<h3><?php echo esc_html( $info[0] ); ?></h3>
+						<span class="ftvs-muted"><?php echo esc_html( $info[1] ); ?></span>
+					</div>
+					<div class="ftvs-row__actions">
+						<button type="button" class="button ftvs-btn-secondary" data-copy="<?php echo esc_attr( $code ); ?>"><?php esc_html_e( 'Copy shortcode', 'faith-tv-series' ); ?></button>
+					</div>
+				</div>
+			<?php endforeach; ?>
 			<?php foreach ( $tree as $row ) : ?>
 				<?php $code = '[faith_tv_series category="' . $row['id'] . '"]'; ?>
 				<div class="ftvs-row" data-ftvs-row="<?php echo esc_attr( strtolower( $row['title'] . ' ' . implode( ' ', wp_list_pluck( $row['children'], 'title' ) ) ) ); ?>">
@@ -570,12 +954,14 @@ class FTVS_Admin {
 					<div class="ftvs-row__actions">
 						<button type="button" class="button ftvs-btn-secondary" data-copy="<?php echo esc_attr( $code ); ?>"><?php esc_html_e( 'Copy shortcode', 'faith-tv-series' ); ?></button>
 						<a class="ftvs-link" href="<?php echo esc_url( self::url( 'faith-stream-embed', array( 'category' => $row['id'] ) ) ); ?>"><?php esc_html_e( 'Get embed code', 'faith-tv-series' ); ?></a>
-						<a class="ftvs-link" href="<?php echo esc_url( FTVS_Catalog::category_link( $row['id'] ) ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open on your channel', 'faith-tv-series' ); ?></a>
+						<?php if ( FTVS_Catalog::category_link( $row['id'] ) ) : ?>
+							<a class="ftvs-link" href="<?php echo esc_url( FTVS_Catalog::category_link( $row['id'] ) ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open on your channel', 'faith-tv-series' ); ?></a>
+						<?php endif; ?>
 					</div>
 				</div>
 			<?php endforeach; ?>
 		</div>
-		<p class="ftvs-muted ftvs-small"><?php esc_html_e( 'Tip: click a series name to copy its own shortcode. Shortcode options: layout="showcase|coverflow|list|row|grid", mobile_layout="auto|same|list|coverflow|row", title="...", eyebrow="...", limit="6", play="faithtv", theme="light".', 'faith-tv-series' ); ?></p>
+		<p class="ftvs-muted ftvs-small"><?php esc_html_e( 'Tip: click a series name to copy its own shortcode. Shortcode options: layout="showcase|coverflow|list|row|grid|library", mobile_layout="auto|same|list|coverflow|row", title="...", eyebrow="...", limit="6", play="faithtv", theme="light", video="<video id>" (one video), from="2026-03-01" until="2026-04-06" otherwise="<category>" (show only between dates), next="off" or next_label="..." next_url="..." (the button after watching). Also [faith_tv_live] for Sunday live and [faith_tv_library] for the sermon library.', 'faith-tv-series' ); ?></p>
 		<?php
 	}
 
@@ -584,12 +970,11 @@ class FTVS_Admin {
 	private static function look( $tree ) {
 		$s        = FTVS_Settings::all();
 		$name     = FTVS_Settings::OPTION;
-		$preview  = self::preview_data( $tree );
 		$colors   = array(
 			'#C40D3C' => __( 'Crimson', 'faith-tv-series' ),
 			'#084073' => __( 'Navy', 'faith-tv-series' ),
 			'#423BA3' => __( 'Purple', 'faith-tv-series' ),
-			'#0A919C' => __( 'Teal', 'faith-tv-series' ),
+			'#08777F' => __( 'Teal', 'faith-tv-series' ),
 			'#15803D' => __( 'Green', 'faith-tv-series' ),
 			'#111114' => __( 'Black', 'faith-tv-series' ),
 		);
@@ -608,11 +993,14 @@ class FTVS_Admin {
 			'row'       => __( 'Row', 'faith-tv-series' ),
 		);
 		$custom   = ! isset( $colors[ strtoupper( $s['accent'] ) ] );
+		$locked   = ! FTVS_Settings::feature( 'hide_powered_by' );
+		$brand    = self::brand();
+		$preview  = self::preview_categories( $tree );
 		?>
 		<h2 class="ftvs-h2"><?php esc_html_e( 'Look & feel', 'faith-tv-series' ); ?></h2>
 		<p class="ftvs-lead"><?php esc_html_e( 'Defaults for every video section on your site. Each section can still pick its own layout.', 'faith-tv-series' ); ?></p>
 		<div class="ftvs-look">
-			<form method="post" action="options.php" class="ftvs-card ftvs-pad" data-ftvs-look>
+			<form method="post" action="options.php" class="ftvs-card ftvs-pad" data-ftvs-look data-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'ftvs_preview_url' ) ); ?>">
 				<?php settings_fields( 'ftvs' ); ?>
 				<fieldset class="ftvs-field">
 					<legend><?php esc_html_e( 'Church color', 'faith-tv-series' ); ?></legend>
@@ -625,7 +1013,20 @@ class FTVS_Admin {
 							<input type="color" value="<?php echo esc_attr( $s['accent'] ); ?>" data-ftvs-custom aria-label="<?php esc_attr_e( 'Your own color', 'faith-tv-series' ); ?>">
 						</label>
 					</div>
-					<span class="ftvs-hint"><?php esc_html_e( 'Buttons, badges and the stripe behind the artwork.', 'faith-tv-series' ); ?></span>
+					<span class="ftvs-hint" data-ftvs-contrast><?php esc_html_e( 'Buttons, badges and the stripe behind the artwork.', 'faith-tv-series' ); ?></span>
+				</fieldset>
+				<fieldset class="ftvs-field">
+					<legend><?php esc_html_e( 'Style', 'faith-tv-series' ); ?></legend>
+					<div class="ftvs-seg"><?php self::radios( $name . '[style]', array( 'bold' => __( 'Bold', 'faith-tv-series' ), 'soft' => __( 'Soft', 'faith-tv-series' ), 'minimal' => __( 'Minimal', 'faith-tv-series' ) ), $s['style'] ); ?></div>
+					<span class="ftvs-hint"><?php esc_html_e( 'Bold: square corners and heavy capitals. Soft: rounded corners, normal letters. Minimal: quiet and light.', 'faith-tv-series' ); ?></span>
+				</fieldset>
+				<fieldset class="ftvs-field">
+					<legend><?php esc_html_e( 'Background', 'faith-tv-series' ); ?></legend>
+					<div class="ftvs-seg"><?php self::radios( $name . '[theme]', array( 'dark' => __( 'Dark', 'faith-tv-series' ), 'light' => __( 'Light', 'faith-tv-series' ) ), $s['theme'] ); ?></div>
+				</fieldset>
+				<fieldset class="ftvs-field">
+					<legend><?php esc_html_e( 'Font', 'faith-tv-series' ); ?></legend>
+					<div class="ftvs-seg"><?php self::radios( $name . '[font]', array( 'brand' => __( 'Built-in', 'faith-tv-series' ), 'inherit' => __( 'Same as my website', 'faith-tv-series' ) ), $s['font'] ); ?></div>
 				</fieldset>
 				<fieldset class="ftvs-field">
 					<legend><?php esc_html_e( 'Layout on computers', 'faith-tv-series' ); ?></legend>
@@ -638,45 +1039,66 @@ class FTVS_Admin {
 				</fieldset>
 				<div class="ftvs-field">
 					<label for="ftvs-label"><?php esc_html_e( 'Label over each series', 'faith-tv-series' ); ?></label>
-					<input class="ftvs-input" id="ftvs-label" name="<?php echo esc_attr( $name ); ?>[label]" value="<?php echo esc_attr( $s['label'] ); ?>" placeholder="<?php echo esc_attr( $preview['category'] ); ?>" data-ftvs-in="label">
+					<input class="ftvs-input" id="ftvs-label" name="<?php echo esc_attr( $name ); ?>[label]" value="<?php echo esc_attr( $s['label'] ); ?>" placeholder="<?php esc_attr_e( 'The category\'s name', 'faith-tv-series' ); ?>">
 					<span class="ftvs-hint"><?php esc_html_e( 'Leave empty to use each category\'s name.', 'faith-tv-series' ); ?></span>
 				</div>
 				<div class="ftvs-field">
 					<label for="ftvs-badge"><?php esc_html_e( 'Badge on the newest', 'faith-tv-series' ); ?></label>
-					<input class="ftvs-input" id="ftvs-badge" name="<?php echo esc_attr( $name ); ?>[badge]" value="<?php echo esc_attr( $s['badge'] ); ?>" style="max-width:180px" data-ftvs-in="badge">
+					<input class="ftvs-input" id="ftvs-badge" name="<?php echo esc_attr( $name ); ?>[badge]" value="<?php echo esc_attr( $s['badge'] ); ?>" style="max-width:180px">
 					<span class="ftvs-hint"><?php esc_html_e( 'Leave empty for no badge.', 'faith-tv-series' ); ?></span>
 				</div>
-				<input type="hidden" name="<?php echo esc_attr( $name ); ?>[powered_by]" value="0">
-				<label class="ftvs-switch"><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[powered_by]" value="1"<?php checked( ! empty( $s['powered_by'] ) ); ?> data-ftvs-in="powered"><span class="ftvs-switch__track"></span><span><?php esc_html_e( 'Show "Powered by FaithStream" under the player', 'faith-tv-series' ); ?></span></label>
-				<fieldset class="ftvs-field">
+				<?php if ( '' !== $brand['name'] ) : ?>
+					<input type="hidden" name="<?php echo esc_attr( $name ); ?>[powered_by]" value="<?php echo $locked ? '1' : '0'; ?>">
+					<label class="ftvs-switch"><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[powered_by]" value="1"<?php checked( ! empty( $s['powered_by'] ) ); ?><?php disabled( $locked ); ?>><span class="ftvs-switch__track"></span><span>
+						<?php
+						/* translators: %s: brand name */
+						printf( esc_html__( 'Show "Powered by %s" under the player', 'faith-tv-series' ), esc_html( $brand['name'] ) );
+						?>
+					</span></label>
+					<?php if ( $locked ) : ?>
+						<p class="ftvs-hint"><?php esc_html_e( 'Included with your church\'s plan. Plans that remove it are on Faith Stream.', 'faith-tv-series' ); ?></p>
+					<?php endif; ?>
+				<?php endif; ?>
+				<fieldset class="ftvs-field" style="margin-top:18px">
 					<legend><?php esc_html_e( 'Text sizes and colors', 'faith-tv-series' ); ?></legend>
 					<?php self::text_table( $name . '[text]', (array) $s['text'] ); ?>
 					<span class="ftvs-hint"><?php esc_html_e( 'For every section on the site. Leave a box empty for the built-in look. Each Elementor widget can still change its own under Style.', 'faith-tv-series' ); ?></span>
 				</fieldset>
 				<?php submit_button( __( 'Save', 'faith-tv-series' ), 'primary ftvs-btn-primary' ); ?>
 			</form>
-			<div>
+			<div class="ftvs-look__preview">
 				<div class="ftvs-preview-head"><strong><?php esc_html_e( 'Preview', 'faith-tv-series' ); ?></strong>
+					<select class="ftvs-input ftvs-input--small" data-ftvs-pv-cat aria-label="<?php esc_attr_e( 'Preview with', 'faith-tv-series' ); ?>">
+						<?php foreach ( $preview as $id => $title ) : ?>
+							<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $title ); ?></option>
+						<?php endforeach; ?>
+					</select>
 					<span class="ftvs-seg is-small" role="group"><button type="button" data-ftvs-pv="desk" aria-pressed="true"><?php esc_html_e( 'Computer', 'faith-tv-series' ); ?></button><button type="button" data-ftvs-pv="phone" aria-pressed="false"><?php esc_html_e( 'Phone', 'faith-tv-series' ); ?></button></span>
 				</div>
-				<div class="ftvs-stage">
-					<div class="ftvs-mini" data-ftvs-mini style="--acc:<?php echo esc_attr( $s['accent'] ); ?>" data-category="<?php echo esc_attr( $preview['category'] ); ?>">
-						<div class="ftvs-mini__k"><?php echo esc_html( $preview['category'] ); ?></div>
-						<div class="ftvs-mini__show">
-							<div>
-								<span class="ftvs-mini__badge" data-ftvs-out="badge"><?php echo esc_html( $s['badge'] ); ?></span><span class="ftvs-mini__lab" data-ftvs-out="label"><?php echo esc_html( '' !== $s['label'] ? $s['label'] : $preview['category'] ); ?></span>
-								<h4><?php echo esc_html( $preview['title'] ); ?></h4>
-								<div class="ftvs-mini__eps"><?php echo esc_html( $preview['meta'] ); ?></div>
-								<span class="ftvs-mini__go"><?php esc_html_e( 'Watch the series', 'faith-tv-series' ); ?></span>
-							</div>
-							<div class="ftvs-mini__frame" style="<?php echo esc_attr( self::bg( $preview['image'] ) ); ?>"><i></i></div>
-						</div>
-						<div class="ftvs-mini__powered" data-ftvs-out="powered">Powered by <b>FAITHSTREAM</b></div>
-					</div>
+				<div class="ftvs-embed-stage ftvs-look__stage" data-ftvs-pv-stage>
+					<iframe title="<?php esc_attr_e( 'Preview', 'faith-tv-series' ); ?>" data-ftvs-embed data-ftvs-pv-frame style="height:640px"></iframe>
 				</div>
+				<p class="ftvs-hint"><?php esc_html_e( 'The real section with your real videos, before you save. Nothing changes on the site until you press Save.', 'faith-tv-series' ); ?></p>
 			</div>
 		</div>
 		<?php
+	}
+
+	/** Categories to preview Look & feel with: a row with series first. */
+	private static function preview_categories( $tree ) {
+		$out = array();
+		foreach ( is_wp_error( $tree ) ? array() : $tree as $row ) {
+			if ( $row['children'] ) {
+				$out[ $row['id'] ] = $row['title'];
+			}
+		}
+		foreach ( is_wp_error( $tree ) ? array() : $tree as $row ) {
+			if ( ! isset( $out[ $row['id'] ] ) ) {
+				$out[ $row['id'] ] = $row['title'];
+			}
+		}
+		$out[ FTVS_Catalog::NEWEST ] = __( 'Newest messages', 'faith-tv-series' );
+		return $out;
 	}
 
 	private static function radios( $field, $options, $current ) {
@@ -691,36 +1113,185 @@ class FTVS_Admin {
 		}
 	}
 
-	/** A real series from the channel for the Look & feel preview. */
-	private static function preview_data( $tree ) {
-		$data = array(
-			'category' => __( 'Mini Series', 'faith-tv-series' ),
-			'title'    => __( 'Series name', 'faith-tv-series' ),
-			'meta'     => '',
-			'image'    => '',
-		);
-		if ( is_wp_error( $tree ) || ! $tree ) {
-			return $data;
+	private static function toggle( $key, $label, $hint = '' ) {
+		$name = FTVS_Settings::OPTION;
+		?>
+		<input type="hidden" name="<?php echo esc_attr( $name . '[' . $key . ']' ); ?>" value="0">
+		<label class="ftvs-switch"><input type="checkbox" name="<?php echo esc_attr( $name . '[' . $key . ']' ); ?>" value="1"<?php checked( ! empty( FTVS_Settings::get( $key ) ) ); ?>><span class="ftvs-switch__track"></span><span><?php echo esc_html( $label ); ?></span></label>
+		<?php if ( '' !== $hint ) : ?>
+			<p class="ftvs-hint ftvs-hint--switch"><?php echo esc_html( $hint ); ?></p>
+		<?php endif; ?>
+		<?php
+	}
+
+	/* ---------- Player ---------- */
+
+	private static function player() {
+		$s     = FTVS_Settings::all();
+		$name  = FTVS_Settings::OPTION;
+		$steps = array_pad( (array) $s['next_steps'], 3, array( 'label' => '', 'url' => '' ) );
+		?>
+		<h2 class="ftvs-h2"><?php esc_html_e( 'Player', 'faith-tv-series' ); ?></h2>
+		<p class="ftvs-lead"><?php esc_html_e( 'What happens while and after someone watches.', 'faith-tv-series' ); ?></p>
+		<form method="post" action="options.php" class="ftvs-card ftvs-pad ftvs-narrow">
+			<?php settings_fields( 'ftvs' ); ?>
+			<h3 class="ftvs-h3" style="margin-top:0"><?php esc_html_e( 'A next step after watching', 'faith-tv-series' ); ?></h3>
+			<p class="ftvs-hint"><?php esc_html_e( 'Up to three buttons under the player and when a message ends: Plan a visit, I\'m new, Prayer, Give, or any link. Each link carries which message led there (utm_source=faith-tv, utm_content=<video>), so your forms and follow-up can see it.', 'faith-tv-series' ); ?></p>
+			<div class="ftvs-field">
+				<label for="ftvs-next-title"><?php esc_html_e( 'Heading', 'faith-tv-series' ); ?></label>
+				<input class="ftvs-input" id="ftvs-next-title" name="<?php echo esc_attr( $name ); ?>[next_title]" value="<?php echo esc_attr( $s['next_title'] ); ?>" placeholder="<?php esc_attr_e( 'Take a next step', 'faith-tv-series' ); ?>">
+			</div>
+			<table class="ftvs-text-table ftvs-steps-table">
+				<thead><tr><th><?php esc_html_e( 'Button', 'faith-tv-series' ); ?></th><th><?php esc_html_e( 'Goes to', 'faith-tv-series' ); ?></th></tr></thead>
+				<tbody>
+					<?php
+					$examples = array( __( 'Plan a visit', 'faith-tv-series' ), __( 'Prayer request', 'faith-tv-series' ), __( 'Give', 'faith-tv-series' ) );
+					foreach ( $steps as $i => $step ) :
+						?>
+						<tr>
+							<td><input class="ftvs-input" name="<?php echo esc_attr( $name . '[next_steps][' . $i . '][label]' ); ?>" value="<?php echo esc_attr( $step['label'] ); ?>" placeholder="<?php echo esc_attr( $examples[ $i ] ); ?>" aria-label="<?php esc_attr_e( 'Button words', 'faith-tv-series' ); ?>"></td>
+							<td><input class="ftvs-input" name="<?php echo esc_attr( $name . '[next_steps][' . $i . '][url]' ); ?>" value="<?php echo esc_attr( $step['url'] ); ?>" placeholder="https://" aria-label="<?php esc_attr_e( 'Link', 'faith-tv-series' ); ?>"></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+
+			<h3 class="ftvs-h3"><?php esc_html_e( 'While watching', 'faith-tv-series' ); ?></h3>
+			<?php self::toggle( 'upnext', __( 'Play the next episode after a short countdown, and suggest more at the end', 'faith-tv-series' ) ); ?>
+			<?php self::toggle( 'resume', __( 'Pick up where people left off (remembered on their own device, nothing is sent anywhere)', 'faith-tv-series' ) ); ?>
+			<?php self::toggle( 'share', __( 'Show a Share button for each message', 'faith-tv-series' ) ); ?>
+
+			<h3 class="ftvs-h3"><?php esc_html_e( 'Counting plays', 'faith-tv-series' ); ?></h3>
+			<?php self::toggle( 'count_plays', __( 'Count plays for the WordPress dashboard (no names, no addresses)', 'faith-tv-series' ) ); ?>
+			<?php if ( 'faithstream' === $s['source'] ) : ?>
+				<?php self::toggle( 'report_plays', __( 'Also count them in Faith Stream\'s reports and Faith Central\'s "who is watching"', 'faith-tv-series' ), __( 'Viewers stay anonymous. Faith Stream stores only a daily-scrambled form of the visitor\'s internet address.', 'faith-tv-series' ) ); ?>
+			<?php endif; ?>
+			<?php self::toggle( 'stats_email', __( 'Email last week\'s numbers to the site admin every Monday', 'faith-tv-series' ) ); ?>
+
+			<h3 class="ftvs-h3"><?php esc_html_e( 'Follow-up', 'faith-tv-series' ); ?></h3>
+			<?php self::toggle( 'remind', __( 'Show "Remind me" on the Sunday Live section', 'faith-tv-series' ), __( 'Visitors leave an email or mobile number; it goes straight to your follow-up system below. Texting needs their agreement, which the form asks for.', 'faith-tv-series' ) ); ?>
+			<div class="ftvs-field">
+				<label for="ftvs-remind-hook"><?php esc_html_e( 'Send sign-ups to (webhook address)', 'faith-tv-series' ); ?></label>
+				<input class="ftvs-input" id="ftvs-remind-hook" name="<?php echo esc_attr( $name ); ?>[remind_webhook]" value="<?php echo esc_attr( $s['remind_webhook'] ); ?>" placeholder="https://services.leadconnectorhq.com/hooks/...">
+				<span class="ftvs-hint"><?php esc_html_e( 'For example a GoHighLevel "Inbound webhook" workflow trigger, Zapier or Make.', 'faith-tv-series' ); ?></span>
+			</div>
+			<div class="ftvs-field">
+				<label for="ftvs-consent"><?php esc_html_e( 'Texting agreement wording', 'faith-tv-series' ); ?></label>
+				<textarea class="ftvs-input" id="ftvs-consent" rows="2" style="max-width:640px;padding:8px 12px" name="<?php echo esc_attr( $name ); ?>[remind_consent]" placeholder="<?php echo esc_attr( FTVS_Followup::consent_text() ); ?>"><?php echo esc_textarea( $s['remind_consent'] ); ?></textarea>
+			</div>
+			<div class="ftvs-field">
+				<label for="ftvs-new-hook"><?php esc_html_e( 'When a new video appears, tell (webhook address, optional)', 'faith-tv-series' ); ?></label>
+				<input class="ftvs-input" id="ftvs-new-hook" name="<?php echo esc_attr( $name ); ?>[new_webhook]" value="<?php echo esc_attr( $s['new_webhook'] ); ?>" placeholder="https://">
+				<span class="ftvs-hint"><?php esc_html_e( 'Sends the new video\'s title, picture and link, so a workflow can text or email "New series: ...".', 'faith-tv-series' ); ?></span>
+			</div>
+			<?php if ( FTVS_Followup::pending() ) : ?>
+				<p class="ftvs-msg">
+					<?php
+					/* translators: %d: number of sign-ups */
+					printf( esc_html( _n( '%d sign-up could not be delivered yet; it is retried every hour for a day.', '%d sign-ups could not be delivered yet; they are retried every hour for a day.', FTVS_Followup::pending(), 'faith-tv-series' ) ), (int) FTVS_Followup::pending() );
+					?>
+				</p>
+			<?php endif; ?>
+			<?php submit_button( __( 'Save', 'faith-tv-series' ), 'primary ftvs-btn-primary' ); ?>
+		</form>
+		<?php
+	}
+
+	/* ---------- Sunday live ---------- */
+
+	private static function live() {
+		$s        = FTVS_Settings::all();
+		$name     = FTVS_Settings::OPTION;
+		$services = array_pad( (array) $s['services'], 4, array( 'day' => '', 'time' => '' ) );
+		$days     = array( __( 'Sunday', 'faith-tv-series' ), __( 'Monday', 'faith-tv-series' ), __( 'Tuesday', 'faith-tv-series' ), __( 'Wednesday', 'faith-tv-series' ), __( 'Thursday', 'faith-tv-series' ), __( 'Friday', 'faith-tv-series' ), __( 'Saturday', 'faith-tv-series' ) );
+		$channels = array();
+		if ( FTVS_Catalog::has_live() ) {
+			$list = call_user_func( array( FTVS_Catalog::client(), 'get_live' ) );
+			$channels = is_wp_error( $list ) ? array() : $list;
 		}
-		$row = null;
-		foreach ( $tree as $candidate ) {
-			if ( $candidate['children'] && preg_match( '/mini.?series/i', $candidate['title'] ) ) {
-				$row = $candidate;
-				break;
+		$state = FTVS_Live::state();
+		?>
+		<h2 class="ftvs-h2"><?php esc_html_e( 'Sunday live', 'faith-tv-series' ); ?></h2>
+		<p class="ftvs-lead"><?php esc_html_e( 'The Sunday Live section counts down to the next service, switches to the live stream when it starts, and shows the replay afterward. Nobody has to edit the page on Sunday morning.', 'faith-tv-series' ); ?></p>
+		<p class="ftvs-msg is-ok">
+			<strong><?php esc_html_e( 'Right now:', 'faith-tv-series' ); ?></strong>
+			<?php
+			if ( 'live' === $state['status'] ) {
+				esc_html_e( 'live.', 'faith-tv-series' );
+			} elseif ( '' !== $state['next_label'] ) {
+				/* translators: %s: day and time */
+				printf( esc_html__( 'next service %s.', 'faith-tv-series' ), esc_html( $state['next_label'] ) );
+			} else {
+				esc_html_e( 'no service times yet.', 'faith-tv-series' );
 			}
-			if ( ! $row && $candidate['children'] ) {
-				$row = $candidate;
+			if ( $state['replay'] ) {
+				/* translators: %s: video title */
+				echo ' ' . esc_html( sprintf( __( 'The replay shown: %s.', 'faith-tv-series' ), $state['replay']['title'] ) );
 			}
-		}
-		$row   = $row ? $row : $tree[0];
-		$first = $row['children'] ? $row['children'][0] : $row;
-		return array(
-			'category' => $row['title'],
-			'title'    => $first['title'],
-			/* translators: %d: number of episodes */
-			'meta'     => $first['videos'] ? sprintf( _n( '%d episode', '%d episodes', $first['videos'], 'faith-tv-series' ), $first['videos'] ) : '',
-			'image'    => $first['image'],
-		);
+			?>
+		</p>
+		<form method="post" action="options.php" class="ftvs-card ftvs-pad ftvs-narrow">
+			<?php settings_fields( 'ftvs' ); ?>
+			<h3 class="ftvs-h3" style="margin-top:0"><?php esc_html_e( 'Service times', 'faith-tv-series' ); ?></h3>
+			<table class="ftvs-text-table">
+				<tbody>
+					<?php foreach ( $services as $i => $svc ) : ?>
+						<tr>
+							<td>
+								<select class="ftvs-input" name="<?php echo esc_attr( $name . '[services][' . $i . '][day]' ); ?>" aria-label="<?php esc_attr_e( 'Day', 'faith-tv-series' ); ?>">
+									<option value=""><?php esc_html_e( '- Day -', 'faith-tv-series' ); ?></option>
+									<?php foreach ( $days as $d => $label ) : ?>
+										<option value="<?php echo esc_attr( $d ); ?>"<?php selected( '' !== $svc['day'] && (int) $svc['day'] === $d ); ?>><?php echo esc_html( $label ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+							<td><input class="ftvs-input" type="time" name="<?php echo esc_attr( $name . '[services][' . $i . '][time]' ); ?>" value="<?php echo esc_attr( $svc['time'] ); ?>" aria-label="<?php esc_attr_e( 'Time', 'faith-tv-series' ); ?>"></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+			<p class="ftvs-inline">
+				<label for="ftvs-svc-len"><?php esc_html_e( 'A service lasts about', 'faith-tv-series' ); ?></label>
+				<input id="ftvs-svc-len" class="small-text" type="number" min="15" max="360" name="<?php echo esc_attr( $name ); ?>[service_length]" value="<?php echo esc_attr( $s['service_length'] ); ?>">
+				<span><?php esc_html_e( 'minutes', 'faith-tv-series' ); ?></span>
+				<span class="ftvs-hint">
+					<?php
+					/* translators: %s: time zone */
+					printf( esc_html__( 'Times are in your site\'s time zone (%s, under Settings > General).', 'faith-tv-series' ), esc_html( wp_timezone_string() ) );
+					?>
+				</span>
+			</p>
+
+			<?php if ( $channels ) : ?>
+				<h3 class="ftvs-h3"><?php esc_html_e( 'Which Faith Stream channel', 'faith-tv-series' ); ?></h3>
+				<select class="ftvs-input" name="<?php echo esc_attr( $name ); ?>[live_channel]">
+					<option value=""><?php esc_html_e( 'Whichever channel is live', 'faith-tv-series' ); ?></option>
+					<?php foreach ( $channels as $ch ) : ?>
+						<option value="<?php echo esc_attr( $ch['id'] ); ?>"<?php selected( $s['live_channel'], $ch['id'] ); ?>><?php echo esc_html( $ch['name'] ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<p class="ftvs-hint"><?php esc_html_e( 'Faith Stream tells the site when the stream starts, and the replay appears when the recording is ready.', 'faith-tv-series' ); ?></p>
+			<?php else : ?>
+				<h3 class="ftvs-h3"><?php esc_html_e( 'Your live stream link', 'faith-tv-series' ); ?></h3>
+				<input class="ftvs-input" name="<?php echo esc_attr( $name ); ?>[live_url]" value="<?php echo esc_attr( $s['live_url'] ); ?>" placeholder="https://www.youtube.com/@yourchurch/live" style="max-width:560px">
+				<p class="ftvs-hint"><?php esc_html_e( 'A YouTube live link (youtube.com/channel/UC.../live works every week), a Vimeo event, or the embed address from Boxcast, Resi, Church Online or similar. It shows during service times.', 'faith-tv-series' ); ?></p>
+			<?php endif; ?>
+
+			<h3 class="ftvs-h3"><?php esc_html_e( 'A "We\'re live" bar on every page', 'faith-tv-series' ); ?></h3>
+			<?php self::toggle( 'live_bar', __( 'Show a slim bar at the top of every page while the service is live', 'faith-tv-series' ) ); ?>
+			<div class="ftvs-field">
+				<label for="ftvs-live-page"><?php esc_html_e( 'The bar takes people to', 'faith-tv-series' ); ?></label>
+				<input class="ftvs-input" id="ftvs-live-page" name="<?php echo esc_attr( $name ); ?>[live_page]" value="<?php echo esc_attr( $s['live_page'] ); ?>" placeholder="<?php echo esc_attr( FTVS_Watch::page_id() ? get_permalink( FTVS_Watch::page_id() ) : home_url( '/watch/' ) ); ?>">
+				<span class="ftvs-hint"><?php esc_html_e( 'Empty: your Watch page, or the stream opens right where they are.', 'faith-tv-series' ); ?></span>
+			</div>
+			<?php submit_button( __( 'Save', 'faith-tv-series' ), 'primary ftvs-btn-primary' ); ?>
+		</form>
+		<div class="ftvs-card ftvs-pad ftvs-narrow ftvs-gap">
+			<h3 class="ftvs-h3" style="margin-top:0"><?php esc_html_e( 'Put it on a page', 'faith-tv-series' ); ?></h3>
+			<p><?php esc_html_e( 'Elementor: the "Sunday Live" widget. Block editor: the "Sunday Live" block. Anywhere else:', 'faith-tv-series' ); ?></p>
+			<div class="ftvs-code"><input readonly value="[faith_tv_live]"><button type="button" class="button ftvs-btn-secondary" data-copy="[faith_tv_live]"><?php esc_html_e( 'Copy', 'faith-tv-series' ); ?></button></div>
+		</div>
+		<?php
 	}
 
 	/* ---------- Embed ---------- */
@@ -737,7 +1308,7 @@ class FTVS_Admin {
 		}
 		if ( '' === $pick ) {
 			foreach ( $rows as $row ) {
-				if ( '' === $pick && preg_match( '/mini.?series/i', $row['title'] ) ) {
+				if ( '' === $pick && $row['children'] ) {
 					$pick = $row['id'];
 				}
 			}
@@ -763,14 +1334,22 @@ class FTVS_Admin {
 		foreach ( array_keys( $layouts ) as $layout ) {
 			$heights[ $layout ] = FTVS_Embed::start_height( $layout );
 		}
+		$heights['live']    = FTVS_Embed::start_height( 'live' );
+		$heights['video']   = FTVS_Embed::start_height( 'video' );
+		$heights['library'] = FTVS_Embed::start_height( 'library' );
 		?>
 		<h2 class="ftvs-h2"><?php esc_html_e( 'Embed on another website', 'faith-tv-series' ); ?></h2>
 		<p class="ftvs-lead"><?php esc_html_e( 'Put a video section on any website that accepts HTML: Faith Central, a landing page, a partner church\'s site. It stays up to date by itself. Pick what to show, then copy the code.', 'faith-tv-series' ); ?></p>
 		<div class="ftvs-embed-builder" data-ftvs-embed data-ajax="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'ftvs_embed_code' ) ); ?>" data-heights="<?php echo esc_attr( wp_json_encode( $heights ) ); ?>">
 			<form class="ftvs-card ftvs-pad" data-ftvs-embed-form onsubmit="return false">
-				<div class="ftvs-field">
+				<fieldset class="ftvs-field">
+					<legend><?php esc_html_e( 'Kind', 'faith-tv-series' ); ?></legend>
+					<div class="ftvs-seg"><?php self::radios( 'kind', array( 'category' => __( 'A category', 'faith-tv-series' ), 'video' => __( 'One video', 'faith-tv-series' ), 'live' => __( 'Sunday live', 'faith-tv-series' ), 'library' => __( 'Sermon library', 'faith-tv-series' ) ), 'category' ); ?></div>
+				</fieldset>
+				<div class="ftvs-field" data-ftvs-kind="category library">
 					<label for="ftvs-e-cat"><?php esc_html_e( 'What to show', 'faith-tv-series' ); ?></label>
 					<select id="ftvs-e-cat" name="category" class="ftvs-input">
+						<option value="<?php echo esc_attr( FTVS_Catalog::NEWEST ); ?>"><?php esc_html_e( 'Newest messages (automatic)', 'faith-tv-series' ); ?></option>
 						<?php foreach ( $rows as $row ) : ?>
 							<?php if ( $row['children'] ) : ?>
 								<optgroup label="<?php echo esc_attr( $row['title'] ); ?>">
@@ -790,7 +1369,12 @@ class FTVS_Admin {
 						<?php endforeach; ?>
 					</select>
 				</div>
-				<fieldset class="ftvs-field">
+				<div class="ftvs-field" data-ftvs-kind="video" hidden>
+					<label for="ftvs-e-video"><?php esc_html_e( 'Video ID', 'faith-tv-series' ); ?></label>
+					<input id="ftvs-e-video" class="ftvs-input" name="video" placeholder="forgiveness-part-2">
+					<span class="ftvs-hint"><?php esc_html_e( 'The last part of the video\'s address on your channel.', 'faith-tv-series' ); ?></span>
+				</div>
+				<fieldset class="ftvs-field" data-ftvs-kind="category">
 					<legend><?php esc_html_e( 'Layout', 'faith-tv-series' ); ?></legend>
 					<div class="ftvs-seg"><?php self::radios( 'layout', $layouts, 'row' ); ?></div>
 				</fieldset>
@@ -801,18 +1385,18 @@ class FTVS_Admin {
 				</fieldset>
 				<div class="ftvs-field">
 					<label for="ftvs-e-title"><?php esc_html_e( 'Heading (optional)', 'faith-tv-series' ); ?></label>
-					<input id="ftvs-e-title" class="ftvs-input" name="title" placeholder="<?php esc_attr_e( 'Faith Mini Series', 'faith-tv-series' ); ?>">
+					<input id="ftvs-e-title" class="ftvs-input" name="title" placeholder="<?php esc_attr_e( 'Our series', 'faith-tv-series' ); ?>">
 				</div>
 				<div class="ftvs-field">
 					<label for="ftvs-e-eyebrow"><?php esc_html_e( 'Small line above it (optional)', 'faith-tv-series' ); ?></label>
-					<input id="ftvs-e-eyebrow" class="ftvs-input" name="eyebrow" placeholder="<?php esc_attr_e( 'Everyday issues that challenge our faith', 'faith-tv-series' ); ?>">
+					<input id="ftvs-e-eyebrow" class="ftvs-input" name="eyebrow" placeholder="<?php esc_attr_e( 'New every week', 'faith-tv-series' ); ?>">
 				</div>
-				<div class="ftvs-field">
+				<div class="ftvs-field" data-ftvs-kind="category">
 					<label for="ftvs-e-limit"><?php esc_html_e( 'How many to show', 'faith-tv-series' ); ?></label>
 					<input id="ftvs-e-limit" class="small-text" type="number" min="0" max="50" name="limit" value="0">
 					<span class="ftvs-hint"><?php esc_html_e( '0 shows all of them.', 'faith-tv-series' ); ?></span>
 				</div>
-				<fieldset class="ftvs-field">
+				<fieldset class="ftvs-field" data-ftvs-kind="category video library">
 					<legend><?php esc_html_e( 'When someone clicks', 'faith-tv-series' ); ?></legend>
 					<div class="ftvs-seg"><?php self::radios( 'open', array( '' => __( 'Play inside the embed', 'faith-tv-series' ), 'channel' => __( 'Open your channel', 'faith-tv-series' ) ), '' ); ?></div>
 				</fieldset>
@@ -835,17 +1419,154 @@ class FTVS_Admin {
 		<?php
 	}
 
+	/* ---------- Health ---------- */
+
+	private static function health() {
+		$h      = FTVS_Cache::health();
+		$status = get_option( 'ftvs_used_status', array() );
+		if ( empty( $status['rows'] ) || empty( $status['t'] ) || time() - $status['t'] > HOUR_IN_SECONDS ) {
+			$status = array(
+				't'    => time(),
+				'rows' => FTVS_Health::check_used(),
+			);
+			update_option( 'ftvs_used_status', $status, false );
+		}
+		$stats = FTVS_Stats::summary( 7 );
+		$purge = get_option( 'ftvs_last_purge', array() );
+		?>
+		<h2 class="ftvs-h2"><?php esc_html_e( 'Health', 'faith-tv-series' ); ?></h2>
+		<p class="ftvs-lead"><?php esc_html_e( 'Whether the video sections on your site are working, and where they are.', 'faith-tv-series' ); ?></p>
+		<div class="ftvs-facts ftvs-facts--cards">
+			<div class="<?php echo self::failing() ? 'is-bad' : ''; ?>">
+				<strong><?php echo self::failing() ? esc_html__( 'Not answering', 'faith-tv-series' ) : ( $h['last_ok'] ? esc_html( human_time_diff( $h['last_ok'] ) ) : '-' ); ?></strong>
+				<span><?php echo self::failing() ? esc_html( $h['error'] ) : esc_html__( 'since the last good check of your channel', 'faith-tv-series' ); ?></span>
+			</div>
+			<div class="<?php echo self::problems() ? 'is-bad' : ''; ?>">
+				<strong><?php echo (int) count( $status['rows'] ); ?></strong>
+				<span>
+					<?php
+					$bad = self::problems() - ( self::failing() ? 1 : 0 );
+					/* translators: %d: sections with a problem */
+					echo $bad ? esc_html( sprintf( _n( 'video sections, %d needs attention', 'video sections, %d need attention', $bad, 'faith-tv-series' ), $bad ) ) : esc_html__( 'video sections on your site, all working', 'faith-tv-series' );
+					?>
+				</span>
+			</div>
+			<div class="<?php echo $stats['errors'] ? 'is-bad' : ''; ?>">
+				<strong><?php echo esc_html( number_format_i18n( $stats['plays'] ) ); ?></strong>
+				<span>
+					<?php
+					/* translators: %d: failed plays */
+					echo $stats['errors'] ? esc_html( sprintf( _n( 'plays this week, %d failed to start', 'plays this week, %d failed to start', $stats['errors'], 'faith-tv-series' ), $stats['errors'] ) ) : esc_html__( 'plays this week', 'faith-tv-series' );
+					?>
+				</span>
+			</div>
+		</div>
+
+		<div class="ftvs-card ftvs-pad ftvs-gap">
+			<div class="ftvs-inline" style="justify-content:space-between">
+				<h3 class="ftvs-h2" style="margin:0"><?php esc_html_e( 'Where it\'s used', 'faith-tv-series' ); ?></h3>
+				<span class="ftvs-inline">
+					<?php self::post_button( 'ftvs_recheck', __( 'Check all pages now', 'faith-tv-series' ) ); ?>
+					<?php self::refresh_button(); ?>
+				</span>
+			</div>
+			<?php if ( ! $status['rows'] ) : ?>
+				<p class="ftvs-muted"><?php esc_html_e( 'No page has a video section yet.', 'faith-tv-series' ); ?></p>
+			<?php else : ?>
+				<table class="widefat striped ftvs-used">
+					<thead><tr><th><?php esc_html_e( 'Page', 'faith-tv-series' ); ?></th><th><?php esc_html_e( 'Section', 'faith-tv-series' ); ?></th><th><?php esc_html_e( 'Shows', 'faith-tv-series' ); ?></th><th><?php esc_html_e( 'Status', 'faith-tv-series' ); ?></th></tr></thead>
+					<tbody>
+						<?php foreach ( $status['rows'] as $row ) : ?>
+							<tr>
+								<td><a href="<?php echo esc_url( $row['url'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( '' !== $row['title'] ? $row['title'] : __( '(no title)', 'faith-tv-series' ) ); ?></a><?php echo 'publish' !== $row['status'] ? ' <span class="ftvs-muted">(' . esc_html( $row['status'] ) . ')</span>' : ''; ?>
+									<?php if ( $row['edit'] ) : ?>
+										<br><a class="ftvs-small-link" href="<?php echo esc_url( $row['edit'] ); ?>"><?php esc_html_e( 'Edit', 'faith-tv-series' ); ?></a>
+									<?php endif; ?>
+								</td>
+								<td><?php echo esc_html( self::section_name( $row ) ); ?></td>
+								<td>
+									<code><?php echo esc_html( '' !== $row['video'] ? 'video: ' . $row['video'] : ( '' !== $row['category'] ? $row['category'] : '-' ) ); ?></code>
+									<?php if ( '' !== $row['from'] || '' !== $row['until'] ) : ?>
+										<br><span class="ftvs-muted">
+											<?php
+											/* translators: 1: start date, 2: end date, 3: what shows otherwise */
+											echo esc_html( sprintf( __( 'Dated: %1$s to %2$s; otherwise %3$s', 'faith-tv-series' ), '' !== $row['from'] ? substr( $row['from'], 0, 10 ) : '...', '' !== $row['until'] ? substr( $row['until'], 0, 10 ) : '...', '' !== $row['otherwise'] ? $row['otherwise'] : __( 'nothing', 'faith-tv-series' ) ) );
+											?>
+										</span>
+									<?php endif; ?>
+								</td>
+								<td><?php echo $row['ok'] ? '<span class="ftvs-chip is-ok">' . esc_html__( 'Working', 'faith-tv-series' ) . '</span>' : '<span class="ftvs-bad">' . esc_html( $row['problem'] ) . '</span>'; ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+				<p class="ftvs-hint">
+					<?php
+					/* translators: %s: how long ago */
+					printf( esc_html__( 'Checked %s ago. Pages are checked every hour in the background.', 'faith-tv-series' ), esc_html( human_time_diff( $status['t'] ) ) );
+					?>
+				</p>
+			<?php endif; ?>
+		</div>
+
+		<div class="ftvs-look ftvs-gap">
+			<div class="ftvs-card ftvs-pad">
+				<h3 class="ftvs-h2"><?php esc_html_e( 'Emails and caches', 'faith-tv-series' ); ?></h3>
+				<form method="post" action="options.php">
+					<?php settings_fields( 'ftvs' ); ?>
+					<?php self::toggle( 'alert_email', __( 'Email the site admin if videos stop showing (at most once a day)', 'faith-tv-series' ) ); ?>
+					<?php submit_button( __( 'Save', 'faith-tv-series' ), 'secondary', 'submit', false ); ?>
+				</form>
+				<p class="ftvs-muted" style="margin-top:16px">
+					<?php
+					if ( ! empty( $purge['t'] ) ) {
+						/* translators: 1: how long ago, 2: cache names */
+						printf( esc_html__( 'Page caches last cleared %1$s ago (%2$s). This happens by itself when your channel changes.', 'faith-tv-series' ), esc_html( human_time_diff( $purge['t'] ) ), esc_html( $purge['caches'] ? implode( ', ', $purge['caches'] ) : __( 'no cache plugin found', 'faith-tv-series' ) ) );
+					} else {
+						esc_html_e( 'Page caches are cleared by themselves when your channel changes.', 'faith-tv-series' );
+					}
+					?>
+				</p>
+				<?php self::post_button( 'ftvs_purge', __( 'Clear page caches now', 'faith-tv-series' ) ); ?>
+			</div>
+			<div class="ftvs-card ftvs-pad">
+				<h3 class="ftvs-h2"><?php esc_html_e( 'For support', 'faith-tv-series' ); ?></h3>
+				<p class="ftvs-muted"><?php esc_html_e( 'Everything support needs, in one paste. It has no passwords or visitor details.', 'faith-tv-series' ); ?></p>
+				<textarea id="ftvs-diag" class="ftvs-code-box" rows="8" readonly><?php echo esc_textarea( FTVS_Health::diagnostics() ); ?></textarea>
+				<p><button type="button" class="button ftvs-btn-secondary" data-copy-from="#ftvs-diag"><?php esc_html_e( 'Copy diagnostics', 'faith-tv-series' ); ?></button>
+					<a class="ftvs-link" href="<?php echo esc_url( admin_url( 'site-health.php' ) ); ?>"><?php esc_html_e( 'WordPress Site Health', 'faith-tv-series' ); ?></a></p>
+			</div>
+		</div>
+		<?php
+	}
+
+	private static function section_name( $row ) {
+		$kinds = array(
+			'shortcode' => __( 'Shortcode', 'faith-tv-series' ),
+			'block'     => __( 'Block', 'faith-tv-series' ),
+			'elementor' => __( 'Elementor', 'faith-tv-series' ),
+		);
+		$types = array(
+			'series'  => __( 'Videos', 'faith-tv-series' ),
+			'live'    => __( 'Sunday live', 'faith-tv-series' ),
+			'library' => __( 'Sermon library', 'faith-tv-series' ),
+		);
+		return ( isset( $types[ $row['type'] ] ) ? $types[ $row['type'] ] : $row['type'] ) . ' (' . ( isset( $kinds[ $row['kind'] ] ) ? $kinds[ $row['kind'] ] : $row['kind'] ) . ( '' !== $row['layout'] ? ', ' . self::layout_name( $row['layout'] ) : '' ) . ')';
+	}
+
 	/* ---------- Updates ---------- */
 
 	private static function updates() {
+		if ( ! class_exists( 'FTVS_Updater' ) ) {
+			return;
+		}
 		$release = FTVS_Updater::latest();
-		$s       = FTVS_Settings::all();
 		$auto    = in_array( plugin_basename( FTVS_FILE ), (array) get_site_option( 'auto_update_plugins', array() ), true );
 		$newer   = ! is_wp_error( $release ) && version_compare( $release['version'], FTVS_VERSION, '>' );
 		?>
 		<div class="ftvs-card ftvs-pad ftvs-narrow">
 			<h2 class="ftvs-h2"><?php esc_html_e( 'Updates', 'faith-tv-series' ); ?></h2>
-			<p class="ftvs-lead"><?php esc_html_e( 'New versions come from FaithStream and install like any WordPress plugin update.', 'faith-tv-series' ); ?></p>
+			<p class="ftvs-lead"><?php esc_html_e( 'New versions come from FaithStream and install like any WordPress plugin update. Each one is checked against FaithStream\'s signature before it installs.', 'faith-tv-series' ); ?></p>
 			<dl class="ftvs-dl">
 				<dt><?php esc_html_e( 'Installed', 'faith-tv-series' ); ?></dt>
 				<dd><strong><?php echo esc_html( FTVS_VERSION ); ?></strong></dd>
@@ -860,6 +1581,8 @@ class FTVS_Admin {
 						<?php endif; ?>
 						<?php if ( $newer ) : ?>
 							<span class="ftvs-chip is-new"><?php esc_html_e( 'Ready to install', 'faith-tv-series' ); ?></span>
+						<?php elseif ( ! empty( $release['held'] ) ) : ?>
+							<span class="ftvs-chip"><?php esc_html_e( 'Rolling out; your site gets it soon', 'faith-tv-series' ); ?></span>
 						<?php else : ?>
 							<span class="ftvs-chip is-ok"><?php esc_html_e( 'You\'re up to date', 'faith-tv-series' ); ?></span>
 						<?php endif; ?>
@@ -889,20 +1612,6 @@ class FTVS_Admin {
 				</h3>
 				<div class="ftvs-notes"><?php echo wp_kses_post( wpautop( esc_html( $release['notes'] ) ) ); ?></div>
 			<?php endif; ?>
-			<details class="ftvs-advanced">
-				<summary><?php esc_html_e( 'Advanced: private repository token', 'faith-tv-series' ); ?></summary>
-				<form method="post" action="options.php">
-					<?php settings_fields( 'ftvs' ); ?>
-					<p class="ftvs-muted"><?php esc_html_e( 'Only needed if the plugin\'s GitHub repository is ever made private: a fine-grained token with read-only access to that one repository ("Contents: Read").', 'faith-tv-series' ); ?></p>
-					<div class="ftvs-inline">
-						<input class="ftvs-input" type="password" autocomplete="new-password" data-lpignore="true" name="<?php echo esc_attr( FTVS_Settings::OPTION ); ?>[update_token]" value="" placeholder="<?php echo '' !== $s['update_token'] ? esc_attr__( 'Saved (hidden)', 'faith-tv-series' ) : ''; ?>">
-						<?php if ( '' !== $s['update_token'] ) : ?>
-							<label><input type="checkbox" name="<?php echo esc_attr( FTVS_Settings::OPTION ); ?>[update_token_remove]" value="1"> <?php esc_html_e( 'Remove the saved token', 'faith-tv-series' ); ?></label>
-						<?php endif; ?>
-						<?php submit_button( __( 'Save', 'faith-tv-series' ), 'secondary', 'submit', false ); ?>
-					</div>
-				</form>
-			</details>
 		</div>
 		<?php
 	}
@@ -960,21 +1669,26 @@ class FTVS_Admin {
 	}
 
 	private static function refresh_button() {
-		?>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ftvs-inline-form">
-			<input type="hidden" name="action" value="ftvs_refresh">
-			<?php wp_nonce_field( 'ftvs_refresh' ); ?>
-			<button class="button ftvs-btn-secondary"><?php esc_html_e( 'Refresh from your channel', 'faith-tv-series' ); ?></button>
-		</form>
-		<?php
+		self::post_button( 'ftvs_refresh', __( 'Refresh from your channel', 'faith-tv-series' ) );
 	}
 
 	private static function powered() {
-		echo '<div class="ftvs-powered">' . self::gear( 18 ) . esc_html__( 'Powered by', 'faith-tv-series' ) . ' <b>FAITHSTREAM</b> <span>&middot; faithstream.video</span></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		$brand = self::brand();
+		if ( '' === $brand['name'] ) {
+			return;
+		}
+		echo '<div class="ftvs-powered">' . self::gear( 18 ) . esc_html__( 'Powered by', 'faith-tv-series' ) . ' <a href="' . esc_url( $brand['url'] ) . '" target="_blank" rel="noopener"><b>' . esc_html( $brand['name'] ) . '</b></a> <span>&middot; <a href="' . esc_url( $brand['support'] ) . '" target="_blank" rel="noopener">' . esc_html__( 'Help', 'faith-tv-series' ) . '</a></span></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
 	private static function source_name() {
-		return 'faithstream' === FTVS_Catalog::source() ? __( 'Faith Stream', 'faith-tv-series' ) : __( 'Gideo channel', 'faith-tv-series' );
+		$names = array(
+			'faithstream' => __( 'Faith Stream', 'faith-tv-series' ),
+			'gideo'       => __( 'Gideo channel', 'faith-tv-series' ),
+			'youtube'     => __( 'YouTube', 'faith-tv-series' ),
+			'demo'        => __( 'Sample videos', 'faith-tv-series' ),
+		);
+		$source = FTVS_Catalog::source();
+		return isset( $names[ $source ] ) ? $names[ $source ] : __( 'Series you built', 'faith-tv-series' );
 	}
 
 	private static function layout_name( $value ) {
@@ -986,6 +1700,7 @@ class FTVS_Admin {
 			'list'      => __( 'Featured + list', 'faith-tv-series' ),
 			'row'       => __( 'Row', 'faith-tv-series' ),
 			'grid'      => __( 'Grid', 'faith-tv-series' ),
+			'library'   => __( 'Sermon library', 'faith-tv-series' ),
 		);
 		return isset( $names[ $value ] ) ? $names[ $value ] : (string) $value;
 	}

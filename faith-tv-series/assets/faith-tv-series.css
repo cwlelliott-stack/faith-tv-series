@@ -59,7 +59,7 @@
 	align-items: center;
 	padding: 5px 9px 5px 20px;
 	background: var(--ftvs-accent);
-	color: #fff;
+	color: var(--ftvs-on-accent, #fff);
 	font-family: var(--ftvs-font);
 	font-size: 11px;
 	font-weight: 800;
@@ -77,8 +77,8 @@
 	height: 6px;
 	margin-top: -3px;
 	border-radius: 50%;
-	background: #fff;
-	animation: ftvs-blink 1.6s ease-in-out infinite;
+	background: currentColor;
+	animation: ftvs-blink 1.6s ease-in-out 3;
 }
 
 .ftvs-badge--corner {
@@ -117,7 +117,7 @@
 .ftvs-btn--primary,
 .ftvs-btn--primary:visited {
 	background: var(--ftvs-accent);
-	color: #fff !important;
+	color: var(--ftvs-on-accent, #fff) !important;
 }
 
 .ftvs-btn--light,
@@ -271,7 +271,7 @@
 	place-items: center;
 	border-radius: 50%;
 	background: var(--ftvs-accent);
-	color: #fff;
+	color: var(--ftvs-on-accent, #fff);
 	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 	opacity: 0;
 	transition: opacity 0.25s ease, transform 0.25s ease;
@@ -433,11 +433,29 @@
 		linear-gradient(0deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 38%);
 }
 
+.ftvs-show {
+	container-type: inline-size;
+}
+
 .ftvs-show__stage {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
 	align-items: center;
 	gap: clamp(28px, 4vw, 64px);
+}
+
+@container (max-width: 760px) {
+	.ftvs-show__stage {
+		grid-template-columns: 1fr;
+		gap: 22px;
+	}
+	.ftvs-show__art {
+		order: -1;
+		transform: none;
+	}
+	.ftvs-show__strip {
+		--ftvs-card-w: clamp(140px, 36cqw, 210px);
+	}
 }
 
 .ftvs-show__info,
@@ -1126,7 +1144,7 @@ html.ftvs-lock {
 	height: 0;
 }
 
-.ftvs-dialog__btn {
+.ftvs-dialog .ftvs-dialog__btn {
 	position: absolute;
 	top: 14px;
 	display: inline-flex;
@@ -1207,7 +1225,7 @@ html.ftvs-lock {
 	place-items: center;
 	border-radius: 50%;
 	background: var(--ftvs-accent);
-	color: #fff;
+	color: var(--ftvs-on-accent, #fff);
 	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
 	transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
@@ -1589,6 +1607,1011 @@ html.ftvs-lock {
 	}
 }
 
+/* ---------- Pause button (showcase and 3D carousel) ---------- */
+
+.ftvs-pause {
+	display: inline-grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	border-radius: 0;
+	background: rgba(0, 0, 0, 0.35);
+	color: #fff;
+	cursor: pointer;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.ftvs--light .ftvs-pause {
+	border-color: rgba(0, 0, 0, 0.3);
+	background: rgba(255, 255, 255, 0.7);
+	color: #1b1b1b;
+}
+
+.ftvs-pause:hover,
+.ftvs-pause:focus-visible {
+	border-color: currentColor;
+	outline: none;
+}
+
+.ftvs-pause:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 3px;
+}
+
+.ftvs-pause__on,
+.ftvs.is-user-paused .ftvs-pause__off {
+	display: none;
+}
+
+.ftvs.is-user-paused .ftvs-pause__on {
+	display: block;
+}
+
+/* ---------- Progress on cards (continue watching) ---------- */
+
+.ftvs-prog {
+	position: absolute;
+	z-index: 2;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 4px;
+	background: rgba(255, 255, 255, 0.3);
+}
+
+.ftvs-prog i {
+	display: block;
+	height: 100%;
+	background: var(--ftvs-accent);
+}
+
+.ftvs-watched {
+	position: absolute;
+	z-index: 2;
+	right: 8px;
+	top: 8px;
+	padding: 3px 7px;
+	background: rgba(0, 0, 0, 0.78);
+	color: #fff;
+	font-family: var(--ftvs-font);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.ftvs-dialog__ep-done {
+	display: inline-block;
+	margin-top: 4px;
+	color: rgba(255, 255, 255, 0.6);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.ftvs-dialog__ep.is-watched .ftvs-dialog__ep-thumb img {
+	opacity: 0.55;
+}
+
+/* ---------- Player additions ---------- */
+
+.ftvs-dialog__share {
+	right: 64px;
+}
+
+.ftvs-dialog.is-live .ftvs-dialog__share {
+	display: none;
+}
+
+.ftvs-dialog__frame {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+	background: #000;
+}
+
+.ftvs-dialog__error.is-soft {
+	background: rgba(0, 0, 0, 0.6);
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.ftvs-dialog__meta,
+.ftvs-dialog__live {
+	margin: 10px 0 0;
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 14px;
+}
+
+.ftvs-dialog__live {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	color: #fff;
+	font-family: var(--ftvs-font);
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.ftvs-dialog__live::before {
+	content: "";
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: var(--ftvs-accent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--ftvs-accent) 35%, transparent);
+}
+
+.ftvs-chip-note {
+	position: absolute;
+	z-index: 3;
+	left: 14px;
+	bottom: 60px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	max-width: calc(100% - 28px);
+	padding: 8px 8px 8px 14px;
+	background: rgba(0, 0, 0, 0.82);
+	color: #fff;
+	font-size: 13px;
+}
+
+.ftvs-chip-note button {
+	padding: 6px 10px;
+	border: 1px solid rgba(255, 255, 255, 0.5);
+	border-radius: 0;
+	background: transparent;
+	color: #fff;
+	font-family: var(--ftvs-font);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.ftvs-chip-note button:hover,
+.ftvs-chip-note button:focus-visible {
+	background: #fff;
+	color: #111;
+	outline: none;
+}
+
+/* The end of a video: "Up next" countdown, or a next step and more like this. */
+.ftvs-end {
+	position: absolute;
+	z-index: 4;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	padding: 24px;
+	overflow: auto;
+	background: rgba(8, 8, 8, 0.9);
+	color: #fff;
+}
+
+.ftvs-end__up {
+	display: grid;
+	grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+	gap: 24px;
+	align-items: center;
+	width: min(640px, 100%);
+}
+
+.ftvs-end__up img {
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+}
+
+.ftvs-end__title {
+	margin: 0 0 6px;
+	font-family: var(--ftvs-font);
+	font-size: clamp(18px, 2.4vw, 26px);
+	font-weight: 800;
+	line-height: 1.1;
+	text-transform: uppercase;
+}
+
+.ftvs-end__count {
+	display: block;
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 14px;
+}
+
+.ftvs-end__btns {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 16px;
+}
+
+.ftvs-end__btns .ftvs-btn,
+.ftvs-next__btns .ftvs-btn {
+	padding: 14px 20px;
+}
+
+.ftvs-end__panel {
+	width: min(760px, 100%);
+	text-align: center;
+}
+
+.ftvs-end__panel .ftvs-next__btns,
+.ftvs-end__panel .ftvs-end__btns {
+	justify-content: center;
+}
+
+.ftvs-end__more {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 14px;
+	margin: 12px 0 0;
+	padding: 0;
+	list-style: none;
+	text-align: left;
+}
+
+.ftvs-end__item {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #fff;
+	text-align: left;
+	cursor: pointer;
+}
+
+.ftvs-end__thumb {
+	display: block;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background: #000;
+}
+
+.ftvs-end__thumb img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform 0.3s ease;
+}
+
+.ftvs-end__item:hover .ftvs-end__thumb img,
+.ftvs-end__item:focus-visible .ftvs-end__thumb img {
+	transform: scale(1.05);
+}
+
+.ftvs-end__item:focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 3px;
+}
+
+.ftvs-end__name {
+	display: -webkit-box;
+	margin-top: 6px;
+	overflow: hidden;
+	font-family: var(--ftvs-font);
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1.25;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+/* Next-step buttons (under the player, at the end, and on message pages). */
+.ftvs-next {
+	margin: 22px 0 0;
+}
+
+.ftvs-next__title {
+	margin: 0 0 10px;
+	color: var(--ftvs-accent-text);
+	font-family: var(--ftvs-font);
+	font-size: 13px;
+	font-weight: 800;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+}
+
+.ftvs-end .ftvs-next__title {
+	margin-top: 18px;
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.ftvs-next__btns {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.ftvs-toast {
+	position: absolute;
+	z-index: 9;
+	left: 50%;
+	bottom: 20px;
+	padding: 10px 16px;
+	background: #111;
+	color: #fff;
+	font: 600 14px/1.3 var(--ftvs-font, sans-serif);
+	box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+	opacity: 0;
+	transform: translate(-50%, 8px);
+	transition: opacity 0.2s ease, transform 0.2s ease;
+	pointer-events: none;
+}
+
+body > .ftvs-toast {
+	position: fixed;
+}
+
+.ftvs-toast.is-on {
+	opacity: 1;
+	transform: translate(-50%, 0);
+}
+
+/* ---------- One video ---------- */
+
+.ftvs--player .ftvs-player {
+	display: block;
+	max-width: 960px;
+}
+
+.ftvs--player .ftvs-player .ftvs__play {
+	opacity: 1;
+}
+
+.ftvs--player .ftvs__name {
+	margin-top: 14px;
+	font-size: var(--ftvs-card-size, 20px);
+}
+
+/* ---------- Message pages ---------- */
+
+.ftvs-watch {
+	display: grid;
+	gap: 24px;
+	max-width: 1080px;
+	margin: 0 0 36px;
+}
+
+.ftvs-watch__player .ftvs__play {
+	opacity: 1;
+}
+
+.ftvs-watch__title {
+	margin: 0;
+}
+
+.ftvs-watch__desc p {
+	margin: 0 0 1em;
+}
+
+/* ---------- Sunday live ---------- */
+
+.ftvs--live {
+	container-type: inline-size;
+}
+
+.ftvs-live {
+	display: grid;
+	gap: 24px;
+	align-items: center;
+}
+
+@container (min-width: 760px) {
+	.ftvs-live {
+		grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+		gap: 36px;
+	}
+}
+
+.ftvs-live__stage {
+	position: relative;
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	background: var(--ftvs-thumb-bg) linear-gradient(135deg, #1d1d1d, #0c0c0c);
+	cursor: pointer;
+}
+
+.ftvs-live__stage[disabled] {
+	cursor: default;
+}
+
+.ftvs-live__stage img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform 0.5s ease;
+}
+
+.ftvs-live__stage:not([disabled]):hover img,
+.ftvs-live__stage:not([disabled]):focus-visible img {
+	transform: scale(1.03);
+}
+
+.ftvs-live__stage:focus-visible {
+	outline: 3px solid var(--ftvs-accent-text);
+	outline-offset: 3px;
+}
+
+.ftvs-live__stage .ftvs__play {
+	opacity: 1;
+}
+
+.ftvs-live__stage[disabled] .ftvs__play {
+	display: none;
+}
+
+.ftvs-live__badge {
+	position: absolute;
+	z-index: 2;
+	left: 14px;
+	top: 14px;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 11px;
+	background: rgba(0, 0, 0, 0.72);
+	color: #fff;
+	font-family: var(--ftvs-font);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+}
+
+.ftvs--live.is-live .ftvs-live__badge {
+	background: var(--ftvs-accent);
+	color: var(--ftvs-on-accent, #fff);
+}
+
+.ftvs--live.is-live .ftvs-live__badge::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: currentColor;
+	animation: ftvs-blink 1.6s ease-in-out 3;
+}
+
+/* Outside the showcase's own dark backdrop, big titles and descriptions follow the section's colors. */
+.ftvs-live .ftvs-feature__title,
+.ftvs-watch .ftvs-feature__title {
+	color: var(--ftvs-series-color, inherit);
+	font-size: var(--ftvs-series-size, clamp(28px, 4.5vw, 48px));
+}
+
+.ftvs-watch .ftvs-feature__desc {
+	display: block;
+	max-width: 760px;
+	color: var(--ftvs-text-color, var(--ftvs-muted));
+	-webkit-line-clamp: unset;
+}
+
+.ftvs-watch .ftvs-feature__meta,
+.ftvs-live .ftvs-kicker {
+	color: var(--ftvs-meta-color, var(--ftvs-accent-text));
+}
+
+.ftvs-live__when {
+	margin: 10px 0 0;
+	color: var(--ftvs-muted);
+	font-size: var(--ftvs-meta-size, 16px);
+}
+
+.ftvs-live__count {
+	margin: 6px 0 0;
+	color: var(--ftvs-text);
+	font-family: var(--ftvs-font);
+	font-size: clamp(22px, 3vw, 32px);
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.01em;
+}
+
+.ftvs-live .ftvs-show__actions {
+	margin-top: 22px;
+}
+
+.ftvs-live__chat {
+	color: var(--ftvs-accent-text);
+	font-weight: 700;
+}
+
+/* "Remind me" */
+.ftvs-remind {
+	display: grid;
+	gap: 10px;
+	max-width: 440px;
+	margin-top: 18px;
+	padding: 16px;
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.ftvs--light .ftvs-remind {
+	background: rgba(0, 0, 0, 0.04);
+}
+
+.ftvs-remind__lead {
+	margin: 0;
+	font-weight: 700;
+}
+
+.ftvs-remind label {
+	display: grid;
+	gap: 4px;
+	font-size: 14px;
+}
+
+.ftvs-remind input[type="email"],
+.ftvs-remind input[type="tel"] {
+	width: 100%;
+	min-height: 44px;
+	padding: 0 12px;
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	border-radius: 0;
+	background: rgba(0, 0, 0, 0.25);
+	color: inherit;
+	font: inherit;
+}
+
+.ftvs--light .ftvs-remind input[type="email"],
+.ftvs--light .ftvs-remind input[type="tel"] {
+	border-color: rgba(0, 0, 0, 0.3);
+	background: #fff;
+}
+
+.ftvs-remind__consent {
+	display: flex !important;
+	grid-template-columns: none;
+	gap: 8px !important;
+	align-items: flex-start;
+	color: var(--ftvs-muted);
+	font-size: 12px !important;
+	line-height: 1.4;
+}
+
+.ftvs-remind__consent input {
+	margin-top: 2px;
+}
+
+.ftvs-remind__hp {
+	position: absolute !important;
+	left: -9999px !important;
+	width: 1px !important;
+	height: 1px !important;
+	opacity: 0 !important;
+}
+
+.ftvs-remind__msg {
+	margin: 0;
+	font-weight: 700;
+}
+
+.ftvs-remind__msg:empty {
+	display: none;
+}
+
+/* The "We're live" bar at the top of every page. */
+.ftvs-livebar {
+	position: sticky;
+	z-index: 99990;
+	top: 0;
+	display: flex;
+	align-items: stretch;
+	background: var(--ftvs-accent, #c40d3c);
+	color: var(--ftvs-on-accent, #fff);
+	font-family: var(--ftvs-font, Roboto, "Helvetica Neue", Arial, sans-serif);
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+.ftvs-livebar[hidden] {
+	display: none;
+}
+
+.ftvs-livebar__go {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	min-height: 44px;
+	padding: 8px 16px;
+	border: 0;
+	background: none;
+	color: inherit !important;
+	font: inherit;
+	font-size: 15px;
+	text-decoration: none !important;
+	cursor: pointer;
+}
+
+.ftvs-livebar__go strong {
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.ftvs-livebar__title {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.ftvs-livebar__cta {
+	padding: 6px 12px;
+	border: 1px solid currentColor;
+	font-size: 13px;
+	font-weight: 800;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.ftvs-livebar__dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: currentColor;
+	animation: ftvs-blink 1.6s ease-in-out 3;
+}
+
+.ftvs-livebar__x {
+	display: grid;
+	place-items: center;
+	width: 44px;
+	padding: 0;
+	border: 0;
+	background: rgba(0, 0, 0, 0.15);
+	color: inherit;
+	cursor: pointer;
+}
+
+.ftvs-livebar__go:focus-visible,
+.ftvs-livebar__x:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: -4px;
+}
+
+@media (max-width: 600px) {
+	.ftvs-livebar__title {
+		display: none;
+	}
+}
+
+/* ---------- Sermon library ---------- */
+
+.ftvs-lib__search {
+	display: flex;
+	gap: 10px;
+	max-width: 760px;
+	margin: 0 0 14px;
+}
+
+.ftvs-lib__search input {
+	flex: 1;
+	min-width: 0;
+	min-height: 52px;
+	padding: 0 16px;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 0;
+	background: rgba(0, 0, 0, 0.25);
+	color: inherit;
+	font: inherit;
+	font-size: 16px;
+}
+
+.ftvs--light .ftvs-lib__search input {
+	border-color: rgba(0, 0, 0, 0.3);
+	background: #fff;
+}
+
+.ftvs-lib__search input:focus-visible {
+	outline: 2px solid var(--ftvs-accent-text);
+	outline-offset: 1px;
+}
+
+.ftvs-lib__search .ftvs-btn {
+	padding: 0 24px;
+}
+
+.ftvs-lib__filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 0 0 12px;
+}
+
+.ftvs-lib__filters:empty {
+	display: none;
+}
+
+.ftvs-lib__filters label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+}
+
+.ftvs-lib__filters label span {
+	color: var(--ftvs-muted);
+}
+
+.ftvs-lib__filters select {
+	min-height: 40px;
+	padding: 0 10px;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 0;
+	background: rgba(0, 0, 0, 0.25);
+	color: inherit;
+	font: inherit;
+	font-size: 14px;
+}
+
+.ftvs--light .ftvs-lib__filters select {
+	border-color: rgba(0, 0, 0, 0.3);
+	background: #fff;
+}
+
+.ftvs-lib__filters select option {
+	color: #111;
+}
+
+.ftvs-lib__count {
+	margin: 0 0 10px;
+	color: var(--ftvs-muted);
+	font-size: var(--ftvs-meta-size, 14px);
+}
+
+.ftvs-lib__list {
+	display: grid;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	transition: opacity 0.2s ease;
+}
+
+.ftvs--library.is-loading .ftvs-lib__list {
+	opacity: 0.5;
+}
+
+.ftvs-lib__row {
+	display: grid;
+	grid-template-columns: 200px minmax(0, 1fr);
+	gap: 18px;
+	align-items: center;
+	padding: 8px;
+	color: inherit !important;
+	text-decoration: none !important;
+	transition: background-color 0.2s ease;
+}
+
+.ftvs-lib__row:hover,
+.ftvs-lib__row:focus-visible {
+	background: rgba(255, 255, 255, 0.07);
+	outline: none;
+}
+
+.ftvs--light .ftvs-lib__row:hover,
+.ftvs--light .ftvs-lib__row:focus-visible {
+	background: rgba(0, 0, 0, 0.05);
+}
+
+.ftvs-lib__row:focus-visible {
+	box-shadow: inset 0 0 0 2px var(--ftvs-accent-text);
+}
+
+.ftvs-lib__row .ftvs__thumb {
+	margin: 0;
+}
+
+.ftvs-lib__len {
+	position: absolute;
+	z-index: 2;
+	right: 6px;
+	bottom: 6px;
+	padding: 2px 6px;
+	background: rgba(0, 0, 0, 0.82);
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.ftvs-lib__text {
+	display: grid;
+	gap: 3px;
+}
+
+.ftvs-lib__series {
+	color: var(--ftvs-accent-text);
+	font-family: var(--ftvs-font);
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+}
+
+.ftvs-lib__row .ftvs__name {
+	margin: 0;
+	font-size: var(--ftvs-card-size, 18px);
+}
+
+.ftvs-lib__row .ftvs__meta {
+	margin: 0;
+}
+
+.ftvs-lib__more {
+	margin-top: 18px;
+}
+
+@media (max-width: 600px) {
+	.ftvs-lib__row {
+		grid-template-columns: 132px minmax(0, 1fr);
+		gap: 12px;
+		padding: 6px 0;
+	}
+	.ftvs-lib__row .ftvs__name {
+		font-size: 15px;
+	}
+	.ftvs-lib__search .ftvs-btn {
+		padding: 0 16px;
+	}
+	.ftvs-end__up {
+		grid-template-columns: 1fr;
+		gap: 12px;
+		text-align: center;
+	}
+	.ftvs-end__up img {
+		display: none;
+	}
+	.ftvs-end__btns {
+		justify-content: center;
+	}
+	.ftvs-dialog__share .ftvs-dialog__btn-text {
+		display: none;
+	}
+	.ftvs-dialog__share {
+		width: 42px;
+		padding: 0;
+		justify-content: center;
+	}
+}
+
+/* ---------- Styles: Soft and Minimal ---------- */
+
+.ftvs--style-soft,
+.ftvs--style-minimal,
+.ftvs-dialog.ftvs--style-soft,
+.ftvs-dialog.ftvs--style-minimal {
+	--ftvs-radius: 12px;
+}
+
+.ftvs--style-minimal,
+.ftvs-dialog.ftvs--style-minimal {
+	--ftvs-radius: 6px;
+}
+
+.ftvs--style-soft *,
+.ftvs--style-minimal * {
+	text-transform: none !important;
+}
+
+.ftvs--style-soft .ftvs-kicker,
+.ftvs--style-minimal .ftvs-kicker,
+.ftvs--style-soft .ftvs-next__title,
+.ftvs--style-minimal .ftvs-next__title,
+.ftvs--style-soft .ftvs-lib__series,
+.ftvs--style-minimal .ftvs-lib__series {
+	letter-spacing: 0.04em;
+}
+
+.ftvs--style-soft .ftvs__thumb,
+.ftvs--style-soft .ftvs-btn,
+.ftvs--style-soft .ftvs-show__art,
+.ftvs--style-soft .ftvs-show__art img,
+.ftvs--style-soft .ftvs__arrow,
+.ftvs--style-soft .ftvs-pause,
+.ftvs--style-soft .ftvs-live__stage,
+.ftvs--style-soft .ftvs-lib__search input,
+.ftvs--style-soft .ftvs-lib__row,
+.ftvs--style-soft .ftvs-remind,
+.ftvs--style-minimal .ftvs__thumb,
+.ftvs--style-minimal .ftvs-btn,
+.ftvs--style-minimal .ftvs-show__art,
+.ftvs--style-minimal .ftvs-show__art img,
+.ftvs--style-minimal .ftvs__arrow,
+.ftvs--style-minimal .ftvs-pause,
+.ftvs--style-minimal .ftvs-live__stage,
+.ftvs--style-minimal .ftvs-lib__search input,
+.ftvs--style-minimal .ftvs-lib__row,
+.ftvs--style-minimal .ftvs-remind,
+.ftvs-dialog.ftvs--style-soft,
+.ftvs-dialog.ftvs--style-minimal,
+.ftvs-dialog.ftvs--style-soft .ftvs-btn,
+.ftvs-dialog.ftvs--style-minimal .ftvs-btn,
+.ftvs-dialog.ftvs--style-soft .ftvs-dialog__ep-thumb,
+.ftvs-dialog.ftvs--style-minimal .ftvs-dialog__ep-thumb {
+	border-radius: var(--ftvs-radius);
+}
+
+.ftvs--style-soft .ftvs-badge,
+.ftvs--style-minimal .ftvs-badge {
+	border-radius: 999px;
+}
+
+.ftvs-dialog.ftvs--style-soft *,
+.ftvs-dialog.ftvs--style-minimal * {
+	text-transform: none !important;
+}
+
+.ftvs-dialog.ftvs--style-soft .ftvs-dialog__player,
+.ftvs-dialog.ftvs--style-minimal .ftvs-dialog__player {
+	border-radius: var(--ftvs-radius) var(--ftvs-radius) 0 0;
+	overflow: hidden;
+}
+
+.ftvs--style-minimal .ftvs__title,
+.ftvs--style-minimal .ftvs-feature__title,
+.ftvs--style-minimal .ftvs__name,
+.ftvs-dialog.ftvs--style-minimal .ftvs-dialog__title,
+.ftvs-dialog.ftvs--style-minimal .ftvs-dialog__ep-title {
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+.ftvs--style-minimal .ftvs-btn {
+	box-shadow: none;
+	font-weight: 700;
+}
+
+.ftvs--style-minimal .ftvs-show::before {
+	display: none;
+}
+
+/* ---------- High contrast ---------- */
+
+@media (forced-colors: active) {
+	.ftvs-btn,
+	.ftvs-badge,
+	.ftvs-pause,
+	.ftvs__arrow,
+	.ftvs-dialog__btn,
+	.ftvs__play,
+	.ftvs-live__badge,
+	.ftvs-livebar {
+		border: 1px solid ButtonText;
+	}
+	.ftvs__card:focus-visible,
+	.ftvs-dialog__ep[aria-current="true"] {
+		outline: 2px solid Highlight;
+	}
+}
+
+@media (prefers-contrast: more) {
+	.ftvs {
+		--ftvs-muted: var(--ftvs-text);
+	}
+	.ftvs-dialog__desc,
+	.ftvs-dialog__ep-meta,
+	.ftvs-dialog__meta {
+		color: #fff;
+	}
+}
+
+
 /* ---------- Motion ---------- */
 
 @keyframes ftvs-fill {
@@ -1632,7 +2655,9 @@ html.ftvs-lock {
 	.ftvs-dialog,
 	.ftvs-dialog *,
 	.ftvs-dialog *::before,
-	.ftvs-dialog *::after {
+	.ftvs-dialog *::after,
+	.ftvs-livebar *,
+	.ftvs-toast {
 		animation: none !important;
 		transition: none !important;
 	}

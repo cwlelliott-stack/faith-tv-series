@@ -1287,3 +1287,163 @@
 .ftvs-admin .ftvs-text-color .ftvs-input {
 	max-width: 130px;
 }
+
+/* ---------- 1.3 additions ---------- */
+
+.ftvs-gap {
+	margin-top: 20px;
+}
+
+.ftvs-grid2 {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 14px 20px;
+	margin: 14px 0;
+}
+
+.ftvs-grid2 label {
+	display: grid;
+	gap: 6px;
+	font-weight: 600;
+	font-size: 13px;
+}
+
+.ftvs-grid2 .ftvs-code {
+	max-width: none;
+}
+
+.ftvs-choices.ftvs-choices--3 {
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.ftvs-alt {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px 24px;
+	margin-top: 16px;
+	padding: 14px 18px;
+	background: #f6f7f7;
+	box-shadow: 0 0 0 1px var(--fs-line);
+}
+
+.ftvs-alt > div {
+	display: grid;
+	gap: 2px;
+	max-width: 640px;
+}
+
+.ftvs-alt--strong {
+	margin: 18px 0;
+	background: #fdf2f5;
+	box-shadow: 0 0 0 1px #f3c6d2;
+}
+
+.ftvs-count.is-alert {
+	background: var(--fs-crimson);
+	color: #fff;
+}
+
+.ftvs-bad {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.ftvs-row__art--auto {
+	display: grid;
+	place-items: center;
+	background: linear-gradient(135deg, var(--fs-crimson), #084073);
+}
+
+.ftvs-facts--cards {
+	margin: 0;
+}
+
+.ftvs-facts--cards > div {
+	background: #fff;
+	box-shadow: 0 0 0 1px var(--fs-line);
+	padding: 16px 18px;
+}
+
+.ftvs-facts--cards > div.is-bad {
+	box-shadow: 0 0 0 1px #e6a4a5, inset 4px 0 0 #b32d2e;
+}
+
+.ftvs-facts--cards > div.is-bad strong {
+	color: #b32d2e;
+}
+
+.ftvs-used td,
+.ftvs-used th {
+	vertical-align: top;
+}
+
+.ftvs-small-link {
+	font-size: 12px;
+}
+
+.ftvs-look__preview {
+	min-width: 0;
+}
+
+.ftvs-look__stage {
+	transition: max-width 0.25s ease;
+}
+
+.ftvs-look__stage iframe {
+	display: block;
+	width: 100%;
+	border: 0;
+	background: #222;
+}
+
+.ftvs-look__stage.is-phone {
+	max-width: 390px;
+	margin: 0 auto;
+	box-shadow: 0 0 0 10px #111, 0 12px 40px rgba(0, 0, 0, 0.25);
+	border-radius: 4px;
+}
+
+.ftvs-admin .ftvs-input--small {
+	max-width: 220px;
+	min-height: 32px;
+	font-size: 13px;
+}
+
+.ftvs-hint.is-note {
+	color: #1d2327;
+	font-weight: 600;
+}
+
+.ftvs-hint--switch {
+	margin: -4px 0 12px 52px;
+}
+
+.ftvs-swatch-dot {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	vertical-align: -3px;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.ftvs-steps-table {
+	width: 100%;
+	max-width: 680px;
+	margin-bottom: 8px;
+}
+
+.ftvs-admin .ftvs-steps-table .ftvs-input {
+	max-width: none;
+}
+
+.ftvs-powered a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.ftvs-powered a:hover {
+	text-decoration: underline;
+}

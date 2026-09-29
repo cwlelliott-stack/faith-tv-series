@@ -4,9 +4,11 @@
  *
  *   https://yourchurch.com/?ftvs_embed=<category>&ftvs_layout=row&ftvs_theme=dark&...&ftvs_sig=...
  *
- * The companion assets/embed.js (loaded by the host page) lets the frame grow to fit,
- * including while the player is open. Links are signed by the admin's embed builder, so a
- * heading or text on the church's own address can't be made up by someone else.
+ * Kinds: a category (any layout), one video, Sunday live, or the sermon library. The companion
+ * assets/embed.js (loaded by the host page) lets the frame grow to fit, including while the
+ * player is open. Every option is signed by the admin's embed builder: an address someone edits
+ * by hand shows only the category with the default look, so nobody can put made-up words on
+ * the church's address or make endless variations of the page.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -15,8 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class FTVS_Embed {
 
-	/** Options an embed can carry, in the order they appear in the address. */
-	const OPTIONS = array( 'layout', 'theme', 'bg', 'title', 'eyebrow', 'limit', 'open' );
+	/** Options an embed can carry. */
+	const OPTIONS = array( 'kind', 'video', 'layout', 'theme', 'bg', 'title', 'eyebrow', 'limit', 'open', 'preview' );
+	// Look & feel settings the admin's preview tries before saving (signed, admin-made only).
+	const LOOK = array( 'accent', 'layout', 'mobile_layout', 'theme', 'style', 'font', 'label', 'badge', 'powered_by' );
 
 	public static function init() {
 		// Late on init: our scripts are registered, and WordPress's main query never runs.
@@ -30,14 +34,17 @@ class FTVS_Embed {
 			$keys[] = $part . '_size';
 			$keys[] = $part . '_color';
 		}
+		foreach ( self::LOOK as $key ) {
+			$keys[] = 'look_' . $key;
+		}
 		return $keys;
 	}
 
 	/** Web address of an embed with these options, signed. */
 	public static function url( $args ) {
-		$query = array( 'ftvs_embed' => (string) $args['category'] );
+		$query = array( 'ftvs_embed' => isset( $args['category'] ) ? (string) $args['category'] : '' );
 		foreach ( self::option_keys() as $key ) {
-			if ( isset( $args[ $key ] ) && '' !== trim( (string) $args[ $key ] ) && ! ( 'limit' === $key && ! absint( $args[ $key ] ) ) ) {
+			if ( isset( $args[ $key ] ) && '' !== trim( (string) $args[ $key ] ) && ! ( 'limit' === $key && ! absint( $args[ $key ] ) ) && ! ( 'kind' === $key && 'category' === $args[ $key ] ) ) {
 				$query[ 'ftvs_' . $key ] = trim( (string) $args[ $key ] );
 			}
 		}
@@ -48,7 +55,9 @@ class FTVS_Embed {
 	/** The code to paste on another website. */
 	public static function code( $args ) {
 		$title = '' !== trim( (string) ( isset( $args['title'] ) ? $args['title'] : '' ) ) ? $args['title'] : __( 'Videos', 'faith-tv-series' );
-		return '<iframe src="' . esc_url( self::url( $args ) ) . '" title="' . esc_attr( $title ) . '" data-ftvs-embed loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="width:100%;height:' . (int) self::start_height( isset( $args['layout'] ) ? $args['layout'] : '' ) . 'px;border:0;display:block"></iframe>' . "\n"
+		$kind  = isset( $args['kind'] ) ? $args['kind'] : 'category';
+		$start = in_array( $kind, array( 'video', 'live', 'library' ), true ) ? $kind : ( isset( $args['layout'] ) ? $args['layout'] : '' );
+		return '<iframe src="' . esc_url( self::url( $args ) ) . '" title="' . esc_attr( $title ) . '" data-ftvs-embed loading="lazy" allow="autoplay; fullscreen; picture-in-picture; web-share" allowfullscreen style="width:100%;height:' . (int) self::start_height( $start ) . 'px;border:0;display:block"></iframe>' . "\n"
 			. '<script src="' . esc_url( FTVS_URL . 'assets/embed.js' ) . '" async></script>';
 	}
 
@@ -60,6 +69,9 @@ class FTVS_Embed {
 			'list'      => 900,
 			'row'       => 380,
 			'grid'      => 720,
+			'video'     => 520,
+			'live'      => 520,
+			'library'   => 900,
 		);
 		return isset( $heights[ $layout ] ) ? $heights[ $layout ] : 700;
 	}
@@ -72,9 +84,16 @@ class FTVS_Embed {
 		check_ajax_referer( 'ftvs_embed_code' );
 		$post = wp_unslash( $_POST );
 		$args = array( 'category' => isset( $post['category'] ) ? sanitize_text_field( $post['category'] ) : '' );
-		foreach ( self::option_keys() as $key ) {
-			if ( isset( $post[ $key ] ) ) {
+		foreach ( self::OPTIONS as $key ) {
+			if ( isset( $post[ $key ] ) && 'preview' !== $key ) {
 				$args[ $key ] = sanitize_text_field( $post[ $key ] );
+			}
+		}
+		foreach ( FTVS_Settings::TEXT_PARTS as $part ) {
+			foreach ( array( '_size', '_color' ) as $what ) {
+				if ( isset( $post[ $part . $what ] ) ) {
+					$args[ $part . $what ] = sanitize_text_field( $post[ $part . $what ] );
+				}
 			}
 		}
 		wp_send_json_success(
@@ -98,13 +117,22 @@ class FTVS_Embed {
 			}
 		}
 		// phpcs:enable
-		$signed = isset( $get['ftvs_sig'] ) && hash_equals( self::sign( $query ), (string) $get['ftvs_sig'] );
-		$value  = function ( $key, $default = '' ) use ( $query ) {
+		$sig    = isset( $get['ftvs_sig'] ) ? (string) $get['ftvs_sig'] : '';
+		$signed = '' !== $sig && ( hash_equals( self::sign( $query ), $sig ) || hash_equals( self::sign( $query, true ), $sig ) );
+		if ( ! $signed ) {
+			// Hand-made or edited address: the category with the default look, nothing else.
+			$query = array( 'ftvs_embed' => $query['ftvs_embed'] );
+		}
+		$value = function ( $key, $default = '' ) use ( $query ) {
 			return isset( $query[ 'ftvs_' . $key ] ) ? $query[ 'ftvs_' . $key ] : $default;
 		};
+		if ( $signed && '1' === $value( 'preview' ) ) {
+			self::preview_look( $query );
+		}
 
 		$category = $query['ftvs_embed'];
-		$theme    = 'light' === $value( 'theme' ) ? 'light' : 'dark';
+		$kind     = in_array( $value( 'kind' ), array( 'video', 'live', 'library' ), true ) ? $value( 'kind' ) : 'category';
+		$theme    = in_array( $value( 'theme' ), array( 'light', 'dark' ), true ) ? $value( 'theme' ) : FTVS_Settings::get( 'theme' );
 		$clear    = 'clear' === $value( 'bg' );
 		$atts     = array(
 			'category' => $category,
@@ -112,9 +140,8 @@ class FTVS_Embed {
 			'theme'    => $theme,
 			'limit'    => absint( $value( 'limit', '0' ) ),
 			'play'     => 'channel' === $value( 'open' ) ? 'faithtv' : 'site',
-			// Words shown on the church's address only when the link came from its own builder.
-			'title'    => $signed ? $value( 'title' ) : '',
-			'eyebrow'  => $signed ? $value( 'eyebrow' ) : '',
+			'title'    => $value( 'title' ),
+			'eyebrow'  => $value( 'eyebrow' ),
 		);
 		foreach ( FTVS_Settings::TEXT_PARTS as $part ) {
 			$atts[ $part . '_size' ]  = $value( $part . '_size' );
@@ -122,7 +149,13 @@ class FTVS_Embed {
 		}
 
 		$html = '';
-		if ( FTVS_Catalog::is_known( 'gideo' === FTVS_Catalog::source() ? strtolower( $category ) : $category ) ) {
+		if ( 'live' === $kind ) {
+			$html = FTVS_Renderer::live( array( 'title' => $atts['title'], 'eyebrow' => $atts['eyebrow'], 'theme' => $theme ) );
+		} elseif ( 'video' === $kind && '' !== $value( 'video' ) ) {
+			$html = FTVS_Renderer::render( array_merge( $atts, array( 'video' => $value( 'video' ), 'category' => '' ) ) );
+		} elseif ( 'library' === $kind ) {
+			$html = FTVS_Renderer::library( array( 'category' => '@' === substr( $category, 0, 1 ) ? '' : $category, 'title' => $atts['title'], 'eyebrow' => $atts['eyebrow'], 'theme' => $theme ) );
+		} elseif ( '@' === substr( $category, 0, 1 ) || FTVS_Catalog::is_known( 'gideo' === FTVS_Catalog::source() ? strtolower( $category ) : $category ) ) {
 			$html = FTVS_Renderer::render( $atts );
 		}
 		if ( '' === $html || false !== strpos( $html, 'ftvs-notice' ) || 0 === strpos( $html, '<!--' ) ) {
@@ -134,7 +167,7 @@ class FTVS_Embed {
 		header_remove( 'X-Frame-Options' );
 		header( 'Content-Type: text/html; charset=' . get_bloginfo( 'charset' ) );
 		header( 'Content-Security-Policy: frame-ancestors *' );
-		header( 'Cache-Control: public, max-age=300' );
+		header( 'Cache-Control: ' . ( $signed && '1' !== $value( 'preview' ) ? 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' : 'public, max-age=120' ) );
 		header( 'X-Robots-Tag: noindex' );
 
 		$bg   = $clear ? 'transparent' : ( 'light' === $theme ? '#ffffff' : '#222222' );
@@ -148,12 +181,11 @@ class FTVS_Embed {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title><?php echo esc_html( get_bloginfo( 'name' ) ); ?></title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;800&display=swap">
 		<?php wp_print_styles( array( 'faith-tv-series' ) ); ?>
 <style>
 html,body{margin:0;background:<?php echo esc_attr( $bg ); ?>;color:<?php echo esc_attr( $text ); ?>}
 body{padding:16px;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
-.ftvs,.ftvs-dialog{--ftvs-font:Roboto,"Helvetica Neue",Arial,sans-serif}
+		<?php echo FTVS_Renderer::site_css(); // phpcs:ignore WordPress.Security.EscapeOutput -- built from sanitized settings. ?>
 </style>
 </head>
 <body class="ftvs-embed">
@@ -165,10 +197,46 @@ body{padding:16px;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Robo
 		exit;
 	}
 
-	/** Short signature over the embed's options, keyed with this site's secret salt. */
-	private static function sign( $query ) {
+	/** Look & feel preview: the settings being tried stand in for the saved ones on this page only. */
+	private static function preview_look( $query ) {
+		$look = array();
+		foreach ( self::LOOK as $key ) {
+			if ( isset( $query[ 'ftvs_look_' . $key ] ) ) {
+				$look[ $key ] = $query[ 'ftvs_look_' . $key ];
+			}
+		}
+		$text = array();
+		foreach ( FTVS_Settings::TEXT_PARTS as $part ) {
+			$text[ $part ] = array(
+				'size'  => isset( $query[ 'ftvs_' . $part . '_size' ] ) ? $query[ 'ftvs_' . $part . '_size' ] : '',
+				'color' => isset( $query[ 'ftvs_' . $part . '_color' ] ) ? $query[ 'ftvs_' . $part . '_color' ] : '',
+			);
+		}
+		$look['text'] = $text;
+		// Through sanitize, like a save would (before the filter, which sanitize itself would hit).
+		$clean = array_intersect_key( FTVS_Settings::sanitize( $look ), $look );
+		add_filter(
+			'option_' . FTVS_Settings::OPTION,
+			function ( $saved ) use ( $clean ) {
+				return array_merge( is_array( $saved ) ? $saved : array(), $clean );
+			}
+		);
+	}
+
+	/** This site's own secret for signing embed addresses (kept apart from WordPress's login salts). */
+	private static function secret() {
+		$secret = (string) get_option( 'ftvs_embed_secret', '' );
+		if ( '' === $secret ) {
+			$secret = wp_generate_password( 64, true, true );
+			update_option( 'ftvs_embed_secret', $secret, true );
+		}
+		return $secret;
+	}
+
+	/** Short signature over the embed's options. $legacy checks addresses made by 1.2 (keyed with the auth salt). */
+	private static function sign( $query, $legacy = false ) {
 		unset( $query['ftvs_sig'] );
 		ksort( $query );
-		return substr( hash_hmac( 'sha256', http_build_query( $query ), wp_salt( 'auth' ) ), 0, 20 );
+		return substr( hash_hmac( 'sha256', http_build_query( $query ), $legacy ? wp_salt( 'auth' ) : self::secret() ), 0, 20 );
 	}
 }

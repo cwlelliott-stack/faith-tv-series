@@ -1,11 +1,19 @@
 <?php
 /**
- * Updates from GitHub releases, through WordPress's normal "Update available" flow.
+ * Updates through WordPress's normal "Update available" flow, from signed releases.
  *
- * The plugin header's "Update URI" points at github.com, so WordPress skips
- * wordpress.org for this plugin and asks us (update_plugins_github.com) instead.
- * A release is a tag like v1.2.0 with faith-tv-series.zip attached (release.py makes both).
- * If the repository is private, a read-only GitHub token saved in the settings is used.
+ * The plugin header's "Update URI" points at github.com, so WordPress skips wordpress.org
+ * for this plugin and asks us (update_plugins_github.com) instead. Each release (release.py)
+ * attaches faith-tv-series.zip and latest.json:
+ *
+ *   { "payload": "<JSON: version, package, sha256, requires, requires_php, tested, notes, published, rollout>",
+ *     "sig": "<Ed25519 signature of payload, base64>" }
+ *
+ * The signature is checked against the public key below and the zip against its SHA-256
+ * before anything installs, so a tampered release or a compromised account can't push code
+ * to churches. "rollout" (0-100) lets a release reach some sites first; 0 holds it back.
+ * latest.json is fetched from the release download address, which isn't rate-limited like
+ * GitHub's API (shared hosts with many sites used to hit that limit).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,6 +26,8 @@ class FTVS_Updater {
 	const ASSET = 'faith-tv-series.zip';
 	const CACHE = 'ftvs_update_release';
 	const SLUG  = 'faith-tv-series';
+	// FaithStream's release signing key (the private half never leaves the release computer).
+	const PUBLIC_KEY = 'CcbABBQtMxX8Z8nyYGEqke0ST9Saml3K/tQm1114KTA=';
 
 	public static function init() {
 		add_filter( 'update_plugins_github.com', array( __CLASS__, 'check' ), 10, 3 );
@@ -28,15 +38,15 @@ class FTVS_Updater {
 		add_action( 'admin_post_ftvs_check_updates', array( __CLASS__, 'check_now' ) );
 	}
 
-	/** GitHub API address for the repository. Filterable so a test server can stand in. */
-	public static function api() {
-		return untrailingslashit( apply_filters( 'ftvs_update_api', 'https://api.github.com/repos/' . self::REPO ) );
+	/** Where the signed manifest lives. Filterable so a test server can stand in. */
+	public static function manifest_url() {
+		return apply_filters( 'ftvs_update_manifest', 'https://github.com/' . self::REPO . '/releases/latest/download/latest.json' );
 	}
 
 	/**
-	 * Newest release on GitHub.
+	 * Newest signed release.
 	 *
-	 * @return array|WP_Error { version, package, notes, url, published }
+	 * @return array|WP_Error { version, package, sha256, notes, url, published, requires, requires_php, tested, held }
 	 */
 	public static function latest( $force = false ) {
 		if ( ! $force ) {
@@ -45,54 +55,80 @@ class FTVS_Updater {
 				return isset( $cached['error'] ) ? new WP_Error( 'ftvs_update', $cached['error'] ) : $cached;
 			}
 		}
-
 		$response = wp_remote_get(
-			self::api() . '/releases/latest',
+			self::manifest_url(),
 			array(
-				'timeout' => 10,
-				'headers' => self::headers( 'application/vnd.github+json' ),
+				'timeout'     => 10,
+				'redirection' => 5,
+				'headers'     => array( 'User-Agent' => 'FaithTVSeries/' . FTVS_VERSION ),
 			)
 		);
 		if ( is_wp_error( $response ) ) {
 			return self::fail( $response->get_error_message() );
 		}
 		$code = (int) wp_remote_retrieve_response_code( $response );
-		if ( 404 === $code ) {
-			return self::fail( '' === self::token()
-				? __( 'No release found. If the GitHub repository is private, save an access token below.', 'faith-tv-series' )
-				: __( 'No release found, or the access token cannot read this repository.', 'faith-tv-series' ) );
-		}
-		if ( 401 === $code || 403 === $code ) {
-			return self::fail( __( 'GitHub refused the request. Check the access token.', 'faith-tv-series' ) );
-		}
 		if ( 200 !== $code ) {
 			/* translators: %d: HTTP status code */
-			return self::fail( sprintf( __( 'GitHub answered with status %d.', 'faith-tv-series' ), $code ) );
+			return self::fail( 404 === $code ? __( 'No signed release found yet.', 'faith-tv-series' ) : sprintf( __( 'The update server answered with status %d.', 'faith-tv-series' ), $code ) );
 		}
-
-		$release = json_decode( wp_remote_retrieve_body( $response ), true );
-		$version = ltrim( isset( $release['tag_name'] ) ? (string) $release['tag_name'] : '', 'vV' );
-		$asset   = null;
-		foreach ( isset( $release['assets'] ) ? (array) $release['assets'] : array() as $candidate ) {
-			if ( isset( $candidate['name'] ) && self::ASSET === $candidate['name'] ) {
-				$asset = $candidate;
-				break;
-			}
+		$data = self::verify( wp_remote_retrieve_body( $response ) );
+		if ( is_wp_error( $data ) ) {
+			return self::fail( $data->get_error_message() );
 		}
-		if ( ! preg_match( '/^\d+(\.\d+){0,3}$/', $version ) || ! $asset ) {
-			return self::fail( __( 'The newest GitHub release is missing faith-tv-series.zip or a version tag like v1.2.0.', 'faith-tv-series' ) );
-		}
-
-		$data = array(
-			'version'   => $version,
-			// A private repository only serves the file through the API, with the token.
-			'package'   => '' !== self::token() ? $asset['url'] : $asset['browser_download_url'],
-			'notes'     => isset( $release['body'] ) ? (string) $release['body'] : '',
-			'url'       => isset( $release['html_url'] ) ? (string) $release['html_url'] : 'https://github.com/' . self::REPO,
-			'published' => isset( $release['published_at'] ) ? (string) $release['published_at'] : '',
-		);
 		set_site_transient( self::CACHE, $data, 6 * HOUR_IN_SECONDS );
 		return $data;
+	}
+
+	/**
+	 * Checks the signature and reads the release.
+	 *
+	 * @return array|WP_Error
+	 */
+	public static function verify( $body ) {
+		$outer = json_decode( (string) $body, true );
+		if ( ! is_array( $outer ) || empty( $outer['payload'] ) || empty( $outer['sig'] ) || ! is_string( $outer['payload'] ) ) {
+			return new WP_Error( 'ftvs_update', __( 'The update information could not be read.', 'faith-tv-series' ) );
+		}
+		$sig = base64_decode( (string) $outer['sig'], true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
+		$key = base64_decode( self::public_key(), true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
+		if ( ! function_exists( 'sodium_crypto_sign_verify_detached' ) || false === $sig || false === $key ) {
+			return new WP_Error( 'ftvs_update', __( 'This server cannot check update signatures.', 'faith-tv-series' ) );
+		}
+		try {
+			$ok = sodium_crypto_sign_verify_detached( $sig, $outer['payload'], $key );
+		} catch ( \Throwable $e ) {
+			$ok = false;
+		}
+		if ( ! $ok ) {
+			return new WP_Error( 'ftvs_update', __( 'The update\'s signature did not match. It was not offered.', 'faith-tv-series' ) );
+		}
+		$m = json_decode( $outer['payload'], true );
+		if ( ! is_array( $m ) || empty( $m['version'] ) || ! preg_match( '/^\d+(\.\d+){0,3}$/', (string) $m['version'] ) || empty( $m['package'] ) || empty( $m['sha256'] ) || 0 !== strpos( (string) $m['package'], 'https://' ) ) {
+			return new WP_Error( 'ftvs_update', __( 'The update information is incomplete.', 'faith-tv-series' ) );
+		}
+		$rollout = isset( $m['rollout'] ) ? max( 0, min( 100, (int) $m['rollout'] ) ) : 100;
+		return array(
+			'version'      => (string) $m['version'],
+			'package'      => (string) $m['package'],
+			'sha256'       => strtolower( (string) $m['sha256'] ),
+			'notes'        => isset( $m['notes'] ) ? (string) $m['notes'] : '',
+			'url'          => 'https://github.com/' . self::REPO . '/releases/tag/v' . $m['version'],
+			'published'    => isset( $m['published'] ) ? (string) $m['published'] : '',
+			'requires'     => isset( $m['requires'] ) ? (string) $m['requires'] : '6.0',
+			'requires_php' => isset( $m['requires_php'] ) ? (string) $m['requires_php'] : '7.4',
+			'tested'       => isset( $m['tested'] ) ? (string) $m['tested'] : get_bloginfo( 'version' ),
+			// This site's place in a staged rollout (the same site always gets the same number).
+			'held'         => self::bucket() >= $rollout,
+		);
+	}
+
+	private static function public_key() {
+		return (string) apply_filters( 'ftvs_update_public_key', self::PUBLIC_KEY );
+	}
+
+	/** 0-99, fixed per site. */
+	private static function bucket() {
+		return (int) ( sprintf( '%u', crc32( home_url() ) ) % 100 );
 	}
 
 	/** WordPress asks this during its update check (update_plugins_github.com). */
@@ -101,7 +137,7 @@ class FTVS_Updater {
 			return $update;
 		}
 		$release = self::latest();
-		if ( is_wp_error( $release ) ) {
+		if ( is_wp_error( $release ) || $release['held'] ) {
 			return $update;
 		}
 		return array(
@@ -109,9 +145,9 @@ class FTVS_Updater {
 			'version'      => $release['version'],
 			'url'          => 'https://github.com/' . self::REPO,
 			'package'      => $release['package'],
-			'requires'     => '6.0',
-			'requires_php' => '7.4',
-			'tested'       => get_bloginfo( 'version' ),
+			'requires'     => $release['requires'],
+			'requires_php' => $release['requires_php'],
+			'tested'       => $release['tested'],
 		);
 	}
 
@@ -122,60 +158,46 @@ class FTVS_Updater {
 		}
 		$release = self::latest();
 		$notes   = is_wp_error( $release ) ? $release->get_error_message() : ( '' !== trim( $release['notes'] ) ? $release['notes'] : __( 'No notes for this release.', 'faith-tv-series' ) );
+		$brand   = FTVS_Admin::brand();
 		return (object) array(
 			'name'          => 'Faith TV Series',
 			'slug'          => self::SLUG,
 			'version'       => is_wp_error( $release ) ? FTVS_VERSION : $release['version'],
-			'author'        => 'Faith Tabernacle',
-			'homepage'      => 'https://github.com/' . self::REPO,
-			'requires'      => '6.0',
-			'requires_php'  => '7.4',
-			'tested'        => get_bloginfo( 'version' ),
+			'author'        => '' !== $brand['name'] ? $brand['name'] : 'FaithStream',
+			'homepage'      => $brand['url'],
+			'requires'      => is_wp_error( $release ) ? '6.0' : $release['requires'],
+			'requires_php'  => is_wp_error( $release ) ? '7.4' : $release['requires_php'],
+			'tested'        => is_wp_error( $release ) ? get_bloginfo( 'version' ) : $release['tested'],
 			'last_updated'  => is_wp_error( $release ) ? '' : $release['published'],
 			'download_link' => is_wp_error( $release ) ? '' : $release['package'],
 			'sections'      => array(
-				'description' => esc_html__( 'Shows a Faith TV (Gideo) category, like the Mini Series, live on the church website, with an on-page player.', 'faith-tv-series' ),
+				'description' => esc_html__( 'Puts your church\'s videos live on your website: series, Sunday live, a searchable sermon library and a page for every message.', 'faith-tv-series' ),
 				'changelog'   => '<pre style="white-space:pre-wrap">' . esc_html( $notes ) . '</pre>',
 			),
 		);
 	}
 
-	/**
-	 * Private repositories: fetch the release file with the token ourselves. GitHub answers
-	 * with a redirect to a signed download address, which must be fetched without the token.
-	 */
+	/** Downloads our release ourselves and refuses it unless its SHA-256 matches the signed manifest. */
 	public static function download( $reply, $package, $upgrader ) {
-		if ( false !== $reply || ! is_string( $package ) || 0 !== strpos( $package, self::api() . '/releases/assets/' ) ) {
+		if ( false !== $reply || ! is_string( $package ) ) {
 			return $reply;
+		}
+		$release = self::latest();
+		if ( is_wp_error( $release ) || $package !== $release['package'] ) {
+			return $reply; // not ours
 		}
 		if ( ! function_exists( 'download_url' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
-		$response = wp_remote_get(
-			$package,
-			array(
-				'timeout'     => 60,
-				'redirection' => 0,
-				'headers'     => self::headers( 'application/octet-stream' ),
-			)
-		);
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-		$code = (int) wp_remote_retrieve_response_code( $response );
-		if ( $code >= 300 && $code < 400 ) {
-			$location = wp_remote_retrieve_header( $response, 'location' );
-			return $location ? download_url( $location, 300 ) : new WP_Error( 'ftvs_update', __( 'GitHub did not say where the file is.', 'faith-tv-series' ) );
-		}
-		if ( 200 === $code ) {
-			$file = wp_tempnam( self::ASSET );
-			if ( ! $file || false === file_put_contents( $file, wp_remote_retrieve_body( $response ) ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions
-				return new WP_Error( 'ftvs_update', __( 'Could not save the update file.', 'faith-tv-series' ) );
-			}
+		$file = download_url( $package, 300 );
+		if ( is_wp_error( $file ) ) {
 			return $file;
 		}
-		/* translators: %d: HTTP status code */
-		return new WP_Error( 'ftvs_update', sprintf( __( 'GitHub answered with status %d when downloading the update.', 'faith-tv-series' ), $code ) );
+		if ( ! hash_equals( $release['sha256'], (string) hash_file( 'sha256', $file ) ) ) {
+			wp_delete_file( $file );
+			return new WP_Error( 'ftvs_update', __( 'The downloaded update did not match its signature, so it was not installed.', 'faith-tv-series' ) );
+		}
+		return $file;
 	}
 
 	/** After any update, look again next time instead of trusting the cached answer. */
@@ -206,23 +228,7 @@ class FTVS_Updater {
 		exit;
 	}
 
-	private static function token() {
-		return (string) FTVS_Settings::get( 'update_token' );
-	}
-
-	private static function headers( $accept ) {
-		$headers = array(
-			'Accept'               => $accept,
-			'User-Agent'           => 'FaithTVSeries/' . FTVS_VERSION,
-			'X-GitHub-Api-Version' => '2022-11-28',
-		);
-		if ( '' !== self::token() ) {
-			$headers['Authorization'] = 'Bearer ' . self::token();
-		}
-		return $headers;
-	}
-
-	/** Remember a failed check for an hour so pages don't keep asking GitHub. */
+	/** Remember a failed check for an hour so pages don't keep asking. */
 	private static function fail( $message ) {
 		set_site_transient( self::CACHE, array( 'error' => $message ), HOUR_IN_SECONDS );
 		return new WP_Error( 'ftvs_update', $message );

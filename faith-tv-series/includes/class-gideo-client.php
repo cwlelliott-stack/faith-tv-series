@@ -27,42 +27,80 @@ class FTVS_Gideo_Client {
 
 	public static function get_children( $category_id = '' ) {
 		$ttl = 60 * (int) FTVS_Settings::get( 'cache_minutes' );
-		return FTVS_Cache::remember(
-			'c_' . $category_id,
-			$ttl,
-			function () use ( $category_id ) {
-				return FTVS_Gideo_Client::fetch_children( FTVS_Gideo_Client::account(), $category_id );
+		return FTVS_Cache::remember( 'c_' . $category_id, $ttl, array( __CLASS__, 'fetch_category', array( $category_id ) ) );
+	}
+
+	/** @internal */
+	public static function fetch_category( $category_id ) {
+		return self::fetch_children( self::account(), $category_id );
+	}
+
+	/** Home rows plus one level of children (one request per row that holds series). */
+	public static function fetch_tree() {
+		$home = self::get_children( '' );
+		if ( is_wp_error( $home ) ) {
+			return $home;
+		}
+		$tree = array();
+		foreach ( $home['categories'] as $row ) {
+			$row['children'] = array();
+			$row['style']    = '';
+			if ( $row['subcategories'] > 0 ) {
+				$inside = self::get_children( $row['id'] );
+				if ( is_wp_error( $inside ) ) {
+					// Don't keep a half list for hours; the last full one is served instead.
+					return $inside;
+				}
+				$row['children']      = $inside['categories'];
+				$row['subcategories'] = count( $inside['categories'] );
+				if ( '' === $row['image'] ) {
+					$row['image'] = $inside['categories'] ? $inside['categories'][0]['image'] : ( $inside['videos'] ? $inside['videos'][0]['image'] : '' );
+				}
 			}
+			$tree[] = $row;
+		}
+		return $tree;
+	}
+
+	/** Gideo only knows a video's stream address; its details come from its category listing. */
+	public static function get_video( $video_id ) {
+		$url = self::get_video_url( $video_id );
+		return is_wp_error( $url ) ? $url : array(
+			'id'       => $video_id,
+			'hls'      => $url,
+			'audio'    => '',
+			'captions' => false,
+			'related'  => array(),
+			'series'   => array(),
 		);
 	}
 
 	public static function get_video_url( $video_id ) {
-		return FTVS_Cache::remember(
-			'v_' . $video_id,
-			self::URL_TTL,
-			function () use ( $video_id ) {
-				$body = FTVS_Gideo_Client::request(
-					array(
-						'cmd'       => 'getVideoUrls',
-						'accountId' => FTVS_Gideo_Client::account(),
-						'videoId'   => $video_id,
-					)
-				);
-				if ( is_wp_error( $body ) ) {
-					return $body;
-				}
-				$data = json_decode( $body, true );
-				if ( ! empty( $data['urls'] ) && is_array( $data['urls'] ) ) {
-					foreach ( $data['urls'] as $entry ) {
-						$url = isset( $entry['url'] ) ? $entry['url'] : '';
-						if ( 'hls' === ( isset( $entry['streamFormat'] ) ? $entry['streamFormat'] : '' ) && 0 === strpos( $url, 'https://' ) ) {
-							return esc_url_raw( $url );
-						}
-					}
-				}
-				return new WP_Error( 'ftvs_no_stream', __( 'This video has no playable stream.', 'faith-tv-series' ) );
-			}
+		return FTVS_Cache::remember( 'v_' . $video_id, self::URL_TTL, array( __CLASS__, 'fetch_video_url', array( $video_id ) ) );
+	}
+
+	/** @internal */
+	public static function fetch_video_url( $video_id ) {
+		$body = self::request(
+			array(
+				'cmd'       => 'getVideoUrls',
+				'accountId' => self::account(),
+				'videoId'   => $video_id,
+			)
 		);
+		if ( is_wp_error( $body ) ) {
+			return $body;
+		}
+		$data = json_decode( $body, true );
+		if ( ! empty( $data['urls'] ) && is_array( $data['urls'] ) ) {
+			foreach ( $data['urls'] as $entry ) {
+				$url = isset( $entry['url'] ) ? $entry['url'] : '';
+				if ( 'hls' === ( isset( $entry['streamFormat'] ) ? $entry['streamFormat'] : '' ) && 0 === strpos( $url, 'https://' ) ) {
+					return esc_url_raw( $url );
+				}
+			}
+		}
+		return new WP_Error( 'ftvs_no_stream', __( 'This video has no playable stream.', 'faith-tv-series' ) );
 	}
 
 	/** '' when the church connected with an account id and no TV website. */
@@ -146,7 +184,7 @@ class FTVS_Gideo_Client {
 		$response = wp_remote_get(
 			add_query_arg( array_map( 'rawurlencode', $args ), self::API ),
 			array(
-				'timeout'    => 8,
+				'timeout'    => wp_doing_cron() ? 12 : 6,
 				'user-agent' => 'FaithTVSeries/' . FTVS_VERSION . '; ' . home_url( '/' ),
 			)
 		);
@@ -172,6 +210,9 @@ class FTVS_Gideo_Client {
 		}
 		if ( isset( $xml->error ) ) {
 			$message = trim( (string) $xml->error->message );
+			if ( preg_match( '/not\s*found|does\s*not\s*exist|no\s+such|invalid\s+category/i', $message ) ) {
+				return new WP_Error( 'ftvs_gone', __( 'That is no longer on your channel.', 'faith-tv-series' ) );
+			}
 			return new WP_Error( 'ftvs_upstream', '' !== $message ? $message : __( 'Gideo returned an error.', 'faith-tv-series' ) );
 		}
 
@@ -206,6 +247,9 @@ class FTVS_Gideo_Client {
 				'length'      => (int) $v->length,
 				'added'       => (string) $v->added,
 				'live'        => '1' === (string) $v->live,
+				'speaker'     => '',
+				'scripture'   => '',
+				'tags'        => array(),
 			);
 		}
 

@@ -67,6 +67,15 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 		);
 
 		$this->add_control(
+			'video',
+			array(
+				'label'       => __( 'Or show one video (its ID)', 'faith-tv-series' ),
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'description' => __( 'For a blog post or landing page: one message with a big play button.', 'faith-tv-series' ),
+			)
+		);
+
+		$this->add_control(
 			'layout',
 			array(
 				'label'   => __( 'Layout', 'faith-tv-series' ),
@@ -144,7 +153,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 			array(
 				'label'       => __( 'Small red line above the heading (optional)', 'faith-tv-series' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
-				'placeholder' => __( 'Everyday issues that challenge our faith', 'faith-tv-series' ),
+				'placeholder' => __( 'New every week', 'faith-tv-series' ),
 			)
 		);
 
@@ -153,7 +162,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 			array(
 				'label'       => __( 'Heading (optional)', 'faith-tv-series' ),
 				'type'        => \Elementor\Controls_Manager::TEXT,
-				'placeholder' => __( 'Faith Mini Series', 'faith-tv-series' ),
+				'placeholder' => __( 'Our series', 'faith-tv-series' ),
 			)
 		);
 
@@ -204,13 +213,46 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 				'label'   => __( 'Background', 'faith-tv-series' ),
 				'type'    => \Elementor\Controls_Manager::SELECT,
 				'options' => array(
-					'dark'  => __( 'Dark section (light text)', 'faith-tv-series' ),
-					'light' => __( 'Light section (dark text)', 'faith-tv-series' ),
+					'default' => __( 'Site default (Faith Stream > Look & feel)', 'faith-tv-series' ),
+					'dark'    => __( 'Dark section (light text)', 'faith-tv-series' ),
+					'light'   => __( 'Light section (dark text)', 'faith-tv-series' ),
 				),
 				'default' => 'dark',
 			)
 		);
 
+		$this->end_controls_section();
+
+		$this->start_controls_section(
+			'ftvs_schedule',
+			array( 'label' => __( 'Schedule (optional)', 'faith-tv-series' ) )
+		);
+		$this->add_control(
+			'from',
+			array(
+				'label'          => __( 'Show from', 'faith-tv-series' ),
+				'type'           => \Elementor\Controls_Manager::DATE_TIME,
+				'picker_options' => array( 'enableTime' => false ),
+				'description'    => __( 'Like a series until Easter: pick the dates, and what to show the rest of the time. Your site\'s time zone.', 'faith-tv-series' ),
+			)
+		);
+		$this->add_control(
+			'until',
+			array(
+				'label'          => __( 'Show until', 'faith-tv-series' ),
+				'type'           => \Elementor\Controls_Manager::DATE_TIME,
+				'picker_options' => array( 'enableTime' => false ),
+			)
+		);
+		$this->add_control(
+			'otherwise',
+			array(
+				'label'   => __( 'Other times, show', 'faith-tv-series' ),
+				'type'    => \Elementor\Controls_Manager::SELECT,
+				'options' => array( '' => __( 'Nothing', 'faith-tv-series' ) ) + array_diff_key( $this->category_options(), array( '' => 1, 'custom' => 1 ) ),
+				'default' => '',
+			)
+		);
 		$this->end_controls_section();
 
 		$this->start_controls_section(
@@ -278,13 +320,17 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 		echo FTVS_Renderer::render( // phpcs:ignore WordPress.Security.EscapeOutput -- the renderer escapes everything.
 			array(
 				'category'     => $category,
+				'video'         => isset( $s['video'] ) ? trim( (string) $s['video'] ) : '',
+				'from'          => isset( $s['from'] ) ? (string) $s['from'] : '',
+				'until'         => isset( $s['until'] ) ? (string) $s['until'] : '',
+				'otherwise'     => isset( $s['otherwise'] ) ? (string) $s['otherwise'] : '',
 				'layout'        => 'default' === $s['layout'] ? null : $s['layout'],
 				'mobile_layout' => isset( $s['mobile_layout'] ) && 'default' !== $s['mobile_layout'] ? $s['mobile_layout'] : null,
 				'play'         => $s['play'],
 				'limit'        => $s['limit'],
 				'title'        => $s['title'],
 				'descriptions' => $s['descriptions'],
-				'theme'        => $s['theme'],
+				'theme'        => 'default' === $s['theme'] ? null : $s['theme'],
 				'eyebrow'      => isset( $s['eyebrow'] ) ? $s['eyebrow'] : '',
 				'label'        => '' !== trim( (string) ( isset( $s['label'] ) ? $s['label'] : '' ) ) ? $s['label'] : null,
 				'badge'        => $this->badge( $s ),
@@ -307,8 +353,12 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 		return '' !== $text ? $text : null;
 	}
 
-	private function category_options() {
-		$options = array( '' => __( '- Pick a category -', 'faith-tv-series' ) );
+	public function category_options() {
+		$options = array(
+			''          => __( '- Pick a category -', 'faith-tv-series' ),
+			'@newest'   => __( 'Automatic: newest messages', 'faith-tv-series' ),
+			'@featured' => __( 'Automatic: what we feature on our channel', 'faith-tv-series' ),
+		);
 		// On live pages Elementor drops control options anyway; only the editor needs the list.
 		if ( class_exists( '\Elementor\Core\Frontend\Performance' ) && \Elementor\Core\Frontend\Performance::should_optimize_controls() ) {
 			return $options;
@@ -324,5 +374,185 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 		}
 		$options['custom'] = __( 'Other (paste an ID)', 'faith-tv-series' );
 		return $options;
+	}
+}
+
+/**
+ * Elementor widget "Sunday Live": countdown to the next service, the live stream, then the replay.
+ */
+class FTVS_Elementor_Live_Widget extends \Elementor\Widget_Base {
+
+	public function get_name() {
+		return 'faith_tv_live';
+	}
+
+	public function get_title() {
+		return __( 'Sunday Live', 'faith-tv-series' );
+	}
+
+	public function get_icon() {
+		return 'eicon-youtube';
+	}
+
+	public function get_categories() {
+		return array( 'general' );
+	}
+
+	public function get_keywords() {
+		return array( 'faith', 'live', 'stream', 'service', 'sunday', 'countdown' );
+	}
+
+	protected function is_dynamic_content(): bool {
+		return true;
+	}
+
+	public function get_style_depends() {
+		return array( 'faith-tv-series' );
+	}
+
+	public function get_script_depends() {
+		return array( 'faith-tv-series' );
+	}
+
+	protected function register_controls() {
+		$this->start_controls_section( 'faith_tv_live_content', array( 'label' => __( 'Sunday Live', 'faith-tv-series' ) ) );
+		$this->add_control(
+			'title',
+			array(
+				'label' => __( 'Heading (optional)', 'faith-tv-series' ),
+				'type'  => \Elementor\Controls_Manager::TEXT,
+			)
+		);
+		$this->add_control(
+			'eyebrow',
+			array(
+				'label' => __( 'Small line above the heading (optional)', 'faith-tv-series' ),
+				'type'  => \Elementor\Controls_Manager::TEXT,
+			)
+		);
+		$this->add_control(
+			'channel',
+			array(
+				'label'       => __( 'Channel (optional)', 'faith-tv-series' ),
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'description' => __( 'For a campus page: that campus\'s channel ID. Empty = whichever is live. Service times and a live link for other platforms are under Faith Stream > Church > Sunday live.', 'faith-tv-series' ),
+			)
+		);
+		$this->add_control(
+			'theme',
+			array(
+				'label'   => __( 'Background', 'faith-tv-series' ),
+				'type'    => \Elementor\Controls_Manager::SELECT,
+				'options' => array(
+					'default' => __( 'Site default', 'faith-tv-series' ),
+					'dark'    => __( 'Dark section (light text)', 'faith-tv-series' ),
+					'light'   => __( 'Light section (dark text)', 'faith-tv-series' ),
+				),
+				'default' => 'default',
+			)
+		);
+		$this->end_controls_section();
+	}
+
+	protected function render() {
+		$s = $this->get_settings_for_display();
+		echo FTVS_Renderer::live( // phpcs:ignore WordPress.Security.EscapeOutput -- the renderer escapes everything.
+			array(
+				'title'     => isset( $s['title'] ) ? $s['title'] : '',
+				'eyebrow'   => isset( $s['eyebrow'] ) ? $s['eyebrow'] : '',
+				'channel' => isset( $s['channel'] ) ? trim( (string) $s['channel'] ) : '',
+				'theme'     => isset( $s['theme'] ) && 'default' !== $s['theme'] ? $s['theme'] : null,
+			)
+		);
+	}
+}
+
+/**
+ * Elementor widget "Sermon Library": search and filters over every message.
+ */
+class FTVS_Elementor_Library_Widget extends \Elementor\Widget_Base {
+
+	public function get_name() {
+		return 'faith_tv_library';
+	}
+
+	public function get_title() {
+		return __( 'Sermon Library', 'faith-tv-series' );
+	}
+
+	public function get_icon() {
+		return 'eicon-search-results';
+	}
+
+	public function get_categories() {
+		return array( 'general' );
+	}
+
+	public function get_keywords() {
+		return array( 'faith', 'sermon', 'library', 'search', 'archive', 'messages' );
+	}
+
+	protected function is_dynamic_content(): bool {
+		return true;
+	}
+
+	public function get_style_depends() {
+		return array( 'faith-tv-series' );
+	}
+
+	public function get_script_depends() {
+		return array( 'faith-tv-series' );
+	}
+
+	protected function register_controls() {
+		$this->start_controls_section( 'faith_tv_library_content', array( 'label' => __( 'Sermon Library', 'faith-tv-series' ) ) );
+		$this->add_control(
+			'title',
+			array(
+				'label' => __( 'Heading (optional)', 'faith-tv-series' ),
+				'type'  => \Elementor\Controls_Manager::TEXT,
+			)
+		);
+		$this->add_control(
+			'eyebrow',
+			array(
+				'label' => __( 'Small line above the heading (optional)', 'faith-tv-series' ),
+				'type'  => \Elementor\Controls_Manager::TEXT,
+			)
+		);
+		$this->add_control(
+			'category',
+			array(
+				'label'       => __( 'Only messages in (optional)', 'faith-tv-series' ),
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'description' => __( 'A category ID from Faith Stream > Videos. Empty = every message.', 'faith-tv-series' ),
+			)
+		);
+		$this->add_control(
+			'theme',
+			array(
+				'label'   => __( 'Background', 'faith-tv-series' ),
+				'type'    => \Elementor\Controls_Manager::SELECT,
+				'options' => array(
+					'default' => __( 'Site default', 'faith-tv-series' ),
+					'dark'    => __( 'Dark section (light text)', 'faith-tv-series' ),
+					'light'   => __( 'Light section (dark text)', 'faith-tv-series' ),
+				),
+				'default' => 'default',
+			)
+		);
+		$this->end_controls_section();
+	}
+
+	protected function render() {
+		$s = $this->get_settings_for_display();
+		echo FTVS_Renderer::library( // phpcs:ignore WordPress.Security.EscapeOutput -- the renderer escapes everything.
+			array(
+				'title'     => isset( $s['title'] ) ? $s['title'] : '',
+				'eyebrow'   => isset( $s['eyebrow'] ) ? $s['eyebrow'] : '',
+				'category' => isset( $s['category'] ) ? trim( (string) $s['category'] ) : '',
+				'theme'     => isset( $s['theme'] ) && 'default' !== $s['theme'] ? $s['theme'] : null,
+			)
+		);
 	}
 }
