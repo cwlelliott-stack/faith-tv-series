@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Faith TV Series
  * Description:       By FaithStream. Puts your church's video series (from Faith Stream or a Gideo TV channel) live on your website. New series appear by themselves, and visitors watch right on the page.
- * Version:           1.2.0
+ * Version:           1.2.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Faith Tabernacle
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'FTVS_VERSION', '1.2.0' );
+define( 'FTVS_VERSION', '1.2.1' );
 define( 'FTVS_FILE', __FILE__ );
 define( 'FTVS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FTVS_URL', plugin_dir_url( __FILE__ ) );
