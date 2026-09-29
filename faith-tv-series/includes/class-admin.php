@@ -21,7 +21,8 @@ class FTVS_Admin {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
-		add_action( 'admin_init', array( __CLASS__, 'redirect_old_page' ) );
+		// WordPress refuses unknown pages before admin_init runs; this fires just before that refusal.
+		add_action( 'admin_page_access_denied', array( __CLASS__, 'redirect_old_page' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		add_action( 'admin_post_ftvs_refresh', array( __CLASS__, 'refresh' ) );
 		add_action( 'admin_post_ftvs_lookup', array( __CLASS__, 'lookup' ) );
