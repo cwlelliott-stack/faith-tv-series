@@ -4,7 +4,7 @@ Tags: video, church, series, faith stream, gideo
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 By FaithStream. Puts your church's video series live on your website, from Faith Stream or a Gideo TV channel.
@@ -93,6 +93,9 @@ It plays video streams in browsers without full built-in HLS support, and loads 
 someone presses play.
 
 == Changelog ==
+
+= 1.2.0 =
+* Connect any church (Faith Stream or Gideo), a new Faith Stream menu, embeds for other websites, text sizes and colors per section, and a cleaner phone layout with a slide-up player.
 
 = 1.1.0 =
 * Updates itself from GitHub releases (Plugins page shows "Update available").
