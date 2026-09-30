@@ -32,6 +32,7 @@ if ( file_exists( FTVS_DIR . 'includes/class-updater.php' ) ) {
 unset( $ftvs_file );
 
 FTVS_Settings::maybe_migrate();
+FTVS_Settings::maybe_upgrade();
 FTVS_Cache::init();
 FTVS_Purge::init();
 FTVS_Catalog::init();

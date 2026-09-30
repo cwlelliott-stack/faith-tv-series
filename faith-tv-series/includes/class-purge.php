@@ -122,10 +122,11 @@ class FTVS_Purge {
 		);
 		/**
 		 * The plugin asked page caches to clear. Hosts and custom caches can hook in here.
+		 * (Not named like the CRON hook, which runs this method: that would call it again, forever.)
 		 *
 		 * @param string[] $done Caches that were cleared.
 		 */
-		do_action( 'ftvs_purge_pages', $done );
+		do_action( 'ftvs_pages_purged', $done );
 		return $done;
 	}
 }

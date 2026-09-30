@@ -234,11 +234,9 @@ class FTVS_Cache {
 				'd' => $raw['d'],
 			);
 		}
-		// Saved by 1.2 or earlier (no date).
-		return array(
-			't' => 0,
-			'd' => $raw,
-		);
+		// Saved by 1.2 or earlier: its answers have other shapes (a video was only its stream address), so it is
+		// never shown. The next good answer replaces it.
+		return null;
 	}
 
 	private static function hash( $key ) {

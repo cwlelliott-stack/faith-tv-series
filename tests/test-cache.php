@@ -435,11 +435,11 @@ function test_cache_clear_same_second_as_the_backup_still_refetches() {
 
 /* ---------------------------------------------------------------- backups from older versions */
 
-function test_cache_peek_reads_the_two_backup_formats() {
+function test_cache_peek_reads_only_copies_saved_by_this_version() {
 	$key = ftvs_t_cache_setup();
 	assert_same( null, FTVS_Cache::peek( $key ) );
 	update_option( ftvs_t_cache_backup_option( $key ), array( 'legacy' => 'copy from 1.2' ), false );
-	assert_same( array( 'legacy' => 'copy from 1.2' ), FTVS_Cache::peek( $key ), 'plain data saved by 1.2 and earlier' );
+	assert_same( null, FTVS_Cache::peek( $key ), 'plain data saved by 1.2 and earlier has other shapes' );
 	update_option(
 		ftvs_t_cache_backup_option( $key ),
 		array(
@@ -452,14 +452,52 @@ function test_cache_peek_reads_the_two_backup_formats() {
 	assert_same( array( 'v' => 'new format' ), FTVS_Cache::peek( $key ) );
 }
 
-function test_cache_a_copy_from_an_older_version_is_only_a_fallback() {
+function test_cache_a_copy_from_an_older_version_is_never_shown() {
 	$key = ftvs_t_cache_setup();
-	update_option( ftvs_t_cache_backup_option( $key ), array( 'legacy' => 1 ), false ); // no date: counts as very old
+	update_option( ftvs_t_cache_backup_option( $key ), array( 'legacy' => 1 ), false ); // saved by 1.2: no marker
 	FTVS_Test_Fetcher::answers( 'a', array( array( 'v' => 'fresh' ) ) );
-	assert_same( array( 'v' => 'fresh' ), FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) ), 'an undated copy is refreshed before it is shown' );
+	assert_same( array( 'v' => 'fresh' ), FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) ), 'it is fetched again' );
+	assert_same( array( 'v' => 'fresh' ), FTVS_Cache::peek( $key ), 'and the new answer replaces the old copy' );
 
 	$key2 = ftvs_t_cache_setup( 'b' );
 	update_option( ftvs_t_cache_backup_option( $key2 ), array( 'legacy' => 1 ), false );
 	FTVS_Test_Fetcher::answers( 'a', array( new WP_Error( 'http_request_failed', 'down' ) ) );
-	assert_same( array( 'legacy' => 1 ), FTVS_Cache::remember( $key2, 300, ftvs_t_cache_job( 'a' ) ), 'but it is still better than nothing when the platform is down' );
+	$got = FTVS_Cache::remember( $key2, 300, ftvs_t_cache_job( 'a' ) );
+	assert_true( is_wp_error( $got ), 'not even when the platform is down: its shapes may break the page' );
+}
+
+function test_cache_an_update_starts_a_new_generation_and_clears_page_caches_once() {
+	ftvs_t_cache_setup();
+	$gen = (int) get_option( 'ftvs_cache_gen', 1 );
+	update_option( 'ftvs_version', '1.0.0' ); // any other version
+	wp_unschedule_hook( FTVS_Purge::CRON );
+	FTVS_Settings::maybe_upgrade();
+	assert_same( FTVS_VERSION, get_option( 'ftvs_version' ) );
+	assert_same( $gen + 1, (int) get_option( 'ftvs_cache_gen' ), 'answers the old version cached are fetched again' );
+	assert_true( false !== wp_next_scheduled( FTVS_Purge::CRON ), 'page caches with the old markup are cleared' );
+
+	wp_unschedule_hook( FTVS_Purge::CRON );
+	FTVS_Settings::maybe_upgrade();
+	assert_same( $gen + 1, (int) get_option( 'ftvs_cache_gen' ), 'only once per version' );
+	assert_false( wp_next_scheduled( FTVS_Purge::CRON ) );
+}
+
+function test_purge_runs_once_and_then_tells_hosts() {
+	$runs  = 0;
+	$heard = null;
+	$count = function () use ( &$runs ) {
+		$runs++;
+	};
+	$tell  = function ( $done ) use ( &$heard ) {
+		$heard = $done;
+	};
+	add_action( FTVS_Purge::CRON, $count, 5 );
+	add_action( 'ftvs_pages_purged', $tell );
+	do_action( FTVS_Purge::CRON ); // what WP-Cron does
+	remove_action( FTVS_Purge::CRON, $count, 5 );
+	remove_action( 'ftvs_pages_purged', $tell );
+	assert_same( 1, $runs, 'the purge must not trigger its own cron hook again (that looped until PHP ran out of memory)' );
+	assert_true( is_array( $heard ), 'hosts hear about it once, with the caches that were cleared' );
+	$last = get_option( 'ftvs_last_purge' );
+	assert_true( is_array( $last ) && $last['t'] >= time() - 5, 'Health shows when it last happened' );
 }

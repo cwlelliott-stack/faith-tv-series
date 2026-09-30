@@ -337,6 +337,22 @@ class FTVS_Settings {
 	}
 
 	/**
+	 * After an update (WordPress does not run the activation hook then): answers cached by the old version may have
+	 * other shapes, so the cache starts a new generation, and page caches holding the old markup are cleared once.
+	 */
+	public static function maybe_upgrade() {
+		$was = get_option( 'ftvs_version', '' );
+		if ( FTVS_VERSION === $was ) {
+			return;
+		}
+		update_option( 'ftvs_version', FTVS_VERSION, true );
+		FTVS_Cache::clear();
+		if ( false !== get_option( self::OPTION, false ) ) {
+			FTVS_Purge::soon();
+		}
+	}
+
+	/**
 	 * Versions before 1.2 only worked with Faith Tabernacle's channel, and may never have saved
 	 * any settings. Keep those sites connected; brand-new installs start unconnected.
 	 */
