@@ -21,6 +21,8 @@ class FTVS_Renderer {
 
 	public static function register() {
 		wp_register_style( 'faith-tv-series', FTVS_URL . 'assets/faith-tv-series.css', array(), FTVS_VERSION );
+		// Right-to-left languages get a mirrored copy (made with rtlcss; see README).
+		wp_style_add_data( 'faith-tv-series', 'rtl', 'replace' );
 		wp_register_script( 'faith-tv-series', FTVS_URL . 'assets/faith-tv-series.js', array(), FTVS_VERSION, true );
 		// Attached at registration so it prints whenever the script does, even when
 		// a page builder serves the widget HTML without calling render().

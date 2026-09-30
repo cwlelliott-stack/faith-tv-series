@@ -243,12 +243,15 @@
 		var prev = root.querySelector('.ftvs__viewport [data-ftvs-prev]');
 		var next = root.querySelector('.ftvs__viewport [data-ftvs-next]');
 		if (!track || !prev || !next) return;
+		// Right-to-left pages scroll the other way (and browsers report scrollLeft as 0 or less).
+		var dir = window.getComputedStyle(track).direction === 'rtl' ? -1 : 1;
 		var queued = false;
 		var update = function () {
 			queued = false;
 			var max = track.scrollWidth - track.clientWidth - 2;
-			prev.hidden = track.scrollLeft <= 2;
-			next.hidden = track.scrollLeft >= max;
+			var at = Math.abs(track.scrollLeft);
+			prev.hidden = at <= 2;
+			next.hidden = at >= max;
 		};
 		var schedule = function () {
 			if (!queued) {
@@ -260,10 +263,10 @@
 		window.addEventListener('resize', schedule);
 		window.addEventListener('load', schedule);
 		prev.addEventListener('click', function () {
-			track.scrollBy({ left: -track.clientWidth * 0.85, behavior: smooth() });
+			track.scrollBy({ left: -dir * track.clientWidth * 0.85, behavior: smooth() });
 		});
 		next.addEventListener('click', function () {
-			track.scrollBy({ left: track.clientWidth * 0.85, behavior: smooth() });
+			track.scrollBy({ left: dir * track.clientWidth * 0.85, behavior: smooth() });
 		});
 		update();
 	}

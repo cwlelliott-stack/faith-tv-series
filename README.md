@@ -79,6 +79,9 @@ their old updater once, then use the signed path.
 - `includes/class-updater.php` feeds signed releases into WordPress's update system.
 - `assets/faith-tv-series.js` runs the layouts, the live block, the library and the player
   (hls.js 1.7.3, Apache-2.0, loaded only when needed); `assets/blocks.js` is the block editor UI.
+- `assets/*-rtl.css` are mirrored copies for right-to-left languages, generated with rtlcss
+  (`npx rtlcss faith-tv-series/assets/faith-tv-series.css faith-tv-series/assets/faith-tv-series-rtl.css`,
+  same for admin.css); `build-zip.py` warns when one is older than its source.
 - `languages/`: the template and Spanish (es_MX, es_ES). After changing strings:
   `wp i18n make-pot`, `wp i18n update-po`, translate, `wp i18n make-mo`, `wp i18n make-json`.
 

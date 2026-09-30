@@ -20,7 +20,17 @@ SKIP_ALWAYS = {'.DS_Store', 'Thumbs.db'}
 SKIP_WPORG = {'includes/class-updater.php'}
 
 
+def check_rtl():
+    """The right-to-left stylesheets are generated; say so if one is older than its source."""
+    for name in ('faith-tv-series', 'admin'):
+        src = os.path.join(HERE, SRC, 'assets', name + '.css')
+        rtl = os.path.join(HERE, SRC, 'assets', name + '-rtl.css')
+        if not os.path.exists(rtl) or os.path.getmtime(rtl) < os.path.getmtime(src):
+            print(f'WARNING: assets/{name}-rtl.css is older than {name}.css. Run: npx rtlcss {SRC}/assets/{name}.css {SRC}/assets/{name}-rtl.css')
+
+
 def build(out=OUT, wporg=False):
+    check_rtl()
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
         for root, dirs, files in os.walk(os.path.join(HERE, SRC)):
             dirs[:] = sorted(d for d in dirs if not d.startswith('.') and d != '__pycache__')

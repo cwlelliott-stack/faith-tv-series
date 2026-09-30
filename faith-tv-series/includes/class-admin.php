@@ -107,6 +107,7 @@ class FTVS_Admin {
 			wp_enqueue_style( 'ftvs-admin-font', 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800&family=Roboto:wght@700;800&display=swap', array(), null ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
 		}
 		wp_enqueue_style( 'ftvs-admin', FTVS_URL . 'assets/admin.css', array(), FTVS_VERSION );
+		wp_style_add_data( 'ftvs-admin', 'rtl', 'replace' );
 		wp_enqueue_script( 'ftvs-admin', FTVS_URL . 'assets/admin.js', array(), FTVS_VERSION, true );
 		wp_localize_script(
 			'ftvs-admin',
