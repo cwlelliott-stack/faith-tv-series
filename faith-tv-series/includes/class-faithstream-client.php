@@ -33,7 +33,7 @@ class FTVS_FaithStream_Client {
 	}
 
 	public static function is_id( $value ) {
-		return 1 === preg_match( '/^[a-z0-9][a-z0-9-]{0,127}$/', $value );
+		return 1 === preg_match( '/^[a-z0-9][a-z0-9-]{0,127}$/D', $value );
 	}
 
 	private static function ttl() {

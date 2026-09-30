@@ -24,11 +24,11 @@ class FTVS_YouTube_Client {
 	}
 
 	public static function is_playlist( $value ) {
-		return 1 === preg_match( '/^(PL|UU|OL|FL|LL|RD)[A-Za-z0-9_-]{10,64}$/', $value );
+		return 1 === preg_match( '/^(PL|UU|OL|FL|LL|RD)[A-Za-z0-9_-]{10,64}$/D', $value );
 	}
 
 	public static function is_video( $value ) {
-		return 1 === preg_match( '/^[A-Za-z0-9_-]{11}$/', $value );
+		return 1 === preg_match( '/^[A-Za-z0-9_-]{11}$/D', $value );
 	}
 
 	private static function key() {
@@ -321,11 +321,11 @@ class FTVS_YouTube_Client {
 				}
 				continue;
 			}
-			if ( preg_match( '#youtube\.com/channel/(UC[A-Za-z0-9_-]{22})#', $bit, $m ) || preg_match( '/^(UC[A-Za-z0-9_-]{22})$/', $bit, $m ) ) {
+			if ( preg_match( '#youtube\.com/channel/(UC[A-Za-z0-9_-]{22})#', $bit, $m ) || preg_match( '/^(UC[A-Za-z0-9_-]{22})$/D', $bit, $m ) ) {
 				$out['channel'] = $m[1];
 				continue;
 			}
-			if ( preg_match( '#youtube\.com/(@[A-Za-z0-9._-]{3,100})#', $bit, $m ) || preg_match( '/^(@[A-Za-z0-9._-]{3,100})$/', $bit, $m ) ) {
+			if ( preg_match( '#youtube\.com/(@[A-Za-z0-9._-]{3,100})#', $bit, $m ) || preg_match( '/^(@[A-Za-z0-9._-]{3,100})$/D', $bit, $m ) ) {
 				$out['channel'] = $m[1];
 			}
 		}
@@ -392,7 +392,7 @@ class FTVS_YouTube_Client {
 
 	/** @return string|WP_Error The UC... id behind a @handle (or the id itself). */
 	private static function channel_id( $channel ) {
-		if ( preg_match( '/^UC[A-Za-z0-9_-]{22}$/', $channel ) ) {
+		if ( preg_match( '/^UC[A-Za-z0-9_-]{22}$/D', $channel ) ) {
 			return $channel;
 		}
 		$cached = get_option( 'ftvs_yt_handle_' . md5( $channel ) );
@@ -494,7 +494,7 @@ class FTVS_YouTube_Client {
 	}
 
 	private static function iso_seconds( $iso ) {
-		if ( ! preg_match( '/^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/', $iso, $m ) ) {
+		if ( ! preg_match( '/^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/D', $iso, $m ) ) {
 			return 0;
 		}
 		$m = array_pad( $m, 5, 0 );

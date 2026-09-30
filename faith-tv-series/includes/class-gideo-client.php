@@ -22,7 +22,7 @@ class FTVS_Gideo_Client {
 	}
 
 	public static function is_id( $value ) {
-		return 1 === preg_match( '/^[a-f0-9]{32}$/i', $value );
+		return 1 === preg_match( '/^[a-f0-9]{32}$/iD', $value );
 	}
 
 	public static function get_children( $category_id = '' ) {
@@ -123,7 +123,7 @@ class FTVS_Gideo_Client {
 		$host = strtolower( trim( (string) $address ) );
 		$host = preg_replace( '#^https?://#', '', $host );
 		$host = preg_replace( '#[/?\#].*$#', '', $host );
-		if ( ! preg_match( '/^[a-z0-9.-]+\.[a-z]{2,}$/', $host ) ) {
+		if ( ! preg_match( '/^[a-z0-9.-]+\.[a-z]{2,}$/D', $host ) ) {
 			return new WP_Error( 'ftvs_lookup', __( 'Type your TV website address, for example tv.yourchurch.com.', 'faith-tv-series' ) );
 		}
 		$response = wp_remote_get(

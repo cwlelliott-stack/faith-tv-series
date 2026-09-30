@@ -200,7 +200,7 @@ class FTVS_Cache {
 	}
 
 	private static function can_serve_stale( $backup, $ttl ) {
-		if ( $backup['t'] < (int) get_option( 'ftvs_cleared_at', 0 ) ) {
+		if ( $backup['t'] <= (int) get_option( 'ftvs_cleared_at', 0 ) ) {
 			return false; // saved before "Refresh from your channel": fetch now
 		}
 		// Only while the copy is fairly recent; after that (e.g. WP-Cron not running) fetch inline.

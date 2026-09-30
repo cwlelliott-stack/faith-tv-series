@@ -58,7 +58,7 @@ class FTVS_Manual {
 	}
 
 	public static function owns( $id ) {
-		return is_string( $id ) && 1 === preg_match( '/^_m(s\d+|v\d+x\d+|sall)$/', $id );
+		return is_string( $id ) && 1 === preg_match( '/^_m(s\d+|v\d+x\d+|sall)$/D', $id );
 	}
 
 	public static function exists( $id ) {
@@ -69,7 +69,7 @@ class FTVS_Manual {
 		if ( ! $post ) {
 			return false;
 		}
-		if ( preg_match( '/^_mv\d+x(\d+)$/', $id, $m ) ) {
+		if ( preg_match( '/^_mv\d+x(\d+)$/D', $id, $m ) ) {
 			return isset( self::episodes( $post )[ (int) $m[1] ] );
 		}
 		return true;
@@ -157,7 +157,7 @@ class FTVS_Manual {
 	}
 
 	public static function get_video( $id ) {
-		if ( ! preg_match( '/^_mv(\d+)x(\d+)$/', (string) $id, $m ) ) {
+		if ( ! preg_match( '/^_mv(\d+)x(\d+)$/D', (string) $id, $m ) ) {
 			return new WP_Error( 'ftvs_bad_id', __( 'That is not a video on your channel.', 'faith-tv-series' ) );
 		}
 		$post = self::post_of( $id );

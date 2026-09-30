@@ -15,7 +15,7 @@ class FTVS_Demo_Client {
 	const STREAM = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
 
 	public static function is_id( $value ) {
-		return 1 === preg_match( '/^demo-[a-z0-9-]{1,80}$/', $value );
+		return 1 === preg_match( '/^demo-[a-z0-9-]{1,80}$/D', $value );
 	}
 
 	/** The whole sample catalog. */

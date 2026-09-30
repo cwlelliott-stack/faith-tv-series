@@ -153,7 +153,8 @@ class FTVS_Health {
 				if ( 'custom' === $category ) {
 					$category = isset( $s['category_id'] ) ? $s['category_id'] : '';
 				}
-				$out[] = self::section( 'elementor', 'faith_tv_live' === $w['widgetType'] ? 'faith_tv_live' : 'faith_tv_series', array_merge( $s, array( 'category' => $category ) ) );
+				$tag   = in_array( $w['widgetType'], array( 'faith_tv_live', 'faith_tv_library' ), true ) ? $w['widgetType'] : 'faith_tv_series';
+				$out[] = self::section( 'elementor', $tag, array_merge( $s, array( 'category' => $category ) ) );
 			}
 		}
 		return $out;
@@ -162,7 +163,15 @@ class FTVS_Health {
 	private static function section( $kind, $tag, $atts ) {
 		$category = isset( $atts['category'] ) ? (string) $atts['category'] : '';
 		if ( 'faithstream' === $tag ) {
-			$category = isset( $atts['category'] ) ? $atts['category'] : ( isset( $atts['video'] ) ? 'video:' . $atts['video'] : ( isset( $atts['live'] ) ? 'live' : '' ) );
+			// Faith Stream's own shortcode: [faithstream live="..."] and [faithstream library="..."] too.
+			if ( ! empty( $atts['live'] ) ) {
+				$tag = 'faith_tv_live';
+			} elseif ( ! empty( $atts['library'] ) ) {
+				$tag      = 'faith_tv_library';
+				$category = 'all' === $atts['library'] ? '' : (string) $atts['library'];
+			} elseif ( ! empty( $atts['video'] ) && '' === $category ) {
+				$category = 'video:' . $atts['video'];
+			}
 		}
 		return array(
 			'kind'     => $kind,

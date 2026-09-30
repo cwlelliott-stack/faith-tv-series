@@ -60,7 +60,7 @@ class FTVS_Followup {
 			'sms_consent'  => '' !== $phone && $sms,
 			'consent_text' => '' !== $phone ? self::consent_text() : '',
 			'video_id'     => isset( $in['video'] ) ? substr( preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $in['video'] ), 0, 128 ) : '',
-			'video_title'  => isset( $in['title'] ) ? substr( sanitize_text_field( $in['title'] ), 0, 160 ) : '',
+			'video_title'  => isset( $in['title'] ) ? FTVS_Stats::cut( sanitize_text_field( $in['title'] ), 160 ) : '',
 			'page'         => isset( $in['page'] ) ? esc_url_raw( $in['page'] ) : '',
 			'site'         => home_url( '/' ),
 			'created_at'   => gmdate( 'c' ),

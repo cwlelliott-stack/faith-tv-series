@@ -87,7 +87,7 @@ class FTVS_Stats {
 		}
 		$d['days'][ $day ] = $row;
 		if ( '' !== $title && 'play' === $event ) {
-			$d['titles'][ $id ] = substr( sanitize_text_field( $title ), 0, 120 );
+			$d['titles'][ $id ] = self::cut( sanitize_text_field( $title ), 120 );
 			if ( count( $d['titles'] ) > 600 ) {
 				$d['titles'] = array_slice( $d['titles'], -500, null, true );
 			}
@@ -99,15 +99,20 @@ class FTVS_Stats {
 		update_option( self::OPTION, $d, false );
 	}
 
+	/** The first $n letters (not bytes, so accented letters stay whole). */
+	public static function cut( $text, $n ) {
+		return function_exists( 'mb_substr' ) ? mb_substr( $text, 0, $n, 'UTF-8' ) : wp_html_excerpt( $text, $n );
+	}
+
 	/** Only the path on this site (no query strings, which can carry personal details). */
 	private static function path( $raw ) {
 		$raw  = (string) $raw;
 		$host = wp_parse_url( home_url(), PHP_URL_HOST );
 		$url  = wp_parse_url( $raw );
 		if ( ! $url || ( ! empty( $url['host'] ) && $url['host'] !== $host ) ) {
-			return ! empty( $url['host'] ) ? substr( sanitize_text_field( $url['host'] ), 0, 80 ) : '';
+			return ! empty( $url['host'] ) ? self::cut( sanitize_text_field( $url['host'] ), 80 ) : '';
 		}
-		return substr( '/' . ltrim( sanitize_text_field( isset( $url['path'] ) ? $url['path'] : '/' ), '/' ), 0, 160 );
+		return self::cut( '/' . ltrim( sanitize_text_field( isset( $url['path'] ) ? $url['path'] : '/' ), '/' ), 160 );
 	}
 
 	/**

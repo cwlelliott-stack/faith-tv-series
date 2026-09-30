@@ -1,0 +1,121 @@
+name: CI
+
+# Checks for the plugin on every push and pull request:
+#   php-lint         syntax check on PHP 7.4 to 8.4
+#   js-check         syntax check of the plugin's scripts on Node 20
+#   version          plugin header, FTVS_VERSION and readme.txt agree (and match the tag on v* tags)
+#   wordpress-tests  the plugin inside a real WordPress: tests/run.php through WP-CLI
+#
+# The same checks run locally: bash tests/lint.sh, bash tests/check-version.sh,
+# bash tests/run-docker.sh (see "Tests" in the README).
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-lint:
+    name: PHP ${{ matrix.php }} syntax
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: php -l on every PHP file
+        run: bash tests/lint.sh php
+
+  js-check:
+    name: JavaScript syntax (Node 20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: node --check on every plugin script
+        run: bash tests/lint.sh js
+
+  version:
+    name: Version numbers agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Plugin header, FTVS_VERSION and readme.txt Stable tag
+        run: bash tests/check-version.sh
+      - name: The release tag matches the plugin version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: bash tests/check-version.sh "$GITHUB_REF_NAME"
+
+  wordpress-tests:
+    name: WordPress tests (PHP 8.3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # WP-CLI runs in a throwaway container that shares the site's files and network.
+      # The repository is mounted read-only at /repo, so /repo/tests/run.php can be run.
+      WPCLI: >-
+        docker run --rm --network ftvs-net --volumes-from ftvs-wp
+        -v ${{ github.workspace }}:/repo:ro
+        -e WORDPRESS_DB_HOST=ftvs-db -e WORDPRESS_DB_USER=wp
+        -e WORDPRESS_DB_PASSWORD=wpdev -e WORDPRESS_DB_NAME=wp
+        -e GITHUB_ACTIONS
+        --user 33:33 wordpress:cli-php8.3 wp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start MySQL and WordPress
+        run: |
+          docker network create ftvs-net
+          docker run -d --name ftvs-db --network ftvs-net \
+            -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=wp -e MYSQL_USER=wp -e MYSQL_PASSWORD=wpdev \
+            mysql:8.4
+          docker run -d --name ftvs-wp --network ftvs-net -p 127.0.0.1:8095:80 \
+            -e WORDPRESS_DB_HOST=ftvs-db -e WORDPRESS_DB_USER=wp \
+            -e WORDPRESS_DB_PASSWORD=wpdev -e WORDPRESS_DB_NAME=wp \
+            -v "$PWD/faith-tv-series:/var/www/html/wp-content/plugins/faith-tv-series" \
+            wordpress:php8.3-apache
+
+      - name: Wait for the database and for WordPress's files
+        run: |
+          for i in $(seq 1 60); do
+            docker exec ftvs-db mysqladmin ping -h 127.0.0.1 -uwp -pwpdev --silent && break
+            sleep 2
+          done
+          for i in $(seq 1 60); do
+            docker exec ftvs-wp test -f /var/www/html/wp-config.php && break
+            sleep 2
+          done
+          docker exec ftvs-db mysqladmin ping -h 127.0.0.1 -uwp -pwpdev
+          docker exec ftvs-wp test -f /var/www/html/wp-config.php
+
+      - name: Install WordPress and activate the plugin
+        run: |
+          $WPCLI core install --url=http://localhost:8095 --title="Faith TV Series tests" \
+            --admin_user=admin --admin_password="$(openssl rand -hex 16)" \
+            --admin_email=admin@example.test --skip-email
+          $WPCLI plugin activate faith-tv-series
+          $WPCLI plugin list
+
+      - name: Run tests/run.php
+        run: $WPCLI eval-file /repo/tests/run.php
+
+      - name: Container logs (on failure)
+        if: failure()
+        run: |
+          docker logs --tail 100 ftvs-wp || true
+          docker logs --tail 50 ftvs-db || true

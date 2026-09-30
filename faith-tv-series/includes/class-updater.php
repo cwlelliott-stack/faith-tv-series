@@ -51,7 +51,7 @@ class FTVS_Updater {
 	public static function latest( $force = false ) {
 		if ( ! $force ) {
 			$cached = get_site_transient( self::CACHE );
-			if ( is_array( $cached ) ) {
+			if ( is_array( $cached ) && ( isset( $cached['error'] ) || isset( $cached['sha256'], $cached['held'] ) ) ) {
 				return isset( $cached['error'] ) ? new WP_Error( 'ftvs_update', $cached['error'] ) : $cached;
 			}
 		}

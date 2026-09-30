@@ -222,6 +222,15 @@ class FTVS_Catalog {
 		if ( is_wp_error( $tree ) ) {
 			return $tree;
 		}
+		// Series built by hand join the library separately (FTVS_Manual::library()).
+		$tree = array_values(
+			array_filter(
+				$tree,
+				function ( $row ) {
+					return ! FTVS_Manual::owns( $row['id'] );
+				}
+			)
+		);
 		foreach ( $tree as $row ) {
 			$titles[ $row['id'] ] = $row['title'];
 			foreach ( $row['children'] as $child ) {
@@ -407,8 +416,8 @@ class FTVS_Catalog {
 	 * old list, so ask them to clear, and tell anything listening about brand-new videos.
 	 */
 	public static function on_changed( $key, $data, $old ) {
-		if ( null === $old || ! in_array( $key[0], array( 'c', 'h', 't', 'l' ), true ) ) {
-			return; // first fetch ever, or a single video's stream address
+		if ( null === $old || ! ( in_array( $key, array( 'home', 'tree', 'library' ), true ) || 0 === strpos( $key, 'c_' ) ) ) {
+			return; // first fetch ever, a single video's stream address, or the live status
 		}
 		FTVS_Purge::soon();
 		$before = self::video_ids( $old );
