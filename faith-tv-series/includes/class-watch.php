@@ -14,6 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 class FTVS_Watch {
 
 	const VAR = 'ftvs_video';
+	// The message pages' own sitemap (/faith-tv-messages.xml), for SEO plugins that replace WordPress's. Its name
+	// has no "sitemap" in it: Yoast, Rank Math and All in One SEO claim every address ending in -sitemap.xml.
+	const SITEMAP_VAR = 'ftvs_sitemap';
 
 	/** @var array|null The video being shown on this request. */
 	private static $video = null;
@@ -24,7 +27,15 @@ class FTVS_Watch {
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'rewrite' ), 20 );
 		add_filter( 'query_vars', array( __CLASS__, 'query_vars' ) );
-		add_action( 'template_redirect', array( __CLASS__, 'template_redirect' ), 1 );
+		// At the start of "wp", not template_redirect: SEO plugins (Rank Math) work out the page's canonical address
+		// during "wp" and keep it, so the message must be known before they ask.
+		add_action( 'wp', array( __CLASS__, 'template_redirect' ), 0 );
+		add_filter( 'redirect_canonical', array( __CLASS__, 'no_guessing' ) );
+		add_action( 'template_redirect', array( __CLASS__, 'serve_sitemap' ), 0 );
+		// Yoast, Rank Math and All in One SEO turn WordPress's sitemap off and list their own: add ours to theirs.
+		add_filter( 'wpseo_sitemap_index', array( __CLASS__, 'seo_index_entry' ) );
+		add_filter( 'rank_math/sitemap/index', array( __CLASS__, 'seo_index_entry' ) );
+		add_filter( 'aioseo_sitemap_indexes', array( __CLASS__, 'aioseo_indexes' ) );
 		add_filter( 'the_content', array( __CLASS__, 'content' ), 99999 );
 		add_filter( 'document_title_parts', array( __CLASS__, 'document_title' ), 99 );
 		add_filter( 'the_title', array( __CLASS__, 'page_title' ), 99, 2 );
@@ -55,6 +66,7 @@ class FTVS_Watch {
 
 	public static function query_vars( $vars ) {
 		$vars[] = self::VAR;
+		$vars[] = self::SITEMAP_VAR;
 		return $vars;
 	}
 
@@ -65,11 +77,13 @@ class FTVS_Watch {
 		}
 		$uri = get_page_uri( $page );
 		add_rewrite_rule( '^' . preg_quote( $uri, '#' ) . '/([A-Za-z0-9_-]{1,128})/?$', 'index.php?page_id=' . $page . '&' . self::VAR . '=$matches[1]', 'top' );
-		// New Watch page, or its address changed: rebuild the rules once.
-		$ver = md5( $page . '|' . $uri );
+		add_rewrite_rule( '^faith-tv-messages\.xml$', 'index.php?' . self::SITEMAP_VAR . '=1', 'top' );
+		// New Watch page, or its address changed: rebuild the rules once (and the SEO plugins' sitemap lists).
+		$ver = md5( $page . '|' . $uri . '|faith-tv-messages.xml' );
 		if ( get_option( 'ftvs_rewrite_ver' ) !== $ver ) {
 			update_option( 'ftvs_rewrite_ver', $ver, true );
 			delete_option( 'rewrite_rules' ); // rebuilt when this request is parsed, with every plugin's rules
+			self::refresh_seo_sitemaps();
 		}
 	}
 
@@ -77,6 +91,14 @@ class FTVS_Watch {
 		if ( (int) $post_id === (int) FTVS_Settings::get( 'watch_page_id' ) ) {
 			delete_option( 'ftvs_rewrite_ver' );
 		}
+	}
+
+	/**
+	 * An unknown or removed message is "not found". WordPress would otherwise guess and send it to the Watch page
+	 * with a permanent redirect, which search engines treat as a broken page anyway.
+	 */
+	public static function no_guessing( $redirect ) {
+		return '' !== (string) get_query_var( self::VAR ) && is_404() ? false : $redirect;
 	}
 
 	/** A real page under the Watch page (watch/live/, say) is that page, not a message called "live". */
@@ -322,6 +344,114 @@ class FTVS_Watch {
 	}
 
 	/** Every message in the site's sitemap (WordPress 5.5+). */
+	/**
+	 * Every message's page, newest first: { loc, lastmod? }. Empty without a published Watch page.
+	 * WordPress's sitemap (class-sitemap.php) and the plugin's own (/faith-tv-messages.xml) both use it.
+	 */
+	public static function sitemap_entries() {
+		if ( ! self::page_id() ) {
+			return array();
+		}
+		$library = FTVS_Catalog::library();
+		if ( is_wp_error( $library ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $library as $video ) {
+			$url = self::url( $video['id'] );
+			if ( '' === $url ) {
+				continue;
+			}
+			$entry = array( 'loc' => $url );
+			$t     = $video['added'] ? strtotime( $video['added'] ) : false;
+			if ( $t ) {
+				$entry['lastmod'] = gmdate( 'c', $t );
+			}
+			$out[] = $entry;
+		}
+		return $out;
+	}
+
+	public static function sitemap_url() {
+		return get_option( 'permalink_structure' ) ? home_url( '/faith-tv-messages.xml' ) : add_query_arg( self::SITEMAP_VAR, '1', home_url( '/' ) );
+	}
+
+	/** The entries for the SEO plugins' lists: only a real church's message pages, never the sample videos. */
+	private static function listed() {
+		return FTVS_Catalog::is_demo() ? array() : self::sitemap_entries();
+	}
+
+	/** The newest message's date, for the sitemap list (search engines revisit what changed). */
+	private static function newest( $entries ) {
+		foreach ( $entries as $entry ) {
+			if ( isset( $entry['lastmod'] ) ) {
+				return $entry['lastmod'];
+			}
+		}
+		return gmdate( 'c' );
+	}
+
+	/** Yoast and Rank Math: one more <sitemap> in their sitemap_index.xml. */
+	public static function seo_index_entry( $xml ) {
+		$entries = self::listed();
+		if ( ! $entries ) {
+			return $xml;
+		}
+		return (string) $xml . "\t<sitemap>\n\t\t<loc>" . esc_xml( self::sitemap_url() ) . "</loc>\n\t\t<lastmod>" . esc_xml( self::newest( $entries ) ) . "</lastmod>\n\t</sitemap>\n";
+	}
+
+	/** All in One SEO: one more entry in its sitemap.xml. */
+	public static function aioseo_indexes( $indexes ) {
+		$entries = self::listed();
+		if ( ! $entries || ! is_array( $indexes ) ) {
+			return $indexes;
+		}
+		$indexes[] = array(
+			'loc'     => self::sitemap_url(),
+			'lastmod' => self::newest( $entries ),
+			'count'   => count( $entries ),
+		);
+		return $indexes;
+	}
+
+	/** /faith-tv-messages.xml: every message page (sample videos and sites without a Watch page: not found). */
+	public static function serve_sitemap() {
+		if ( ! get_query_var( self::SITEMAP_VAR ) ) {
+			return;
+		}
+		$entries = self::listed();
+		if ( ! $entries ) {
+			global $wp_query;
+			$wp_query->set_404();
+			status_header( 404 );
+			nocache_headers();
+			return;
+		}
+		status_header( 200 );
+		header( 'Content-Type: application/xml; charset=UTF-8' );
+		header( 'X-Robots-Tag: noindex, follow' );
+		echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+		foreach ( array_slice( $entries, 0, 50000 ) as $entry ) {
+			echo "\t<url>\n\t\t<loc>" . esc_xml( $entry['loc'] ) . "</loc>\n";
+			if ( isset( $entry['lastmod'] ) ) {
+				echo "\t\t<lastmod>" . esc_xml( $entry['lastmod'] ) . "</lastmod>\n";
+			}
+			echo "\t</url>\n";
+		}
+		echo "</urlset>\n";
+		exit;
+	}
+
+	/** The SEO plugins save their sitemap lists: let them build them again (to add or drop ours). */
+	private static function refresh_seo_sitemaps() {
+		if ( class_exists( 'WPSEO_Sitemaps_Cache' ) && method_exists( 'WPSEO_Sitemaps_Cache', 'clear' ) ) {
+			WPSEO_Sitemaps_Cache::clear();
+		}
+		if ( class_exists( '\RankMath\Sitemap\Cache' ) && method_exists( '\RankMath\Sitemap\Cache', 'invalidate_storage' ) ) {
+			\RankMath\Sitemap\Cache::invalidate_storage();
+		}
+	}
+
 	public static function sitemap() {
 		if ( self::page_id() && function_exists( 'wp_register_sitemap_provider' ) && ! FTVS_Catalog::is_demo() ) {
 			require_once FTVS_DIR . 'includes/class-sitemap.php';

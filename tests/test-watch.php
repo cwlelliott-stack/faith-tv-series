@@ -99,7 +99,7 @@ function test_watch_url_needs_a_watch_page_and_a_real_id() {
 }
 
 function test_watch_registers_its_query_variable_and_shortcode() {
-	assert_same( array( 'a', 'ftvs_video' ), FTVS_Watch::query_vars( array( 'a' ) ) );
+	assert_same( array( 'a', 'ftvs_video', 'ftvs_sitemap' ), FTVS_Watch::query_vars( array( 'a' ) ) );
 	assert_true( shortcode_exists( 'faith_tv_watch' ) );
 	assert_same( '', FTVS_Watch::shortcode(), 'no message being shown: the shortcode prints nothing' );
 }
@@ -399,4 +399,52 @@ function test_watch_page_title_is_plain_text() {
 	);
 	$wp_query->in_the_loop = true;
 	assert_same( 'Grace &lt;img src=x onerror=alert(1)&gt;', FTVS_Watch::page_title( 'Watch', $page->ID ), 'themes print the title as HTML' );
+}
+
+function test_sitemap_seo_plugins_list_the_message_pages_sitemap() {
+	$page = ftvs_t_page();
+	ftvs_t_podcast_church( array(), array( 'watch_page_id' => $page->ID ) ); // a real church: three messages
+	ftvs_t_permalinks( '/%postname%/' );
+	$url = home_url( '/faith-tv-messages.xml' );
+	assert_same( $url, FTVS_Watch::sitemap_url() );
+
+	$yoast = FTVS_Watch::seo_index_entry( '<sitemap><loc>https://x.test/post-sitemap.xml</loc></sitemap>' );
+	assert_contains( '<sitemap><loc>https://x.test/post-sitemap.xml</loc></sitemap>', $yoast, 'the plugin\'s own entries stay' );
+	assert_contains( '<loc>' . $url . '</loc>', $yoast, 'Yoast and Rank Math get one more sitemap in their index' );
+	assert_contains( '<lastmod>2026-09-27T16:00:00+00:00</lastmod>', $yoast, 'dated by the newest message' );
+
+	$aioseo = FTVS_Watch::aioseo_indexes( array( array( 'loc' => 'https://x.test/post-sitemap.xml' ) ) );
+	assert_count( 2, $aioseo );
+	assert_same( $url, $aioseo[1]['loc'], 'All in One SEO too' );
+	assert_same( 3, $aioseo[1]['count'] );
+
+	ftvs_t_permalinks( '' );
+	assert_same( add_query_arg( 'ftvs_sitemap', '1', home_url( '/' ) ), FTVS_Watch::sitemap_url(), 'plain permalinks: the query address' );
+}
+
+function test_sitemap_seo_plugins_get_nothing_for_sample_videos_or_without_a_watch_page() {
+	ftvs_t_demo();
+	assert_same( 'x', FTVS_Watch::seo_index_entry( 'x' ), 'no Watch page' );
+	$page = ftvs_t_page();
+	ftvs_t_demo( array( 'watch_page_id' => $page->ID ) );
+	assert_same( 'x', FTVS_Watch::seo_index_entry( 'x' ), 'sample videos are never offered to search engines' );
+	assert_same( array(), FTVS_Watch::aioseo_indexes( array() ) );
+}
+
+function test_watch_unknown_messages_are_not_guessed_into_a_redirect() {
+	global $wp_query;
+	$was = array( $wp_query->query_vars, $wp_query->is_404 );
+	ftvs_t_cleanup(
+		function () use ( $was ) {
+			list( $GLOBALS['wp_query']->query_vars, $GLOBALS['wp_query']->is_404 ) = $was;
+		}
+	);
+	$wp_query->set( 'ftvs_video', 'no-such-message' );
+	$wp_query->is_404 = true;
+	assert_false( FTVS_Watch::no_guessing( 'https://example.test/watch/' ), 'WordPress would send it to the Watch page for good' );
+	$wp_query->is_404 = false;
+	assert_same( 'https://example.test/watch/x/', FTVS_Watch::no_guessing( 'https://example.test/watch/x/' ), 'a known message keeps its trailing-slash fix' );
+	$wp_query->set( 'ftvs_video', '' );
+	$wp_query->is_404 = true;
+	assert_same( 'https://example.test/about/', FTVS_Watch::no_guessing( 'https://example.test/about/' ), 'other pages are left to WordPress' );
 }

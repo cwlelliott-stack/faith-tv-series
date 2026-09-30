@@ -82,7 +82,10 @@ their old updater once, then use the signed path.
 - `includes/class-renderer.php` renders every section (the shortcodes, widgets and blocks all go
   through it); `class-live.php` works out Sunday live; `class-watch.php` serves the message pages
   (`/watch/<video>/` under the chosen Watch page) with link previews and structured data, and
-  `class-sitemap.php` lists them; `class-podcast.php` serves `/feed/faith-tv/`.
+  `class-sitemap.php` lists them in WordPress's sitemap. With Yoast, Rank Math or All in One SEO (which
+  turn WordPress's off) the pages are at `/faith-tv-messages.xml`, added to that plugin's sitemap index
+  (no "sitemap" in the name: those plugins claim every `*-sitemap.xml`). `class-podcast.php` serves
+  `/feed/faith-tv/`.
 - `includes/class-rest.php` serves the page script under `/wp-json/faith-tv/v1/` (category,
   video, live, library, search, stats, remind, refresh, ping).
 - `includes/class-health.php`: the hourly background check, "where it's used", Site Health,

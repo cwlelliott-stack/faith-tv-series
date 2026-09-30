@@ -50,7 +50,7 @@ The player:
 A page for every message: pick your Watch page (or press "Create my Watch page") and every
 message also gets its own address, like yourchurch.com/watch/message-name, with the title,
 picture and description that Google, Facebook and text messages show, and it's listed in
-WordPress's sitemap (Yoast and Rank Math use sitemaps of their own, which don't list them yet).
+the site's sitemap (WordPress's own, or Yoast's, Rank Math's or All in One SEO's).
 A podcast feed of the messages is one switch away (Faith Stream makes the audio).
 
 For your team:

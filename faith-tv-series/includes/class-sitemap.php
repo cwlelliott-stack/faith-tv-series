@@ -16,29 +16,11 @@ class FTVS_Sitemap extends WP_Sitemaps_Provider {
 		$this->object_type = 'faithtv';
 	}
 
-	private function videos() {
-		$library = FTVS_Catalog::library();
-		return is_wp_error( $library ) ? array() : $library;
-	}
-
 	public function get_url_list( $page_num, $object_subtype = '' ) {
-		$out = array();
-		foreach ( array_slice( $this->videos(), ( max( 1, (int) $page_num ) - 1 ) * self::PER_PAGE, self::PER_PAGE ) as $video ) {
-			$url = FTVS_Watch::url( $video['id'] );
-			if ( '' === $url ) {
-				continue;
-			}
-			$entry = array( 'loc' => $url );
-			$t     = $video['added'] ? strtotime( $video['added'] ) : false;
-			if ( $t ) {
-				$entry['lastmod'] = gmdate( 'c', $t );
-			}
-			$out[] = $entry;
-		}
-		return $out;
+		return array_slice( FTVS_Watch::sitemap_entries(), ( max( 1, (int) $page_num ) - 1 ) * self::PER_PAGE, self::PER_PAGE );
 	}
 
 	public function get_max_num_pages( $object_subtype = '' ) {
-		return max( 1, (int) ceil( count( $this->videos() ) / self::PER_PAGE ) );
+		return max( 1, (int) ceil( count( FTVS_Watch::sitemap_entries() ) / self::PER_PAGE ) );
 	}
 }
