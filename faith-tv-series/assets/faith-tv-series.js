@@ -183,7 +183,9 @@
 		this.kind = kind;
 		this.id = id;
 		this.session = null;
-		this.off = !CONFIG.report || !id || id.charAt(0) === '_';
+		// A viewer signed in for check-in sends live heartbeats even when general reporting is off.
+		this.url = CONFIG.report ? CONFIG.report.url : (kind === 'live' && Checkin.token() ? CONFIG.checkin.api + '/api/analytics/events?tenant=' + encodeURIComponent(CONFIG.checkin.tenant) : '');
+		this.off = !this.url || !id || id.charAt(0) === '_';
 		this.timer = 0;
 	}
 	Reporter.prototype.send = function (events, keepalive) {
@@ -199,11 +201,13 @@
 			referrer: String(CONFIG.embed ? document.referrer : window.location.href).slice(0, 300),
 			events: events
 		};
-		return fetch(CONFIG.report.url, {
+		var headers = { 'Content-Type': 'application/json' };
+		if (Checkin.token()) headers['X-Viewer-Token'] = Checkin.token();
+		return fetch(this.url, {
 			method: 'POST',
 			credentials: 'omit',
 			keepalive: !!keepalive,
-			headers: { 'Content-Type': 'application/json' },
+			headers: headers,
 			body: JSON.stringify(body)
 		}).then(function (r) {
 			if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -378,7 +382,11 @@
 				swapTimer = window.setTimeout(function () {
 					var now = entries[active];
 					showInfo(now, active);
-					if (art) art.src = artOf(now);
+					if (art) {
+						// A srcset would keep showing the first picture; the swapped one is set by src.
+						art.removeAttribute('srcset');
+						art.src = artOf(now);
+					}
 					if (info) info.classList.remove('is-swapping');
 					if (art) art.classList.remove('is-swapping');
 				}, fade);
@@ -958,11 +966,309 @@
 		return copyText(url).then(function () { toast(str('copied', 'Link copied'), near); });
 	}
 
+	/* ---------- Online check-in: watching the live service signed in counts you present ---------- */
+
+	var Checkin = (function () {
+		var box = null;
+		var timer = 0;
+		var tick = 0;
+		var active = false;
+		var infoPromise = null;
+
+		function enabled() {
+			return !!(CONFIG.checkin && CONFIG.checkin.api && CONFIG.checkin.tenant);
+		}
+
+		function key() {
+			return 'viewer:' + (CONFIG.checkin ? CONFIG.checkin.tenant : '');
+		}
+
+		function viewer() {
+			return enabled() ? Store.get(key(), null) : null;
+		}
+
+		function token() {
+			var v = viewer();
+			return v && v.token ? v.token : '';
+		}
+
+		/* Faith Stream's own API, from the visitor's browser (the church's website is allowed; no cookies). */
+		function api(path, method, body) {
+			var headers = {};
+			if (body) headers['Content-Type'] = 'application/json';
+			if (token()) headers['X-Viewer-Token'] = token();
+			var url = CONFIG.checkin.api + path + (path.indexOf('?') < 0 ? '?' : '&') + 'tenant=' + encodeURIComponent(CONFIG.checkin.tenant);
+			return fetch(url, { method: method || 'GET', credentials: 'omit', headers: headers, body: body ? JSON.stringify(body) : undefined }).then(function (r) {
+				return r.json().catch(function () { return {}; }).then(function (data) {
+					if (!r.ok) {
+						var err = new Error(data && typeof data.detail === 'string' ? data.detail : 'HTTP ' + r.status);
+						err.status = r.status;
+						err.code = (data && data.code) || '';
+						throw err;
+					}
+					return data;
+				});
+			});
+		}
+
+		/* The church's check-in settings (asked once per page). */
+		function settings() {
+			if (!infoPromise) {
+				infoPromise = api('/api/tenant').then(function (t) {
+					return (t && t.settings_public && t.settings_public.checkin) || null;
+				}).catch(function () {
+					infoPromise = null;
+					return null;
+				});
+			}
+			return infoPromise;
+		}
+
+		function start(container, playingFn) {
+			if (!enabled() || !container) return;
+			box = container;
+			active = true;
+			box.playing = playingFn;
+			settings().then(function (s) {
+				if (!active) return;
+				if (!s || !s.enabled) {
+					box.hidden = true;
+					return;
+				}
+				render(s);
+			});
+		}
+
+		function stop() {
+			active = false;
+			window.clearTimeout(timer);
+			window.clearInterval(tick);
+			if (box) {
+				box.hidden = true;
+				box.textContent = '';
+			}
+		}
+
+		function render(s) {
+			window.clearTimeout(timer);
+			window.clearInterval(tick);
+			box.hidden = false;
+			box.textContent = '';
+			if (viewer()) statusView(s);
+			else signIn(s);
+			Embed.height();
+		}
+
+		function field(label, attrs) {
+			return el('label', { 'class': 'ftvs-ci__field' }, [el('span', { text: label }), el('input', attrs)]);
+		}
+
+		function saveViewer(res) {
+			var v = res && res.viewer ? res.viewer : {};
+			Store.set(key(), { token: res.viewer_token, name: v.name || v.email || '', kind: v.kind || '' });
+		}
+
+		function signIn(s) {
+			var mode = s.mode || 'both';
+			var msg = el('p', { 'class': 'ftvs-ci__msg', role: 'status' });
+			var open = el('button', { type: 'button', 'class': 'ftvs-btn ftvs-btn--primary', text: str('countMe', 'Count me present') });
+			var head = el('div', { 'class': 'ftvs-ci__head' }, [
+				el('div', null, [
+					el('p', { 'class': 'ftvs-ci__title', text: str('countTitle', 'Watching from home? Be counted in today\'s attendance.') }),
+					el('p', { 'class': 'ftvs-ci__hint', text: str('countHint', 'Sign in once. After a few minutes of the service, you are checked in automatically.').replace('%d', s.threshold_minutes || 10) })
+				]),
+				open
+			]);
+			box.appendChild(head);
+			var church = null;
+			if (mode === 'fc' || mode === 'both') {
+				var login = field(str('emailOrName', 'Email or first name'), { name: 'login', autocomplete: 'username', required: true });
+				var pass = field(str('password', 'Password'), { name: 'password', type: 'password', autocomplete: 'current-password', required: true });
+				var initial = field(str('lastInitial', 'First letter of your last name'), { name: 'initial', maxlength: '2' });
+				initial.hidden = true;
+				church = el('form', { 'class': 'ftvs-ci__form', hidden: true }, [
+					el('p', { 'class': 'ftvs-ci__sub', text: str('churchAccount', 'Your church account (the one you use for the church app)') }),
+					login, pass, initial,
+					el('button', { type: 'submit', 'class': 'ftvs-btn ftvs-btn--primary', text: str('signIn', 'Sign in') })
+				]);
+				church.addEventListener('submit', function (e) {
+					e.preventDefault();
+					var who = church.login.value.trim();
+					var body = who.indexOf('@') > 0 ? { email: who, password: church.password.value } : { first_name: who, password: church.password.value, last_initial: church.initial.value.trim() };
+					msg.textContent = str('loading', 'Loading...');
+					api('/api/viewer/fc/login', 'POST', body).then(function (res) {
+						saveViewer(res);
+						emit('checkin', { step: 'signed-in', kind: 'fc' });
+						render(s);
+					}).catch(function (err) {
+						if (err.code === 'ambiguous' || err.status === 409) {
+							initial.hidden = false;
+							church.initial.focus();
+						}
+						msg.textContent = err.message && err.message.indexOf('HTTP') !== 0 ? err.message : str('tryAgain', 'That did not go through. Please try again.');
+					});
+				});
+				box.appendChild(church);
+			}
+			var byEmail = null;
+			if (mode === 'email' || mode === 'both') {
+				byEmail = el('form', { 'class': 'ftvs-ci__form', hidden: true }, [
+					el('p', { 'class': 'ftvs-ci__sub', text: str('justEmail', 'Or just your email and name') }),
+					field(str('email', 'Email'), { name: 'email', type: 'email', autocomplete: 'email', required: true }),
+					field(str('yourName', 'Your name'), { name: 'name', autocomplete: 'name' }),
+					el('button', { type: 'submit', 'class': 'ftvs-btn ftvs-btn--light', text: str('useEmail', 'Use my email') })
+				]);
+				byEmail.addEventListener('submit', function (e) {
+					e.preventDefault();
+					msg.textContent = str('loading', 'Loading...');
+					api('/api/viewer/email', 'POST', { email: byEmail.email.value.trim(), name: byEmail.name.value.trim() }).then(function (res) {
+						saveViewer(res);
+						emit('checkin', { step: 'signed-in', kind: 'email' });
+						render(s);
+					}).catch(function (err) {
+						msg.textContent = err.message && err.message.indexOf('HTTP') !== 0 ? err.message : str('tryAgain', 'That did not go through. Please try again.');
+					});
+				});
+				box.appendChild(byEmail);
+			}
+			box.appendChild(msg);
+			open.addEventListener('click', function () {
+				open.hidden = true;
+				if (church) church.hidden = false;
+				if (byEmail) byEmail.hidden = false;
+				var first = box.querySelector('form:not([hidden]) input');
+				if (first) first.focus();
+				Embed.height();
+			});
+		}
+
+		function statusView(s) {
+			var v = viewer();
+			var line = el('p', { 'class': 'ftvs-ci__who' }, [el('span', { text: str('signedInAs', 'Signed in as %s').replace('%s', v.name || '') + '  ' })]);
+			var out = el('button', { type: 'button', 'class': 'ftvs-link-btn', text: str('notYou', 'Not you?') });
+			out.addEventListener('click', function () {
+				api('/api/viewer/logout', 'POST', {}).catch(function () {});
+				Store.set(key(), null);
+				render(s);
+			});
+			line.appendChild(out);
+			var state = el('div', { 'class': 'ftvs-ci__state', 'aria-live': 'polite' });
+			box.appendChild(state);
+			box.appendChild(line);
+			poll(s, state);
+		}
+
+		function poll(s, state) {
+			api('/api/checkin/status').then(function (st) {
+				if (!active) return;
+				show(st, state);
+				timer = window.setTimeout(function () { poll(s, state); }, st.status === 'checked_in' ? 300000 : 30000);
+			}).catch(function (err) {
+				if (!active) return;
+				if (err.status === 401) {
+					Store.set(key(), null);
+					render(s);
+					return;
+				}
+				timer = window.setTimeout(function () { poll(s, state); }, 120000);
+			});
+		}
+
+		function show(st, state) {
+			window.clearInterval(tick);
+			state.textContent = '';
+			if (st.status === 'checked_in') {
+				state.className = 'ftvs-ci__state is-done';
+				state.appendChild(el('p', { 'class': 'ftvs-ci__title', text: str('checkedIn', 'You\'re checked in. Thank you for joining us!') }));
+				if (st.household_prompt) household(state);
+				emit('checkin', { step: 'checked-in' });
+				return;
+			}
+			state.className = 'ftvs-ci__state';
+			if (st.status === 'failed') {
+				state.appendChild(el('p', { 'class': 'ftvs-ci__title', text: str('checkinFailed', 'We couldn\'t check you in automatically. Let the church office know you joined online.') }));
+				return;
+			}
+			if (!st.in_window && !st.checkin) {
+				state.appendChild(el('p', { 'class': 'ftvs-ci__hint', text: str('checkinLater', 'Attendance counts while the service is live, during service times.') }));
+				return;
+			}
+			var need = Math.max(60, st.threshold_s || 600);
+			var watched = Math.min(need, st.watched_s || 0);
+			var bar = el('span', { 'class': 'ftvs-ci__bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100' }, [el('i')]);
+			var words = el('p', { 'class': 'ftvs-ci__title' });
+			var draw = function () {
+				var pct = Math.round((100 * watched) / need);
+				bar.firstChild.style.width = pct + '%';
+				bar.setAttribute('aria-valuenow', String(pct));
+				words.textContent = str('watchedOf', 'Watched %1$d of %2$d minutes. Keep watching and you\'ll be checked in.').replace('%1$d', Math.floor(watched / 60)).replace('%2$d', Math.round(need / 60));
+			};
+			draw();
+			state.appendChild(words);
+			state.appendChild(bar);
+			// Move between polls while the video plays (the server keeps the real count).
+			tick = window.setInterval(function () {
+				if (box.playing && box.playing()) {
+					watched = Math.min(need, watched + 1);
+					draw();
+				}
+			}, 1000);
+		}
+
+		/* "Watching with family?": check in the others in the household too. */
+		function household(state) {
+			var ask = el('button', { type: 'button', 'class': 'ftvs-btn ftvs-btn--light', text: str('withFamily', 'Watching with family?') });
+			state.appendChild(ask);
+			ask.addEventListener('click', function () {
+				ask.hidden = true;
+				var wrap = el('div', { 'class': 'ftvs-ci__family' }, [el('p', { 'class': 'ftvs-ci__sub', text: str('whoWatching', 'Who\'s watching with you?') })]);
+				state.appendChild(wrap);
+				api('/api/checkin/household').then(function (r) {
+					var members = Array.isArray(r) ? r : (r.members || []);
+					var kid = function (m) {
+						var role = String(m.role || m.kind || '').toLowerCase();
+						return role === 'child' || role === 'kid' || role === 'kids' || role === 'teen';
+					};
+					var boxes = [];
+					members.forEach(function (m) {
+						var already = !!(m.checkedIn || m.checked_in);
+						var input = el('input', { type: 'checkbox', value: m.id, disabled: already, checked: already });
+						boxes.push({ input: input, member: m });
+						wrap.appendChild(el('label', { 'class': 'ftvs-ci__member' + (already ? ' is-done' : '') }, [input, el('span', { text: ' ' + m.name + (already ? '  (' + str('already', 'already checked in') + ')' : '') })]));
+					});
+					var send = el('button', { type: 'button', 'class': 'ftvs-btn ftvs-btn--primary', text: str('checkThemIn', 'Check them in') });
+					send.addEventListener('click', function () {
+						var picked = boxes.filter(function (b) { return b.input.checked && !b.input.disabled; }).map(function (b) { return b.member; });
+						send.disabled = true;
+						api('/api/checkin/household', 'POST', {
+							adult_ids: picked.filter(function (m) { return !kid(m); }).map(function (m) { return m.id; }),
+							kid_ids: picked.filter(kid).map(function (m) { return m.id; })
+						}).then(function () {
+							wrap.textContent = '';
+							wrap.appendChild(el('p', { 'class': 'ftvs-ci__sub', text: str('familyDone', 'Thank you! They\'re checked in too.') }));
+							emit('checkin', { step: 'household', count: picked.length });
+						}).catch(function (err) {
+							send.disabled = false;
+							wrap.appendChild(el('p', { 'class': 'ftvs-ci__msg', text: err.message || str('tryAgain', 'That did not go through. Please try again.') }));
+						});
+					});
+					if (!members.length) wrap.appendChild(el('p', { 'class': 'ftvs-ci__hint', text: str('noFamily', 'No one else is in your household on file.') }));
+					else wrap.appendChild(send);
+					Embed.height();
+				}).catch(function (err) {
+					wrap.appendChild(el('p', { 'class': 'ftvs-ci__msg', text: err.message || str('tryAgain', 'That did not go through. Please try again.') }));
+				});
+			});
+		}
+
+		return { start: start, stop: stop, token: token, enabled: enabled };
+	})();
+
 	/* ---------- The player dialog (one per page) ---------- */
 
 	var Player = (function () {
 		var dialog, grab, playerWrap, video, frame, posterBtn, errorBox, endBox, chipBox, backBtn, shareBtn, ambient, kickerEl, titleEl, liveEl, nowEl, metaEl, descEl, nextEl, statusEl, catsEl, epsLabel, epsEl, tvLink, poweredEl;
-		var toolsEl, listenBtn, transcriptBtn, transcriptEl;
+		var toolsEl, listenBtn, transcriptBtn, transcriptEl, checkinEl;
 		var listening = false;
 		var transcriptFor = '';
 		var stack = [];
@@ -1006,6 +1312,7 @@
 			kickerEl = el('p', { 'class': 'ftvs-kicker' });
 			titleEl = el('h2', { 'class': 'ftvs-dialog__title', id: 'ftvs-dialog-title' });
 			liveEl = el('p', { 'class': 'ftvs-dialog__live', hidden: true });
+			checkinEl = el('div', { 'class': 'ftvs-ci', hidden: true });
 			nowEl = el('p', { 'class': 'ftvs-dialog__now', hidden: true });
 			metaEl = el('p', { 'class': 'ftvs-dialog__meta', hidden: true });
 			descEl = el('p', { 'class': 'ftvs-dialog__desc' });
@@ -1035,7 +1342,7 @@
 				(playerWrap = el('div', { 'class': 'ftvs-dialog__player' }, [video, posterBtn, errorBox, endBox, chipBox])),
 				el('div', { 'class': 'ftvs-dialog__body' }, [
 					ambient,
-					el('div', { 'class': 'ftvs-dialog__inner' }, [kickerEl, titleEl, liveEl, nowEl, metaEl, toolsEl, descEl, transcriptEl, nextEl, statusEl, catsEl, epsLabel, epsEl, tvLink, poweredEl])
+					el('div', { 'class': 'ftvs-dialog__inner' }, [kickerEl, titleEl, liveEl, checkinEl, nowEl, metaEl, toolsEl, descEl, transcriptEl, nextEl, statusEl, catsEl, epsLabel, epsEl, tvLink, poweredEl])
 				])
 			]);
 			document.body.appendChild(dialog);
@@ -1240,6 +1547,7 @@
 			transcriptEl.textContent = '';
 			transcriptBtn.setAttribute('aria-expanded', 'false');
 			transcriptFor = '';
+			Checkin.stop();
 		}
 
 		function show(entry, opts) {
@@ -1274,6 +1582,10 @@
 				episodes = [item];
 				current = 0;
 				playLive(s);
+				// Faith Stream live only: signed-in viewers are counted present.
+				if (s.play && s.play.kind === 'hls' && s.play.id) {
+					Checkin.start(checkinEl, function () { return !video.paused; });
+				}
 				return;
 			}
 
@@ -1322,14 +1634,24 @@
 			metaEl.hidden = !bits.length;
 		}
 
-		/* The church's next-step buttons (this section's own, or the site's). */
-		function steps() {
+		/* The church's next-step buttons: this section's own, else this series' button first, then the site's. */
+		function steps(ep) {
 			var own = sectionRoot ? sectionRoot.getAttribute('data-next') : '';
 			if (own === 'off') return [];
 			if (own) {
 				try { return JSON.parse(own); } catch (err) {}
 			}
-			return (CONFIG.next && CONFIG.next.steps) || [];
+			var list = ((CONFIG.next && CONFIG.next.steps) || []).slice();
+			var bySeries = (CONFIG.next && CONFIG.next.series) || {};
+			var entry = stack[0];
+			var ids = [ep && ep.parent, entry && entry.kind === 'category' ? entry.item.id : '', sectionRoot ? sectionRoot.getAttribute('data-category') : ''];
+			for (var i = 0; i < ids.length; i++) {
+				if (ids[i] && bySeries[ids[i]]) {
+					list.unshift(bySeries[ids[i]]);
+					break;
+				}
+			}
+			return list.slice(0, 3);
 		}
 
 		function tagged(url, ep) {
@@ -1346,7 +1668,7 @@
 		}
 
 		function stepButtons(ep, into) {
-			var list = steps();
+			var list = steps(ep);
 			if (!list.length) return false;
 			into.appendChild(el('p', { 'class': 'ftvs-next__title', text: (CONFIG.next && CONFIG.next.title) || '' }));
 			var row = el('div', { 'class': 'ftvs-next__btns' });

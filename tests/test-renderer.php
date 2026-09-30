@@ -856,3 +856,32 @@ function test_renderer_library_page_size_is_clamped() {
 	assert_contains( 'data-per="10"', FTVS_Renderer::library( array( 'per' => 10 ) ) );
 	assert_contains( 'data-ftvs-lib-more', FTVS_Renderer::library( array( 'per' => 6 ) ), 'more messages than fit on a page: a "Load more" button' );
 }
+
+function test_renderer_srcset_only_for_resizable_mux_pictures() {
+	$set = FTVS_Renderer::srcset( 'https://image.mux.com/abc/thumbnail.jpg?width=640', '200px' );
+	assert_contains( 'width=320 320w', $set );
+	assert_contains( 'width=1280 1280w', $set );
+	assert_contains( 'sizes="200px"', $set );
+	assert_same( '', FTVS_Renderer::srcset( 'https://image.mux.com/abc/thumbnail.jpg?token=signed', '200px' ), 'a signed picture keeps its size' );
+	assert_same( '', FTVS_Renderer::srcset( 'https://cdn.gideo.video/x.jpg', '200px' ) );
+	assert_same( '', FTVS_Renderer::srcset( '', '200px' ) );
+}
+
+function test_renderer_message_page_next_steps_put_the_series_button_first() {
+	ftvs_t_settings(
+		array(
+			'next_steps'   => array(
+				array( 'label' => 'Plan a visit', 'url' => 'https://example.org/visit' ),
+				array( 'label' => 'Prayer', 'url' => 'https://example.org/prayer' ),
+				array( 'label' => 'Give', 'url' => 'https://example.org/give' ),
+			),
+			'series_steps' => array( 'marriage' => array( 'label' => 'Marriage retreat', 'url' => 'https://example.org/retreat' ) ),
+		)
+	);
+	$html = FTVS_Renderer::next_steps_html( array( 'id' => 'part-1', 'parent' => 'marriage' ) );
+	assert_true( strpos( $html, 'Marriage retreat' ) < strpos( $html, 'Plan a visit' ), 'the series button comes first' );
+	assert_not_contains( '>Give<', $html, 'still three buttons at most' );
+	$other = FTVS_Renderer::next_steps_html( array( 'id' => 'x', 'parent' => 'other' ) );
+	assert_not_contains( 'Marriage retreat', $other );
+	assert_contains( '>Give<', $other );
+}

@@ -608,7 +608,16 @@ class FTVS_Admin {
 		?>
 		<div class="ftvs-card ftvs-pad ftvs-gap" id="ftvs-instant">
 			<h3 class="ftvs-h2"><?php esc_html_e( 'Instant updates from Faith Stream', 'faith-tv-series' ); ?></h3>
-			<p class="ftvs-lead"><?php esc_html_e( 'So a new or removed video shows on the website within seconds (instead of at the next check), paste these two into Faith Stream: Settings > Your website (WordPress plugin).', 'faith-tv-series' ); ?></p>
+			<p class="ftvs-lead"><?php esc_html_e( 'So a new or removed video shows on the website within seconds (instead of at the next check), and so people watching here can be counted present, Faith Stream needs to know this website. One click fills it in there; you check it and press Save.', 'faith-tv-series' ); ?></p>
+			<?php
+			$home   = wp_parse_url( home_url() );
+			$origin = $home['scheme'] . '://' . $home['host'] . ( isset( $home['port'] ) ? ':' . $home['port'] : '' );
+			// The secret travels in the #fragment, which browsers never send to a server.
+			$setup  = add_query_arg( 'tenant', FTVS_FaithStream_Client::tenant(), FTVS_FaithStream_Client::base() . '/admin/settings/website' )
+				. '#refresh_url=' . rawurlencode( $url ) . '&secret=' . rawurlencode( $secret ) . '&origin=' . rawurlencode( $origin );
+			?>
+			<p><a class="button button-primary ftvs-btn-primary" href="<?php echo esc_url( $setup ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Set it up in Faith Stream', 'faith-tv-series' ); ?></a>
+				<span class="ftvs-hint"><?php esc_html_e( 'Or copy these two into Faith Stream: Settings > Website & media.', 'faith-tv-series' ); ?></span></p>
 			<div class="ftvs-grid2">
 				<label><span><?php esc_html_e( 'Refresh address', 'faith-tv-series' ); ?></span><span class="ftvs-code"><input readonly value="<?php echo esc_attr( $url ); ?>"><button type="button" class="button ftvs-btn-secondary" data-copy="<?php echo esc_attr( $url ); ?>"><?php esc_html_e( 'Copy', 'faith-tv-series' ); ?></button></span></label>
 				<label><span><?php esc_html_e( 'Secret', 'faith-tv-series' ); ?></span><span class="ftvs-code"><input readonly type="password" value="<?php echo esc_attr( $secret ); ?>" onfocus="this.type='text'" onblur="this.type='password'"><button type="button" class="button ftvs-btn-secondary" data-copy="<?php echo esc_attr( $secret ); ?>"><?php esc_html_e( 'Copy', 'faith-tv-series' ); ?></button></span></label>
@@ -1161,6 +1170,44 @@ class FTVS_Admin {
 				</tbody>
 			</table>
 
+			<h3 class="ftvs-h3"><?php esc_html_e( 'A button for one series', 'faith-tv-series' ); ?></h3>
+			<p class="ftvs-hint"><?php esc_html_e( 'Shown first, only with that series. For example "Sign up for the marriage retreat" after the marriage series.', 'faith-tv-series' ); ?></p>
+			<?php
+			$options = array();
+			$tree    = FTVS_Catalog::get_tree();
+			foreach ( is_wp_error( $tree ) ? array() : $tree as $row ) {
+				$options[ $row['id'] ] = $row['title'];
+				foreach ( $row['children'] as $child ) {
+					$options[ $child['id'] ] = $row['title'] . ' / ' . $child['title'];
+				}
+			}
+			$rows = array();
+			foreach ( (array) $s['series_steps'] as $id => $step ) {
+				$rows[] = array( 'series' => $id, 'label' => $step['label'], 'url' => $step['url'] );
+			}
+			$rows[] = array( 'series' => '', 'label' => '', 'url' => '' );
+			$rows[] = array( 'series' => '', 'label' => '', 'url' => '' );
+			?>
+			<table class="ftvs-text-table ftvs-steps-table">
+				<thead><tr><th><?php esc_html_e( 'Series', 'faith-tv-series' ); ?></th><th><?php esc_html_e( 'Button', 'faith-tv-series' ); ?></th><th><?php esc_html_e( 'Goes to', 'faith-tv-series' ); ?></th></tr></thead>
+				<tbody>
+					<?php foreach ( $rows as $i => $row ) : ?>
+						<tr>
+							<td>
+								<select class="ftvs-input" name="<?php echo esc_attr( $name . '[series_steps][' . $i . '][series]' ); ?>" aria-label="<?php esc_attr_e( 'Series', 'faith-tv-series' ); ?>">
+									<option value=""><?php esc_html_e( '- Pick a series -', 'faith-tv-series' ); ?></option>
+									<?php foreach ( $options as $id => $title ) : ?>
+										<option value="<?php echo esc_attr( $id ); ?>"<?php selected( $row['series'], $id ); ?>><?php echo esc_html( $title ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+							<td><input class="ftvs-input" name="<?php echo esc_attr( $name . '[series_steps][' . $i . '][label]' ); ?>" value="<?php echo esc_attr( $row['label'] ); ?>" aria-label="<?php esc_attr_e( 'Button words', 'faith-tv-series' ); ?>"></td>
+							<td><input class="ftvs-input" name="<?php echo esc_attr( $name . '[series_steps][' . $i . '][url]' ); ?>" value="<?php echo esc_attr( $row['url'] ); ?>" placeholder="https://" aria-label="<?php esc_attr_e( 'Link', 'faith-tv-series' ); ?>"></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+
 			<h3 class="ftvs-h3"><?php esc_html_e( 'While watching', 'faith-tv-series' ); ?></h3>
 			<?php self::toggle( 'upnext', __( 'Play the next episode after a short countdown, and suggest more at the end', 'faith-tv-series' ) ); ?>
 			<?php self::toggle( 'resume', __( 'Pick up where people left off (remembered on their own device, nothing is sent anywhere)', 'faith-tv-series' ) ); ?>
@@ -1280,6 +1327,11 @@ class FTVS_Admin {
 				<h3 class="ftvs-h3"><?php esc_html_e( 'Your live stream link', 'faith-tv-series' ); ?></h3>
 				<input class="ftvs-input" name="<?php echo esc_attr( $name ); ?>[live_url]" value="<?php echo esc_attr( $s['live_url'] ); ?>" placeholder="https://www.youtube.com/@yourchurch/live" style="max-width:560px">
 				<p class="ftvs-hint"><?php esc_html_e( 'A YouTube live link (youtube.com/channel/UC.../live works every week), a Vimeo event, or the embed address from Boxcast, Resi, Church Online or similar. It shows during service times.', 'faith-tv-series' ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( 'faithstream' === $s['source'] ) : ?>
+				<h3 class="ftvs-h3"><?php esc_html_e( 'Count people watching online', 'faith-tv-series' ); ?></h3>
+				<?php self::toggle( 'checkin', __( 'Let people watching the live service on the website be counted present', 'faith-tv-series' ), __( 'They sign in once with their church account (or email), and after the minutes set in Faith Stream they are checked in on Faith Connections, like on the Faith Stream app. Needs Faith Connections turned on in Faith Stream, a live channel that counts for attendance, and this website added in Faith Stream: Settings > Website & media.', 'faith-tv-series' ) ); ?>
 			<?php endif; ?>
 
 			<h3 class="ftvs-h3"><?php esc_html_e( 'A "We\'re live" bar on every page', 'faith-tv-series' ); ?></h3>

@@ -625,3 +625,26 @@ function test_settings_migrate_leaves_current_settings_alone() {
 	);
 	assert_same( null, $out, 'settings that already have a source are not rewritten' );
 }
+
+function test_settings_series_steps_from_form_rows_and_saved_maps() {
+	$rows = FTVS_Settings::series_steps(
+		array(
+			array( 'series' => 'marriage', 'label' => 'Marriage retreat', 'url' => 'https://example.org/retreat' ),
+			array( 'series' => '', 'label' => 'No series', 'url' => 'https://example.org/x' ),
+			array( 'series' => 'kids-rock', 'label' => '', 'url' => 'https://example.org/kids' ),
+			array( 'series' => 'bad<id>', 'label' => 'Odd id', 'url' => 'https://example.org/odd' ),
+		)
+	);
+	assert_same( array( 'marriage', 'badid' ), array_keys( $rows ), 'rows without a series or a label are dropped; ids are cleaned' );
+	assert_same( 'Marriage retreat', $rows['marriage']['label'] );
+	$again = FTVS_Settings::series_steps( $rows );
+	assert_same( $rows, $again, 'a saved map passes through unchanged' );
+	assert_same( array(), FTVS_Settings::series_steps( array( array( 'series' => 'x', 'label' => 'Bad', 'url' => 'javascript:alert(1)' ) ) ) );
+}
+
+function test_settings_checkin_is_on_by_default_and_a_toggle() {
+	assert_same( 1, FTVS_Settings::defaults()['checkin'] );
+	ftvs_t_settings( array() );
+	$out = FTVS_Settings::sanitize( array( 'checkin' => '0' ) );
+	assert_same( 0, $out['checkin'] );
+}

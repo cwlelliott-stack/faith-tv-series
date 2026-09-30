@@ -412,7 +412,7 @@ class FTVS_Renderer {
 	 * the page carries both a computer and a phone layout, the other one gets a blank instead.
 	 */
 	private static function hero_img( $src, $ctx, $attrs = '', $alt = '' ) {
-		$img = '<img src="' . esc_url( $src ) . '" alt="' . esc_attr( $alt ) . '" fetchpriority="high" decoding="async"' . $attrs . '>';
+		$img = '<img src="' . esc_url( $src ) . '"' . self::srcset( $src, '(max-width: 767px) 100vw, 60vw' ) . ' alt="' . esc_attr( $alt ) . '" fetchpriority="high" decoding="async"' . $attrs . '>';
 		if ( empty( $ctx['split'] ) ) {
 			return $img;
 		}
@@ -490,7 +490,7 @@ class FTVS_Renderer {
 									<?php if ( 0 === $i ) : ?>
 										<?php echo self::hero_img( self::art( $entry ), $ctx, '', $entry['item']['title'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 									<?php else : ?>
-										<img src="<?php echo esc_url( self::art( $entry ) ); ?>" alt="<?php echo esc_attr( $entry['item']['title'] ); ?>" loading="<?php echo ( ! $ctx['split'] && ( $i < 3 || $i > $count - 3 ) ) ? 'eager' : 'lazy'; ?>" decoding="async">
+										<img src="<?php echo esc_url( self::art( $entry ) ); ?>"<?php echo self::srcset( self::art( $entry ), '(max-width: 600px) 72vw, 640px' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> alt="<?php echo esc_attr( $entry['item']['title'] ); ?>" loading="<?php echo ( ! $ctx['split'] && ( $i < 3 || $i > $count - 3 ) ) ? 'eager' : 'lazy'; ?>" decoding="async">
 									<?php endif; ?>
 									<span class="ftvs__play ftvs__play--big" aria-hidden="true"><?php echo self::play_icon( 34 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
 								</span>
@@ -557,7 +557,7 @@ class FTVS_Renderer {
 					<?php foreach ( $rest as $i => $entry ) : ?>
 						<li class="<?php echo $i >= 5 ? 'is-extra' : ''; ?>">
 							<a class="ftvs__card ftvs-list__row" <?php echo self::card_attrs( $entry, $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput ?>>
-								<span class="ftvs__thumb"><img src="<?php echo esc_url( $entry['item']['image'] ); ?>" alt="" loading="lazy" decoding="async"></span>
+								<span class="ftvs__thumb"><img src="<?php echo esc_url( $entry['item']['image'] ); ?>"<?php echo self::srcset( $entry['item']['image'], '140px' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> alt="" loading="lazy" decoding="async"></span>
 								<span class="ftvs-list__text">
 									<span class="ftvs__name"><?php echo esc_html( $entry['item']['title'] ); ?></span>
 									<?php if ( '' !== $entry['meta'] ) : ?>
@@ -614,7 +614,7 @@ class FTVS_Renderer {
 			<a class="ftvs__card" <?php echo self::card_attrs( $entry, $ctx ); // phpcs:ignore WordPress.Security.EscapeOutput ?><?php echo ( $in_strip && 0 === $index ) ? ' aria-current="true"' : ''; ?>>
 				<span class="ftvs__thumb">
 					<?php if ( $item['image'] ) : ?>
-						<img src="<?php echo esc_url( $item['image'] ); ?>" alt="" loading="lazy" decoding="async">
+						<img src="<?php echo esc_url( $item['image'] ); ?>"<?php echo self::srcset( $item['image'], '(max-width: 600px) 72vw, 330px' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> alt="" loading="lazy" decoding="async">
 					<?php endif; ?>
 					<?php if ( 0 === $index && '' !== $ctx['badge'] ) : ?>
 						<span class="ftvs-badge ftvs-badge--corner"><?php echo esc_html( $ctx['badge'] ); ?></span>
@@ -718,6 +718,23 @@ class FTVS_Renderer {
 		?>
 		<button type="button" class="ftvs__arrow ftvs__arrow--<?php echo esc_attr( $direction ); ?>" data-ftvs-<?php echo esc_attr( $direction ); ?> aria-label="<?php echo $prev ? esc_attr__( 'Previous', 'faith-tv-series' ) : esc_attr__( 'Next', 'faith-tv-series' ); ?>"<?php echo $hidden ? ' hidden' : ''; ?>><?php echo self::chevron( $prev ? 'left' : 'right' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></button>
 		<?php
+	}
+
+	/**
+	 * srcset + sizes for a picture that can be asked for at any width (unsigned Mux frames), so
+	 * phones download a small copy and sharp screens a big one. '' for any other picture.
+	 *
+	 * @param string $sizes The sizes attribute for where the picture sits.
+	 */
+	public static function srcset( $url, $sizes ) {
+		if ( '' === (string) $url || false === strpos( $url, '://image.mux.com/' ) || false !== strpos( $url, 'token=' ) ) {
+			return '';
+		}
+		$set = array();
+		foreach ( array( 320, 480, 640, 960, 1280 ) as $w ) {
+			$set[] = esc_url( add_query_arg( 'width', $w, remove_query_arg( 'width', $url ) ) ) . ' ' . $w . 'w';
+		}
+		return ' srcset="' . esc_attr( implode( ', ', $set ) ) . '" sizes="' . esc_attr( $sizes ) . '"';
 	}
 
 	/* ---------- One video ---------- */
@@ -984,7 +1001,7 @@ class FTVS_Renderer {
 		?>
 		<li>
 			<a class="ftvs__card ftvs-lib__row" <?php echo self::card_attrs( $entry, array( 'play' => 'site' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?>>
-				<span class="ftvs__thumb"><?php if ( '' !== $video['image'] ) : ?><img src="<?php echo esc_url( $video['image'] ); ?>" alt="" loading="lazy" decoding="async"><?php endif; ?><?php if ( '' !== $entry['meta'] ) : ?><span class="ftvs-lib__len"><?php echo esc_html( $entry['meta'] ); ?></span><?php endif; ?></span>
+				<span class="ftvs__thumb"><?php if ( '' !== $video['image'] ) : ?><img src="<?php echo esc_url( $video['image'] ); ?>"<?php echo self::srcset( $video['image'], '(max-width: 600px) 132px, 200px' ); // phpcs:ignore WordPress.Security.EscapeOutput ?> alt="" loading="lazy" decoding="async"><?php endif; ?><?php if ( '' !== $entry['meta'] ) : ?><span class="ftvs-lib__len"><?php echo esc_html( $entry['meta'] ); ?></span><?php endif; ?></span>
 				<span class="ftvs-lib__text">
 					<?php if ( ! empty( $video['series'] ) && is_string( $video['series'] ) ) : ?>
 						<span class="ftvs-lib__series"><?php echo esc_html( $video['series'] ); ?></span>
@@ -1003,7 +1020,12 @@ class FTVS_Renderer {
 
 	/** The church's next-step buttons as HTML (message pages; the player builds its own). */
 	public static function next_steps_html( $video ) {
-		$steps = (array) FTVS_Settings::get( 'next_steps' );
+		$steps  = (array) FTVS_Settings::get( 'next_steps' );
+		$series = (array) FTVS_Settings::get( 'series_steps' );
+		if ( ! empty( $video['parent'] ) && isset( $series[ $video['parent'] ] ) ) {
+			array_unshift( $steps, $series[ $video['parent'] ] );
+			$steps = array_slice( $steps, 0, 3 );
+		}
 		if ( ! $steps ) {
 			return '';
 		}
@@ -1128,9 +1150,15 @@ class FTVS_Renderer {
 			'upnext'  => (bool) FTVS_Settings::get( 'upnext' ),
 			'count'   => (bool) FTVS_Settings::get( 'count_plays' ),
 			'report'  => $report,
+			// Online check-in: viewers of the live service sign in with Faith Stream and are counted present.
+			'checkin' => 'faithstream' === $source && FTVS_Settings::get( 'checkin' ) ? array(
+				'api'    => FTVS_FaithStream_Client::base(),
+				'tenant' => FTVS_FaithStream_Client::tenant(),
+			) : null,
 			'next'    => array(
-				'title' => '' !== $next_title ? $next_title : __( 'Take a next step', 'faith-tv-series' ),
-				'steps' => $steps,
+				'title'  => '' !== $next_title ? $next_title : __( 'Take a next step', 'faith-tv-series' ),
+				'steps'  => $steps,
+				'series' => (object) FTVS_Settings::get( 'series_steps' ),
 			),
 			'remind'  => FTVS_Settings::get( 'remind' ) && '' !== (string) FTVS_Settings::get( 'remind_webhook' ),
 			'consent' => FTVS_Settings::get( 'remind' ) ? FTVS_Followup::consent_text() : '',
@@ -1188,6 +1216,31 @@ class FTVS_Renderer {
 				'oneMessage'  => __( '1 message', 'faith-tv-series' ),
 				'poweredBy'   => __( 'Powered by', 'faith-tv-series' ),
 				'openChannel' => __( 'This video opens on our channel.', 'faith-tv-series' ),
+				'countMe'       => __( 'Count me present', 'faith-tv-series' ),
+				'countTitle'    => __( 'Watching from home? Be counted in today\'s attendance.', 'faith-tv-series' ),
+				'countHint'     => __( 'Sign in once. After a few minutes of the service, you are checked in automatically.', 'faith-tv-series' ),
+				'emailOrName'   => __( 'Email or first name', 'faith-tv-series' ),
+				'password'      => __( 'Password', 'faith-tv-series' ),
+				'lastInitial'   => __( 'First letter of your last name', 'faith-tv-series' ),
+				'churchAccount' => __( 'Your church account (the one you use for the church app)', 'faith-tv-series' ),
+				'signIn'        => __( 'Sign in', 'faith-tv-series' ),
+				'justEmail'     => __( 'Or just your email and name', 'faith-tv-series' ),
+				'yourName'      => __( 'Your name', 'faith-tv-series' ),
+				'useEmail'      => __( 'Use my email', 'faith-tv-series' ),
+				/* translators: %s: the viewer's name */
+				'signedInAs'    => __( 'Signed in as %s', 'faith-tv-series' ),
+				'notYou'        => __( 'Not you?', 'faith-tv-series' ),
+				'checkedIn'     => __( 'You\'re checked in. Thank you for joining us!', 'faith-tv-series' ),
+				'checkinFailed' => __( 'We couldn\'t check you in automatically. Let the church office know you joined online.', 'faith-tv-series' ),
+				'checkinLater'  => __( 'Attendance counts while the service is live, during service times.', 'faith-tv-series' ),
+				/* translators: 1: minutes watched, 2: minutes needed */
+				'watchedOf'     => __( 'Watched %1$d of %2$d minutes. Keep watching and you\'ll be checked in.', 'faith-tv-series' ),
+				'withFamily'    => __( 'Watching with family?', 'faith-tv-series' ),
+				'whoWatching'   => __( 'Who\'s watching with you?', 'faith-tv-series' ),
+				'already'       => __( 'already checked in', 'faith-tv-series' ),
+				'checkThemIn'   => __( 'Check them in', 'faith-tv-series' ),
+				'familyDone'    => __( 'Thank you! They\'re checked in too.', 'faith-tv-series' ),
+				'noFamily'      => __( 'No one else is in your household on file.', 'faith-tv-series' ),
 				'listen'       => __( 'Listen', 'faith-tv-series' ),
 				'watchVideo'   => __( 'Watch the video', 'faith-tv-series' ),
 				'transcript'   => __( 'Transcript', 'faith-tv-series' ),

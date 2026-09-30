@@ -2763,3 +2763,135 @@ body > .ftvs-toast {
 	text-decoration: underline;
 	cursor: pointer;
 }
+
+/* ---------- Online check-in (in the player, while live) ---------- */
+
+.ftvs-ci {
+	margin: 16px 0 0;
+	padding: 14px 16px;
+	background: rgba(255, 255, 255, 0.06);
+	box-shadow: inset 3px 0 0 var(--ftvs-accent);
+}
+
+.ftvs-ci__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px 20px;
+}
+
+.ftvs-ci__head .ftvs-btn,
+.ftvs-ci__form .ftvs-btn,
+.ftvs-ci__state .ftvs-btn {
+	padding: 12px 18px;
+}
+
+.ftvs-ci__title {
+	margin: 0;
+	color: #fff;
+	font-weight: 700;
+}
+
+.ftvs-ci__hint,
+.ftvs-ci__sub {
+	margin: 4px 0 0;
+	color: rgba(255, 255, 255, 0.72);
+	font-size: 14px;
+}
+
+.ftvs-ci__sub {
+	margin: 0 0 8px;
+	color: #fff;
+	font-weight: 600;
+}
+
+.ftvs-ci__form {
+	display: grid;
+	gap: 10px;
+	max-width: 420px;
+	margin-top: 14px;
+}
+
+.ftvs-ci__field {
+	display: grid;
+	gap: 4px;
+	font-size: 14px;
+}
+
+.ftvs-ci__field input {
+	min-height: 44px;
+	padding: 0 12px;
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	border-radius: 0;
+	background: rgba(0, 0, 0, 0.3);
+	color: #fff;
+	font: inherit;
+}
+
+.ftvs-ci__field input:focus-visible {
+	outline: 2px solid var(--ftvs-accent-text);
+	outline-offset: 1px;
+}
+
+.ftvs-ci__msg {
+	margin: 8px 0 0;
+	color: #fff;
+	font-weight: 600;
+}
+
+.ftvs-ci__msg:empty {
+	display: none;
+}
+
+.ftvs-ci__who {
+	margin: 10px 0 0;
+	color: rgba(255, 255, 255, 0.6);
+	font-size: 13px;
+}
+
+.ftvs-ci__bar {
+	display: block;
+	height: 6px;
+	margin-top: 10px;
+	background: rgba(255, 255, 255, 0.15);
+}
+
+.ftvs-ci__bar i {
+	display: block;
+	height: 100%;
+	background: var(--ftvs-accent);
+	transition: width 0.6s ease;
+}
+
+.ftvs-ci__state.is-done .ftvs-ci__title::before {
+	content: "";
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-right: 8px;
+	border-radius: 50%;
+	background: #2fb170;
+	vertical-align: 1px;
+}
+
+.ftvs-ci__state .ftvs-btn {
+	margin-top: 12px;
+}
+
+.ftvs-ci__family {
+	display: grid;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.ftvs-ci__member {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: #fff;
+}
+
+.ftvs-ci__member.is-done {
+	opacity: 0.6;
+}

@@ -49,6 +49,8 @@ class FTVS_Settings {
 			// The player.
 			'next_title'    => '',
 			'next_steps'    => array(),
+			// A button for one series only: series id => { label, url } (shown first after that series).
+			'series_steps'  => array(),
 			'share'         => 1,
 			'resume'        => 1,
 			'upnext'        => 1,
@@ -63,6 +65,8 @@ class FTVS_Settings {
 			'live_url'       => '',
 			'live_bar'       => 0,
 			'live_page'      => '',
+			// People watching the live service on the website can be counted present (Faith Stream).
+			'checkin'        => 1,
 			// Pages for every message, and the podcast feed.
 			'watch_page_id'  => 0,
 			'podcast'        => 0,
@@ -158,6 +162,9 @@ class FTVS_Settings {
 		if ( isset( $input['next_steps'] ) && is_array( $input['next_steps'] ) ) {
 			$out['next_steps'] = self::next_steps( $input['next_steps'] );
 		}
+		if ( isset( $input['series_steps'] ) && is_array( $input['series_steps'] ) ) {
+			$out['series_steps'] = self::series_steps( $input['series_steps'] );
+		}
 		if ( isset( $input['services'] ) && is_array( $input['services'] ) ) {
 			$out['services'] = self::services( $input['services'] );
 		}
@@ -173,7 +180,7 @@ class FTVS_Settings {
 		if ( isset( $input['text'] ) && is_array( $input['text'] ) ) {
 			$out['text'] = self::text_styles( $input['text'] );
 		}
-		foreach ( array( 'powered_by', 'share', 'resume', 'upnext', 'count_plays', 'report_plays', 'stats_email', 'live_bar', 'podcast', 'remind', 'alert_email' ) as $key ) {
+		foreach ( array( 'powered_by', 'share', 'resume', 'upnext', 'count_plays', 'report_plays', 'stats_email', 'live_bar', 'podcast', 'remind', 'alert_email', 'checkin' ) as $key ) {
 			if ( isset( $input[ $key ] ) ) {
 				$out[ $key ] = empty( $input[ $key ] ) ? 0 : 1;
 			}
@@ -223,6 +230,23 @@ class FTVS_Settings {
 					'label' => $label,
 					'url'   => $url,
 				);
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Buttons for single series. Takes the admin form's rows ({ series, label, url }) or an already
+	 * saved map (series => { label, url }); returns the map, at most 30.
+	 */
+	public static function series_steps( $raw ) {
+		$out = array();
+		foreach ( (array) $raw as $key => $row ) {
+			$series = isset( $row['series'] ) ? (string) $row['series'] : ( is_string( $key ) ? $key : '' );
+			$series = preg_replace( '/[^A-Za-z0-9_@-]/', '', $series );
+			$step   = self::next_steps( array( $row ) );
+			if ( '' !== $series && $step && count( $out ) < 30 ) {
+				$out[ $series ] = $step[0];
 			}
 		}
 		return $out;
