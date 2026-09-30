@@ -178,7 +178,9 @@ class FTVS_Catalog {
 				if ( 'hero' === $row['style'] ) {
 					$out['videos'] = array_merge( $out['videos'], $row['videos'] );
 				} elseif ( 'slider' === $row['style'] ) {
-					$out['categories'] = array_merge( $out['categories'], $row['children'] );
+					// The row's own listing gives series without artwork their first episode's picture.
+					$inside            = FTVS_FaithStream_Client::get_children( $row['category']['id'] );
+					$out['categories'] = array_merge( $out['categories'], is_wp_error( $inside ) ? $row['children'] : $inside['categories'] );
 				}
 			}
 			if ( $out['categories'] || $out['videos'] ) {
@@ -227,7 +229,14 @@ class FTVS_Catalog {
 			}
 		}
 		if ( method_exists( $client, 'fetch_all_under' ) ) {
-			// Faith Stream: one listing per home row covers every episode below it.
+			// Faith Stream: one listing per home row covers every episode below it. Featured rows
+			// go last, so a message is listed under its own row rather than "Featured".
+			usort(
+				$tree,
+				function ( $a, $b ) {
+					return (int) in_array( $a['style'], array( 'hero', 'slider' ), true ) - (int) in_array( $b['style'], array( 'hero', 'slider' ), true );
+				}
+			);
 			foreach ( $tree as $row ) {
 				$videos = call_user_func( array( $client, 'fetch_all_under' ), $row['id'] );
 				if ( is_wp_error( $videos ) ) {

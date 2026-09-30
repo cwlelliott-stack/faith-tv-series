@@ -962,6 +962,9 @@
 
 	var Player = (function () {
 		var dialog, grab, playerWrap, video, frame, posterBtn, errorBox, endBox, chipBox, backBtn, shareBtn, ambient, kickerEl, titleEl, liveEl, nowEl, metaEl, descEl, nextEl, statusEl, catsEl, epsLabel, epsEl, tvLink, poweredEl;
+		var toolsEl, listenBtn, transcriptBtn, transcriptEl;
+		var listening = false;
+		var transcriptFor = '';
 		var stack = [];
 		var episodes = [];
 		var current = -1;
@@ -1007,6 +1010,10 @@
 			metaEl = el('p', { 'class': 'ftvs-dialog__meta', hidden: true });
 			descEl = el('p', { 'class': 'ftvs-dialog__desc' });
 			nextEl = el('div', { 'class': 'ftvs-next', hidden: true });
+			listenBtn = el('button', { type: 'button', 'class': 'ftvs-tool', 'aria-pressed': 'false', hidden: true, text: str('listen', 'Listen') });
+			transcriptBtn = el('button', { type: 'button', 'class': 'ftvs-tool', 'aria-expanded': 'false', hidden: true, text: str('transcript', 'Transcript') });
+			toolsEl = el('div', { 'class': 'ftvs-dialog__tools', hidden: true }, [listenBtn, transcriptBtn]);
+			transcriptEl = el('div', { 'class': 'ftvs-transcript', hidden: true });
 			statusEl = el('p', { 'class': 'ftvs-dialog__status', role: 'status' });
 			catsEl = el('ul', { 'class': 'ftvs-dialog__cats', role: 'list', hidden: true });
 			epsLabel = el('h3', { 'class': 'ftvs-dialog__label', hidden: true });
@@ -1028,7 +1035,7 @@
 				(playerWrap = el('div', { 'class': 'ftvs-dialog__player' }, [video, posterBtn, errorBox, endBox, chipBox])),
 				el('div', { 'class': 'ftvs-dialog__body' }, [
 					ambient,
-					el('div', { 'class': 'ftvs-dialog__inner' }, [kickerEl, titleEl, liveEl, nowEl, metaEl, descEl, nextEl, statusEl, catsEl, epsLabel, epsEl, tvLink, poweredEl])
+					el('div', { 'class': 'ftvs-dialog__inner' }, [kickerEl, titleEl, liveEl, nowEl, metaEl, toolsEl, descEl, transcriptEl, nextEl, statusEl, catsEl, epsLabel, epsEl, tvLink, poweredEl])
 				])
 			]);
 			document.body.appendChild(dialog);
@@ -1051,6 +1058,15 @@
 				if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) close();
 			});
 			dialog.addEventListener('close', function () { cleanup(false); });
+			// The viewer's volume (and mute) carry over between videos and visits.
+			var vol = Store.get('vol', null);
+			if (vol && typeof vol.v === 'number') {
+				video.volume = Math.max(0, Math.min(1, vol.v));
+				video.muted = !!vol.m;
+			}
+			video.addEventListener('volumechange', function () { Store.set('vol', { v: video.volume, m: video.muted }); });
+			listenBtn.addEventListener('click', function () { useAudio(!listening); });
+			transcriptBtn.addEventListener('click', toggleTranscript);
 			video.addEventListener('ended', onEnded);
 			video.addEventListener('playing', onPlaying);
 			video.addEventListener('pause', function () {
@@ -1217,6 +1233,13 @@
 			statusEl.textContent = '';
 			statusEl.hidden = true;
 			window.clearTimeout(upTimer);
+			toolsEl.hidden = true;
+			listenBtn.hidden = true;
+			transcriptBtn.hidden = true;
+			transcriptEl.hidden = true;
+			transcriptEl.textContent = '';
+			transcriptBtn.setAttribute('aria-expanded', 'false');
+			transcriptFor = '';
 		}
 
 		function show(entry, opts) {
@@ -1465,7 +1488,10 @@
 				reporter = new Reporter('video', ep.id);
 				reporter.position = function () { return video.currentTime; };
 				if (data.embed) return attachEmbed(data.embed, ep);
-				return attach(data.hls).then(function () {
+				listenBtn.hidden = !data.audio;
+				toolsEl.hidden = listenBtn.hidden && transcriptBtn.hidden;
+				var wantsAudio = !!(data.audio && Store.get('listen', false));
+				return (wantsAudio ? attachAudio(data.audio) : attach(data.hls)).then(function () {
 					if (mine !== token) return;
 					seekStart(ep);
 					if (!autoplay) return;
@@ -1569,9 +1595,13 @@
 					hls.on(Hls.Events.MANIFEST_PARSED, function () {
 						ready = true;
 						pickCaptions();
+						showTools();
 						resolve();
 					});
-					hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, pickCaptions);
+					hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, function () {
+						pickCaptions();
+						showTools();
+					});
 					hls.on(Hls.Events.ERROR, function (evt, data) {
 						if (!data || !data.fatal) return;
 						if (!ready) {
@@ -1683,6 +1713,105 @@
 			var ended = (d.event === 'onStateChange' && d.info === 0) || (d.event === 'infoDelivery' && d.info && d.info.playerState === 0) || d.event === 'ended';
 			if (ended) onEnded();
 		});
+
+		function showTools() {
+			transcriptBtn.hidden = !(hls && hls.subtitleTracks && hls.subtitleTracks.length);
+			toolsEl.hidden = listenBtn.hidden && transcriptBtn.hidden;
+		}
+
+		/* Listen: just the sound (uses little data), for the car or the kitchen. */
+		function attachAudio(url) {
+			if (!url || url.indexOf('https://') !== 0) return Promise.reject(new Error('no audio'));
+			listening = true;
+			listenBtn.setAttribute('aria-pressed', 'true');
+			listenBtn.textContent = str('watchVideo', 'Watch the video');
+			dialog.classList.add('is-listening');
+			video.src = url;
+			return Promise.resolve();
+		}
+
+		function useAudio(on) {
+			var at = video.currentTime;
+			var playing = !video.paused;
+			Store.set('listen', on);
+			var mine = token;
+			if (hls) {
+				hls.destroy();
+				hls = null;
+			}
+			video.removeAttribute('src');
+			var done = function () {
+				if (mine !== token) return;
+				var go = function () {
+					try { video.currentTime = at; } catch (err) {}
+					if (playing) video.play().catch(function () {});
+				};
+				if (video.readyState >= 1) go();
+				else video.addEventListener('loadedmetadata', go, { once: true });
+			};
+			if (on) {
+				attachAudio(videoInfo.audio).then(done);
+			} else {
+				listening = false;
+				listenBtn.setAttribute('aria-pressed', 'false');
+				listenBtn.textContent = str('listen', 'Listen');
+				dialog.classList.remove('is-listening');
+				attach(videoInfo.hls).then(done).catch(function () { if (mine === token) showError(); });
+			}
+		}
+
+		/* Transcript: the captions as text; a line takes the video to that moment. */
+		function toggleTranscript() {
+			var open = transcriptEl.hidden;
+			transcriptEl.hidden = !open;
+			transcriptBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+			var ep = episodes[current];
+			if (!open || !ep || transcriptFor === ep.id || !hls || !hls.subtitleTracks.length) return;
+			transcriptFor = ep.id;
+			transcriptEl.textContent = str('loading', 'Loading...');
+			var want = Store.get('cc', '');
+			var track = hls.subtitleTracks.filter(function (t) { return (t.lang || t.name) === want; })[0] || hls.subtitleTracks[0];
+			var base = track.url;
+			fetch(base).then(function (r) { return r.text(); }).then(function (playlist) {
+				var parts = playlist.split(/\r?\n/).filter(function (l) { return l && l.charAt(0) !== '#'; }).slice(0, 80);
+				return Promise.all(parts.map(function (p) {
+					return fetch(new URL(p, base).toString()).then(function (r) { return r.text(); }).catch(function () { return ''; });
+				}));
+			}).then(function (files) {
+				if (transcriptFor !== ep.id) return;
+				var cues = [];
+				var seen = {};
+				files.join('\n\n').split(/\r?\n\r?\n/).forEach(function (block) {
+					var m = block.match(/(?:(\d+):)?(\d{2}):(\d{2})[.,](\d{3})\s+-->/);
+					if (!m) return;
+					var t = (Number(m[1] || 0) * 3600) + Number(m[2]) * 60 + Number(m[3]);
+					var text = block.split(/\r?\n/).slice(block.split(/\r?\n/).findIndex(function (l) { return l.indexOf('-->') > -1; }) + 1).join(' ').replace(/<[^>]+>/g, '').trim();
+					if (text && !seen[t + text]) {
+						seen[t + text] = true;
+						cues.push({ t: t, text: text });
+					}
+				});
+				cues.sort(function (a, b) { return a.t - b.t; });
+				transcriptEl.textContent = '';
+				if (!cues.length) {
+					transcriptEl.textContent = str('failed', 'This video could not be loaded right now.');
+					return;
+				}
+				var list = el('ol', { 'class': 'ftvs-transcript__list' });
+				cues.forEach(function (c) {
+					var b = el('button', { type: 'button' }, [el('span', { 'class': 'ftvs-transcript__time', text: duration(c.t) || '0:00' }), el('span', { text: ' ' + c.text })]);
+					b.addEventListener('click', function () {
+						try { video.currentTime = c.t; } catch (err) {}
+						video.play().catch(function () {});
+					});
+					list.appendChild(el('li', null, [b]));
+				});
+				transcriptEl.appendChild(list);
+			}).catch(function () {
+				transcriptFor = '';
+				transcriptEl.textContent = str('failed', 'This video could not be loaded right now.');
+			});
+		}
 
 		function loadHls() {
 			if (window.Hls) return Promise.resolve(window.Hls);
@@ -1899,8 +2028,31 @@
 				box.appendChild(list);
 			}
 			box.appendChild(el('div', { 'class': 'ftvs-end__btns' }, [again]));
+			if (CONFIG.remind) box.appendChild(remindBox(ep));
 			endBox.appendChild(box);
 			Embed.height();
+		}
+
+		/* "Remind me when a new series starts" at the end of a message. */
+		function remindBox(ep) {
+			var wrap = el('div', { 'class': 'ftvs-end__remind' });
+			var open = el('button', { type: 'button', 'class': 'ftvs-link-btn', text: str('remindSeries', 'Remind me when a new series starts') });
+			var form = el('form', { 'class': 'ftvs-remind', 'data-ftvs-remind': true, 'data-kind': 'series', hidden: true }, [
+				el('label', null, [el('span', { text: str('email', 'Email') }), el('input', { type: 'email', name: 'email', autocomplete: 'email' })]),
+				el('label', null, [el('span', { text: str('orPhone', 'or mobile number') }), el('input', { type: 'tel', name: 'phone', autocomplete: 'tel' })]),
+				el('label', { 'class': 'ftvs-remind__consent' }, [el('input', { type: 'checkbox', name: 'sms', value: '1' }), el('span', { text: CONFIG.consent || '' })]),
+				el('input', { type: 'text', name: 'hp', value: '', tabindex: '-1', autocomplete: 'off', 'class': 'ftvs-remind__hp', 'aria-hidden': 'true' }),
+				el('button', { type: 'submit', 'class': 'ftvs-btn ftvs-btn--primary', text: str('remindMe', 'Remind me') }),
+				el('p', { 'class': 'ftvs-remind__msg', role: 'status' })
+			]);
+			open.addEventListener('click', function () {
+				form.hidden = !form.hidden;
+				if (!form.hidden) form.querySelector('input').focus();
+			});
+			wrap.appendChild(open);
+			wrap.appendChild(form);
+			initRemind(wrap, function () { return { replay: ep, title: ep.title }; });
+			return wrap;
 		}
 
 		/* Lock screen and notification controls on phones. */
@@ -1930,7 +2082,8 @@
 			var entry = entryOf();
 			if (!entry) return;
 			var ep = entry.kind === 'category' ? episodes[current] : entry.item;
-			var at = video && video.currentTime > 20 && !video.ended ? Math.floor(video.currentTime) : 0;
+			// Paused partway through: share that moment. Otherwise the message from the start.
+			var at = video && video.paused && video.currentTime > 20 && !video.ended ? Math.floor(video.currentTime) : 0;
 			var url;
 			if (ep && ep.watch) {
 				url = ep.watch + (at ? (ep.watch.indexOf('?') < 0 ? '?' : '&') + 't=' + at : '');
@@ -1955,6 +2108,12 @@
 				frame.remove();
 				frame = null;
 			}
+			listening = false;
+			if (listenBtn) {
+				listenBtn.setAttribute('aria-pressed', 'false');
+				listenBtn.textContent = str('listen', 'Listen');
+			}
+			if (dialog) dialog.classList.remove('is-listening');
 			if (video) {
 				video.hidden = false;
 				video.pause();

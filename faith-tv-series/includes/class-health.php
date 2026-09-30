@@ -60,6 +60,23 @@ class FTVS_Health {
 		FTVS_Cache::run_queue();
 		self::check_used( true );
 		self::maybe_alert();
+		self::schedule_switches();
+	}
+
+	/**
+	 * A dated section (from/until) switches at a set time, but a page cache would keep showing the
+	 * old one. Clear page caches right after each switch in the coming hour.
+	 */
+	private static function schedule_switches() {
+		$now = time();
+		foreach ( self::where_used() as $row ) {
+			foreach ( array( $row['from'], $row['until'] ) as $when ) {
+				$t = '' !== $when ? FTVS_Renderer::local_time( $when ) : 0;
+				if ( $t > $now && $t <= $now + 70 * MINUTE_IN_SECONDS && ! wp_next_scheduled( FTVS_Purge::AT, array( $t ) ) ) {
+					wp_schedule_single_event( $t + 5, FTVS_Purge::AT, array( $t ) );
+				}
+			}
+		}
 	}
 
 	/* ---------- Where it's used ---------- */

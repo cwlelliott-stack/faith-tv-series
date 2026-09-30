@@ -11,9 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 class FTVS_Purge {
 
 	const CRON = 'ftvs_purge_pages';
+	// At a scheduled section's switch time (the argument is that time).
+	const AT = 'ftvs_purge_at';
 
 	public static function init() {
 		add_action( self::CRON, array( __CLASS__, 'now' ) );
+		add_action( self::AT, array( __CLASS__, 'now' ) );
 	}
 
 	/** Purge within a minute; many changes in a row cause one purge. */

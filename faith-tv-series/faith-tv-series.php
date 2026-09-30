@@ -87,8 +87,8 @@ add_filter(
 register_deactivation_hook(
 	__FILE__,
 	function () {
-		foreach ( array( FTVS_Cache::CRON, FTVS_Purge::CRON, FTVS_Health::WARM, FTVS_Health::WARM_NOW, FTVS_Stats::WEEKLY, FTVS_Followup::CRON ) as $hook ) {
-			wp_clear_scheduled_hook( $hook );
+		foreach ( array( FTVS_Cache::CRON, FTVS_Purge::CRON, FTVS_Purge::AT, FTVS_Health::WARM, FTVS_Health::WARM_NOW, FTVS_Stats::WEEKLY, FTVS_Followup::CRON ) as $hook ) {
+			wp_unschedule_hook( $hook );
 		}
 		flush_rewrite_rules( false );
 	}

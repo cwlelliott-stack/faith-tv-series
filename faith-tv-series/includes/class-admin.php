@@ -60,6 +60,7 @@ class FTVS_Admin {
 		foreach ( self::tab_names() as $slug => $name ) {
 			add_submenu_page( self::PAGE, $name, $name, 'manage_options', $slug, array( __CLASS__, 'page' ) );
 		}
+		add_submenu_page( self::PAGE, __( 'Build a series', 'faith-tv-series' ), __( 'Build a series', 'faith-tv-series' ), 'edit_pages', 'edit.php?post_type=' . FTVS_Manual::TYPE );
 	}
 
 	private static function tab_names() {
@@ -100,7 +101,11 @@ class FTVS_Admin {
 		if ( ! isset( self::PAGES[ $page ] ) ) {
 			return;
 		}
-		wp_enqueue_style( 'ftvs-admin-font', 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800&family=Roboto:wght@700;800&display=swap', array(), null ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+		// The brand fonts come from Google Fonts in the direct edition only (the wordpress.org
+		// edition, which has no self-updater, uses system fonts: no outside calls).
+		if ( class_exists( 'FTVS_Updater' ) ) {
+			wp_enqueue_style( 'ftvs-admin-font', 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;700;800&family=Roboto:wght@700;800&display=swap', array(), null ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+		}
 		wp_enqueue_style( 'ftvs-admin', FTVS_URL . 'assets/admin.css', array(), FTVS_VERSION );
 		wp_enqueue_script( 'ftvs-admin', FTVS_URL . 'assets/admin.js', array(), FTVS_VERSION, true );
 		wp_localize_script(

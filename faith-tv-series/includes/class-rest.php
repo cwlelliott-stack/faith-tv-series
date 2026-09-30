@@ -102,6 +102,8 @@ class FTVS_Rest {
 			'hls'      => isset( $video['hls'] ) ? $video['hls'] : '',
 			'embed'    => isset( $video['embed'] ) ? $video['embed'] : '',
 			'captions' => ! empty( $video['captions'] ),
+			// Audio only (Listen mode), when the platform made an audio file of the message.
+			'audio'    => isset( $video['audio'] ) ? (string) $video['audio'] : '',
 			'related'  => array_slice( $related, 0, 8 ),
 			'series'   => isset( $video['series'] ) ? $video['series'] : array(),
 			'watch'    => FTVS_Watch::url( $id ),
@@ -262,7 +264,7 @@ class FTVS_Rest {
 			return rest_ensure_response( array( 'ok' => true, 'repeat' => true ) );
 		}
 		set_transient( 'ftvs_refresh_seen', md5( $body ), 10 * MINUTE_IN_SECONDS );
-		update_option( 'ftvs_last_ping', array( 't' => time(), 'event' => isset( $data['event'] ) ? sanitize_key( $data['event'] ) : '' ), false );
+		update_option( 'ftvs_last_ping', array( 't' => time(), 'event' => isset( $data['event'] ) ? preg_replace( '/[^a-z0-9._-]/', '', strtolower( (string) $data['event'] ) ) : '' ), false );
 		FTVS_Cache::clear();
 		FTVS_Health::warm_soon();
 		FTVS_Purge::soon();

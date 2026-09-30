@@ -42,7 +42,7 @@ class FTVS_Embed {
 
 	/** Web address of an embed with these options, signed. */
 	public static function url( $args ) {
-		$query = array( 'ftvs_embed' => isset( $args['category'] ) ? (string) $args['category'] : '' );
+		$query = array( 'ftvs_embed' => isset( $args['category'] ) && '' !== (string) $args['category'] ? (string) $args['category'] : ( isset( $args['kind'] ) ? (string) $args['kind'] : '' ) );
 		foreach ( self::option_keys() as $key ) {
 			if ( isset( $args[ $key ] ) && '' !== trim( (string) $args[ $key ] ) && ! ( 'limit' === $key && ! absint( $args[ $key ] ) ) && ! ( 'kind' === $key && 'category' === $args[ $key ] ) ) {
 				$query[ 'ftvs_' . $key ] = trim( (string) $args[ $key ] );

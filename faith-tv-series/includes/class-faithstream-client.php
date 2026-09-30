@@ -179,28 +179,49 @@ class FTVS_FaithStream_Client {
 			foreach ( $videos as $video ) {
 				$out['videos'][] = self::video( $video, $slug );
 			}
+			// A page can hold fewer than 200 (a video filed twice is listed once), so go by the total.
 			$total = isset( $page['total'] ) ? (int) $page['total'] : 0;
-			if ( count( $videos ) < 200 || count( $out['videos'] ) >= $total ) {
+			if ( ! $videos || $page_no * 200 >= $total ) {
 				break;
 			}
 		}
 		return $out;
 	}
 
-	/** @internal Every video under a category, including folders' descendants (for the library). */
-	public static function fetch_all_under( $slug ) {
-		$all = array();
+	/**
+	 * @internal Every video under a category (for the library). A folder lists all its
+	 * descendants itself; a category with videos of its own lists only those, so its series
+	 * are walked too (one level, which is how churches file series).
+	 */
+	public static function fetch_all_under( $slug, $depth = 0 ) {
+		$all  = array();
+		$kids = array();
 		for ( $page_no = 1; $page_no <= 10; $page_no++ ) {
 			$page = self::get( '/api/public/categories/' . rawurlencode( $slug ) . '?per_page=200&page=' . $page_no . '&thumb_width=' . self::THUMB, null, null, true );
 			if ( is_wp_error( $page ) ) {
 				return 1 === $page_no ? $page : $all;
 			}
+			if ( 1 === $page_no && ! empty( $page['has_own_videos'] ) ) {
+				foreach ( isset( $page['children'] ) ? (array) $page['children'] : array() as $child ) {
+					if ( ! empty( $child['slug'] ) ) {
+						$kids[] = (string) $child['slug'];
+					}
+				}
+			}
 			$videos = isset( $page['videos'] ) ? (array) $page['videos'] : array();
 			foreach ( $videos as $video ) {
 				$all[] = self::video( $video, $slug );
 			}
-			if ( count( $videos ) < 200 ) {
+			if ( ! $videos || $page_no * 200 >= ( isset( $page['total'] ) ? (int) $page['total'] : 0 ) ) {
 				break;
+			}
+		}
+		if ( $depth < 1 ) {
+			foreach ( array_slice( $kids, 0, 40 ) as $kid ) {
+				$more = self::fetch_all_under( $kid, $depth + 1 );
+				if ( ! is_wp_error( $more ) ) {
+					$all = array_merge( $all, $more );
+				}
 			}
 		}
 		return $all;

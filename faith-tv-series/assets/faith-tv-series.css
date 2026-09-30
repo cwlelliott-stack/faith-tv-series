@@ -2665,3 +2665,101 @@ body > .ftvs-toast {
 		transform: none;
 	}
 }
+
+/* ---------- Player tools: Listen and Transcript ---------- */
+
+.ftvs-dialog__tools {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 14px 0 0;
+}
+
+.ftvs-dialog .ftvs-tool {
+	padding: 8px 14px;
+	border: 1px solid rgba(255, 255, 255, 0.4);
+	border-radius: 0;
+	background: transparent;
+	color: #fff;
+	font-family: var(--ftvs-font);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.ftvs-dialog .ftvs-tool:hover,
+.ftvs-dialog .ftvs-tool:focus-visible,
+.ftvs-dialog .ftvs-tool[aria-pressed="true"],
+.ftvs-dialog .ftvs-tool[aria-expanded="true"] {
+	border-color: #fff;
+	background: #fff;
+	color: #111;
+	outline: none;
+}
+
+.ftvs-transcript {
+	max-height: 320px;
+	margin: 16px 0 0;
+	padding: 6px 0;
+	overflow: auto;
+	border-top: 1px solid rgba(255, 255, 255, 0.12);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+	color: rgba(255, 255, 255, 0.85);
+	font-size: 15px;
+}
+
+.ftvs-transcript__list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ftvs-transcript button {
+	display: block;
+	width: 100%;
+	padding: 6px 8px;
+	border: 0;
+	background: none;
+	color: inherit;
+	text-align: left;
+	line-height: 1.5;
+	cursor: pointer;
+}
+
+.ftvs-transcript button:hover,
+.ftvs-transcript button:focus-visible {
+	background: rgba(255, 255, 255, 0.08);
+	outline: none;
+}
+
+.ftvs-transcript__time {
+	color: var(--ftvs-accent-text);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.ftvs-dialog.is-listening .ftvs-dialog__player video {
+	background: #000 center / contain no-repeat;
+}
+
+.ftvs-end__remind {
+	margin-top: 18px;
+	text-align: center;
+}
+
+.ftvs-end__remind .ftvs-remind {
+	margin: 12px auto 0;
+	text-align: left;
+}
+
+.ftvs-dialog .ftvs-link-btn {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #fff;
+	font-size: 14px;
+	text-decoration: underline;
+	cursor: pointer;
+}

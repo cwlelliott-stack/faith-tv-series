@@ -1357,7 +1357,11 @@
 }
 
 .ftvs-facts--cards {
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 12px;
 	margin: 0;
+	background: transparent;
+	box-shadow: none;
 }
 
 .ftvs-facts--cards > div {
@@ -1391,11 +1395,17 @@
 	transition: max-width 0.25s ease;
 }
 
+.ftvs-look__stage {
+	overflow: hidden;
+}
+
 .ftvs-look__stage iframe {
 	display: block;
-	width: 100%;
+	width: 1200px;
+	max-width: none;
 	border: 0;
-	background: #222;
+	background: #fff;
+	transform-origin: 0 0;
 }
 
 .ftvs-look__stage.is-phone {
@@ -1446,4 +1456,12 @@
 
 .ftvs-powered a:hover {
 	text-decoration: underline;
+}
+
+.ftvs-panel .ftvs-switch {
+	margin: 0 0 10px;
+}
+
+.ftvs-panel .ftvs-hint--switch {
+	margin: -6px 0 12px 52px;
 }

@@ -176,7 +176,15 @@ class FTVS_Gideo_Client {
 				'CategoryID' => $category_id,
 			)
 		);
-		return is_wp_error( $body ) ? $body : self::parse_children( $body );
+		if ( is_wp_error( $body ) ) {
+			$data = $body->get_error_data();
+			// A category that answers 404 was removed (the home rows never count as removed).
+			if ( '' !== $category_id && is_array( $data ) && isset( $data['status'] ) && 404 === $data['status'] ) {
+				return new WP_Error( 'ftvs_gone', __( 'That is no longer on your channel.', 'faith-tv-series' ) );
+			}
+			return $body;
+		}
+		return self::parse_children( $body );
 	}
 
 	/** @internal */
@@ -194,7 +202,7 @@ class FTVS_Gideo_Client {
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== (int) $code ) {
 			/* translators: %d: HTTP status code */
-			return new WP_Error( 'ftvs_http', sprintf( __( 'Gideo answered with status %d.', 'faith-tv-series' ), $code ) );
+			return new WP_Error( 'ftvs_http', sprintf( __( 'Gideo answered with status %d.', 'faith-tv-series' ), $code ), array( 'status' => (int) $code ) );
 		}
 		return wp_remote_retrieve_body( $response );
 	}

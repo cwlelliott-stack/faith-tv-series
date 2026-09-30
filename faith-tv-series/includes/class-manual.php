@@ -24,6 +24,14 @@ class FTVS_Manual {
 		add_action( 'save_post_' . self::TYPE, array( __CLASS__, 'save' ), 10, 2 );
 		add_filter( 'manage_' . self::TYPE . '_posts_columns', array( __CLASS__, 'columns' ) );
 		add_action( 'manage_' . self::TYPE . '_posts_custom_column', array( __CLASS__, 'column' ), 10, 2 );
+		// Keep the Faith Stream menu open while building a series.
+		add_filter(
+			'parent_file',
+			function ( $parent ) {
+				$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+				return $screen && self::TYPE === $screen->post_type ? FTVS_Admin::PAGE : $parent;
+			}
+		);
 	}
 
 	public static function register() {
@@ -40,7 +48,8 @@ class FTVS_Manual {
 				),
 				'public'       => false,
 				'show_ui'      => true,
-				'show_in_menu' => FTVS_Admin::PAGE,
+				// Listed last under the Faith Stream menu (FTVS_Admin::menu), after the tabs.
+				'show_in_menu' => false,
 				'supports'     => array( 'title', 'editor', 'thumbnail', 'page-attributes' ),
 				'show_in_rest' => false,
 				'capability_type' => 'page',

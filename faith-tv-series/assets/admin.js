@@ -129,12 +129,25 @@
 			schedule();
 		});
 		if (cat) cat.addEventListener('change', preview);
+		// "Computer" renders the section at a real computer width and shrinks it to fit; "Phone" is 390 wide.
+		var fit = function () {
+			var phone = stage.classList.contains('is-phone');
+			var width = phone ? 390 : 1200;
+			var scale = phone ? 1 : Math.min(1, stage.clientWidth / width);
+			frame.style.width = width + 'px';
+			frame.style.transform = scale < 1 ? 'scale(' + scale + ')' : '';
+			stage.style.height = Math.ceil((parseFloat(frame.style.height) || 640) * scale) + 'px';
+		};
+		new MutationObserver(fit).observe(frame, { attributes: true, attributeFilter: ['style'] });
+		window.addEventListener('resize', fit);
 		$$('[data-ftvs-pv]').forEach(function (b) {
 			b.addEventListener('click', function () {
 				$$('[data-ftvs-pv]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
 				stage.classList.toggle('is-phone', b.getAttribute('data-ftvs-pv') === 'phone');
+				fit();
 			});
 		});
+		fit();
 		checkContrast();
 		preview();
 	}
