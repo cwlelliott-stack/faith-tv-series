@@ -253,7 +253,7 @@ function test_catalog_get_children_errors() {
 
 function test_catalog_get_children_of_a_deleted_series_you_built() {
 	assert_wp_error( FTVS_Catalog::get_children( '_ms999999999' ), 'ftvs_gone' );
-	assert_wp_error( FTVS_Catalog::get_video( '_mv999999999x0' ), 'ftvs_gone' );
+	assert_wp_error( FTVS_Catalog::get_video( '_mv999999999x00000000' ), 'ftvs_gone' );
 }
 
 function test_catalog_get_children_home_lists_the_rows_on_faith_stream() {
@@ -574,7 +574,7 @@ function test_catalog_links_for_automatic_and_hand_built_ids_are_empty() {
 	assert_same( '', FTVS_Catalog::category_link( '@newest' ) );
 	assert_same( '', FTVS_Catalog::category_link( '' ) );
 	assert_same( '', FTVS_Catalog::category_link( '_ms5' ) );
-	assert_same( '', FTVS_Catalog::video_link( '_mv5x0', '_ms5' ) );
+	assert_same( '', FTVS_Catalog::video_link( '_mv5x00000000', '_ms5' ) );
 	assert_contains( '/browse/kids-rock?tenant=', FTVS_Catalog::category_link( 'kids-rock' ) );
 	assert_contains( '/watch/v1?tenant=', FTVS_Catalog::video_link( 'v1', 'kids-rock' ) );
 }

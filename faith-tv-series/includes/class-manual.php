@@ -4,7 +4,8 @@
  * links (YouTube, Vimeo, anything WordPress can embed, or a direct .m3u8 stream). They work
  * with every layout, next to whatever platform the church connected (or with none at all).
  *
- * Ids: a series is "_ms<post id>", its episodes "_mv<post id>x<n>".
+ * Ids: a series is "_ms<post id>", its episodes "_mv<post id>x<key>", the key coming from the episode's link
+ * (FTVS_Manual::key()): moving episodes around never changes a message's address, its shared links or counts.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -62,7 +63,22 @@ class FTVS_Manual {
 	}
 
 	public static function owns( $id ) {
-		return is_string( $id ) && 1 === preg_match( '/^_m(s\d+|v\d+x\d+|sall)$/D', $id );
+		return is_string( $id ) && 1 === preg_match( '/^_m(s\d+|v\d+x[0-9a-f]{8}|sall)$/D', $id );
+	}
+
+	/** An episode's part of its id: from its link, so it stays the same wherever the episode moves. */
+	public static function key( $url ) {
+		return substr( md5( (string) $url ), 0, 8 );
+	}
+
+	/** @return int|null The episode's place in its series, by key. */
+	private static function find( $post, $key ) {
+		foreach ( self::episodes( $post ) as $n => $ep ) {
+			if ( self::key( $ep['url'] ) === $key ) {
+				return $n;
+			}
+		}
+		return null;
 	}
 
 	public static function exists( $id ) {
@@ -73,8 +89,8 @@ class FTVS_Manual {
 		if ( ! $post ) {
 			return false;
 		}
-		if ( preg_match( '/^_mv\d+x(\d+)$/D', $id, $m ) ) {
-			return isset( self::episodes( $post )[ (int) $m[1] ] );
+		if ( preg_match( '/^_mv\d+x([0-9a-f]{8})$/D', $id, $m ) ) {
+			return null !== self::find( $post, $m[1] );
 		}
 		return true;
 	}
@@ -167,16 +183,16 @@ class FTVS_Manual {
 	}
 
 	public static function get_video( $id ) {
-		if ( ! preg_match( '/^_mv(\d+)x(\d+)$/D', (string) $id, $m ) ) {
+		if ( ! preg_match( '/^_mv(\d+)x([0-9a-f]{8})$/D', (string) $id, $m ) ) {
 			return new WP_Error( 'ftvs_bad_id', __( 'That is not a video on your channel.', 'faith-tv-series' ) );
 		}
 		$post = self::post_of( $id );
-		$eps  = $post ? self::episodes( $post ) : array();
-		if ( ! isset( $eps[ (int) $m[2] ] ) ) {
+		$n    = $post ? self::find( $post, $m[2] ) : null;
+		if ( null === $n ) {
 			return new WP_Error( 'ftvs_gone', __( 'That is no longer on your channel.', 'faith-tv-series' ) );
 		}
-		$ep    = $eps[ (int) $m[2] ];
-		$video = self::video( $post, (int) $m[2], $ep );
+		$ep    = self::episodes( $post )[ $n ];
+		$video = self::video( $post, $n, $ep );
 		$video['hls']      = 'hls' === $ep['kind'] ? $ep['url'] : '';
 		$video['embed']    = 'embed' === $ep['kind'] ? $ep['embed'] : '';
 		$video['audio']    = '';
@@ -214,7 +230,7 @@ class FTVS_Manual {
 	private static function video( $post, $n, $ep ) {
 		$image = '' !== $ep['image'] ? $ep['image'] : self::image( $post, array() );
 		return array(
-			'id'          => '_mv' . $post->ID . 'x' . $n,
+			'id'          => '_mv' . $post->ID . 'x' . self::key( $ep['url'] ),
 			'parent'      => '_ms' . $post->ID,
 			/* translators: %d: episode number */
 			'title'       => '' !== $ep['title'] ? $ep['title'] : sprintf( __( 'Episode %d', 'faith-tv-series' ), $n + 1 ),
@@ -287,13 +303,16 @@ class FTVS_Manual {
 		foreach ( self::episodes( $post ) as $ep ) {
 			$old[ $ep['url'] ] = $ep;
 		}
-		$eps = array();
+		$eps  = array();
+		$seen = array();
 		foreach ( preg_split( '/\r\n|\r|\n/', $raw ) as $line ) {
 			$parts = array_map( 'trim', explode( '|', $line, 2 ) );
 			$url   = esc_url_raw( $parts[0] );
-			if ( 0 !== strpos( $url, 'https://' ) || count( $eps ) >= 100 ) {
+			// The same link twice would be the same episode (and the same id): once is enough.
+			if ( 0 !== strpos( $url, 'https://' ) || count( $eps ) >= 100 || isset( $seen[ $url ] ) ) {
 				continue;
 			}
+			$seen[ $url ] = true;
 			$title = isset( $parts[1] ) ? sanitize_text_field( $parts[1] ) : '';
 			$ep    = isset( $old[ $url ] ) ? $old[ $url ] : self::resolve( $url );
 			if ( ! $ep ) {

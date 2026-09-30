@@ -51,6 +51,12 @@ function ftvs_t_series( $status = 'publish', $episodes = null, $title = 'A test 
 	return $id;
 }
 
+/** The id of the n-th episode of the default test series (ids come from the episode's link). */
+function ftvs_t_ep( $series_id, $n ) {
+	$urls = array( 'https://live.example.test/one.m3u8', 'https://vimeo.com/76979871' );
+	return '_mv' . $series_id . 'x' . FTVS_Manual::key( isset( $urls[ $n ] ) ? $urls[ $n ] : 'not-an-episode-' . $n );
+}
+
 function ftvs_t_oembed_answer( $iframe_src, $title = 'A video', $thumb = 'https://i.example.test/t.jpg' ) {
 	return ftvs_t_json(
 		array(
@@ -79,10 +85,10 @@ function ftvs_t_saved_episodes( $id ) {
 /* ---------------------------------------------------------------- ids */
 
 function test_manual_owns_only_its_own_ids() {
-	foreach ( array( '_ms12', '_ms1', '_mv12x3', '_mv1x0', '_msall' ) as $id ) {
+	foreach ( array( '_ms12', '_ms1', '_mv12x0123abcd', '_mv1xdeadbeef', '_msall' ) as $id ) {
 		assert_true( FTVS_Manual::owns( $id ), $id );
 	}
-	foreach ( array( '', '_ms', '_mv12', '_mv12x', '_msALL', '_mx12', 'ms12', 'demo-rooted', 'kids-rock', ' _ms12', '_ms12x', 12, null, array( '_ms1' ) ) as $id ) {
+	foreach ( array( '', '_ms', '_mv12', '_mv12x', '_mv12x3', '_mv12x0123ABCD', '_msALL', '_mx12', 'ms12', 'demo-rooted', 'kids-rock', ' _ms12', '_ms12x', 12, null, array( '_ms1' ) ) as $id ) {
 		assert_false( FTVS_Manual::owns( $id ), var_export( $id, true ) ); // phpcs:ignore
 	}
 }
@@ -92,9 +98,9 @@ function test_manual_owns_only_its_own_ids() {
 function test_manual_a_published_series_and_its_episodes() {
 	$id = ftvs_t_series();
 	assert_true( FTVS_Manual::exists( '_ms' . $id ) );
-	assert_true( FTVS_Manual::exists( '_mv' . $id . 'x0' ) );
-	assert_true( FTVS_Manual::exists( '_mv' . $id . 'x1' ) );
-	assert_false( FTVS_Manual::exists( '_mv' . $id . 'x2' ), 'there are only two episodes' );
+	assert_true( FTVS_Manual::exists( ftvs_t_ep( $id, 0 ) ) );
+	assert_true( FTVS_Manual::exists( ftvs_t_ep( $id, 1 ) ) );
+	assert_false( FTVS_Manual::exists( ftvs_t_ep( $id, 2 ) ), 'there are only two episodes' );
 	assert_false( FTVS_Manual::exists( '_ms' . ( $id + 100000 ) ) );
 	assert_same( 'A test series', FTVS_Manual::title( '_ms' . $id ) );
 	assert_same( '', FTVS_Manual::title( '_ms' . ( $id + 100000 ) ) );
@@ -106,7 +112,7 @@ function test_manual_children_of_a_series_are_its_episodes() {
 	$data = FTVS_Manual::get_children( '_ms' . $id );
 	assert_not_error( $data );
 	assert_same( array(), $data['categories'] );
-	assert_same( array( '_mv' . $id . 'x0', '_mv' . $id . 'x1' ), wp_list_pluck( $data['videos'], 'id' ) );
+	assert_same( array( ftvs_t_ep( $id, 0 ), ftvs_t_ep( $id, 1 ) ), wp_list_pluck( $data['videos'], 'id' ) );
 	$first  = $data['videos'][0];
 	$second = $data['videos'][1];
 	assert_same( '_ms' . $id, $first['parent'] );
@@ -127,12 +133,12 @@ function test_manual_a_draft_series_is_not_shown() {
 	$id = ftvs_t_series( 'draft' );
 	assert_false( FTVS_Manual::exists( '_ms' . $id ) );
 	assert_wp_error( FTVS_Manual::get_children( '_ms' . $id ), 'ftvs_gone' );
-	assert_wp_error( FTVS_Manual::get_video( '_mv' . $id . 'x0' ), 'ftvs_gone' );
+	assert_wp_error( FTVS_Manual::get_video( ftvs_t_ep( $id, 0 ) ), 'ftvs_gone' );
 }
 
 function test_manual_a_stream_and_an_embedded_video() {
 	$id = ftvs_t_series();
-	$hls = FTVS_Manual::get_video( '_mv' . $id . 'x0' );
+	$hls = FTVS_Manual::get_video( ftvs_t_ep( $id, 0 ) );
 	assert_not_error( $hls );
 	assert_same( 'https://live.example.test/one.m3u8', $hls['hls'] );
 	assert_same( '', $hls['embed'] );
@@ -146,7 +152,7 @@ function test_manual_a_stream_and_an_embedded_video() {
 		),
 		$hls['series']
 	);
-	$embed = FTVS_Manual::get_video( '_mv' . $id . 'x1' );
+	$embed = FTVS_Manual::get_video( ftvs_t_ep( $id, 1 ) );
 	assert_same( '', $embed['hls'] );
 	assert_same( 'https://player.vimeo.com/video/76979871?autoplay=1', $embed['embed'] );
 	assert_same( 'Second episode', $embed['title'] );
@@ -157,8 +163,8 @@ function test_manual_get_video_with_bad_or_missing_ids() {
 	$id = ftvs_t_series();
 	assert_wp_error( FTVS_Manual::get_video( '_ms' . $id ), 'ftvs_bad_id', 'a series is not a video' );
 	assert_wp_error( FTVS_Manual::get_video( 'demo-x' ), 'ftvs_bad_id' );
-	assert_wp_error( FTVS_Manual::get_video( '_mv' . $id . 'x9' ), 'ftvs_gone' );
-	assert_wp_error( FTVS_Manual::get_video( '_mv' . ( $id + 100000 ) . 'x0' ), 'ftvs_gone' );
+	assert_wp_error( FTVS_Manual::get_video( ftvs_t_ep( $id, 9 ) ), 'ftvs_gone' );
+	assert_wp_error( FTVS_Manual::get_video( '_mv' . ( $id + 100000 ) . 'x' . FTVS_Manual::key( 'https://live.example.test/one.m3u8' ) ), 'ftvs_gone' );
 }
 
 function test_manual_the_catalog_serves_hand_built_ids_without_a_platform() {
@@ -170,11 +176,11 @@ function test_manual_the_catalog_serves_hand_built_ids_without_a_platform() {
 		),
 		FTVS_Catalog::find_category( '_ms' . $id )
 	);
-	assert_true( FTVS_Catalog::is_known( '_mv' . $id . 'x1' ) );
-	assert_false( FTVS_Catalog::is_known( '_mv' . $id . 'x7' ) );
+	assert_true( FTVS_Catalog::is_known( ftvs_t_ep( $id, 1 ) ) );
+	assert_false( FTVS_Catalog::is_known( ftvs_t_ep( $id, 7 ) ) );
 	assert_count( 2, FTVS_Catalog::get_children( '_ms' . $id )['videos'] );
-	assert_same( 'https://live.example.test/one.m3u8', FTVS_Catalog::get_video_url( '_mv' . $id . 'x0' ) );
-	assert_wp_error( FTVS_Catalog::get_video_url( '_mv' . $id . 'x1' ), 'ftvs_no_stream', 'an embedded video has no HLS address' );
+	assert_same( 'https://live.example.test/one.m3u8', FTVS_Catalog::get_video_url( ftvs_t_ep( $id, 0 ) ) );
+	assert_wp_error( FTVS_Catalog::get_video_url( ftvs_t_ep( $id, 1 ) ), 'ftvs_no_stream', 'an embedded video has no HLS address' );
 	assert_count( 0, ftvs_t_requests() );
 }
 
@@ -353,4 +359,16 @@ function test_manual_series_are_the_whole_library_when_no_platform_is_connected(
 	assert_not_error( $featured );
 	assert_same( '_ms' . $id, $featured['categories'][0]['id'] );
 	assert_count( 0, ftvs_t_requests(), 'nothing is asked of any platform' );
+}
+
+function test_manual_episode_ids_stay_the_same_when_episodes_move() {
+	$id    = ftvs_t_series();
+	$first = ftvs_t_ep( $id, 0 );
+	$eps   = get_post_meta( $id, FTVS_Manual::DONE, true );
+	update_post_meta( $id, FTVS_Manual::DONE, array_reverse( $eps ) ); // the church put the second one first
+	FTVS_Manual::forget_posts();
+	assert_true( FTVS_Manual::exists( $first ), 'a shared link to the moved episode still works' );
+	assert_same( 'https://live.example.test/one.m3u8', FTVS_Manual::get_video( $first )['hls'] );
+	$ids = wp_list_pluck( FTVS_Manual::get_children( '_ms' . $id )['videos'], 'id' );
+	assert_same( array( ftvs_t_ep( $id, 1 ), $first ), $ids, 'the order changed, the ids did not' );
 }
