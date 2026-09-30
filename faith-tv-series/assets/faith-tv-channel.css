@@ -1,0 +1,1194 @@
+/* Faith TV Channel: the whole channel on one page, laid out like the church's TV site (a dark page, a dimmed
+   black-and-white photo behind the rows, a big banner, the Featured slider, rows of series with round arrows).
+   Scoped to .ftvc. Logical properties throughout, so right-to-left languages need no second file. */
+
+/* Defaults with no weight (:where), so the church color and font from Look & feel always win. */
+:where(.ftvc) {
+	--ftvs-accent: #c40d3c;
+	--ftvs-font: Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.ftvc {
+	--ftvs-accent-dark: color-mix(in srgb, var(--ftvs-accent) 82%, #000);
+	--ftvs-accent-text: color-mix(in srgb, var(--ftvs-accent) 55%, #fff);
+	--ftvc-accent: var(--ftvs-accent);
+	--ftvc-bg: #050505;
+	--ftvc-line: rgba(255, 255, 255, 0.16);
+	--ftvc-text: #fff;
+	--ftvc-muted: rgba(255, 255, 255, 0.74);
+	--ftvc-faint: rgba(255, 255, 255, 0.55);
+	--ftvc-gutter: clamp(16px, 2.6vw, 40px);
+	--ftvc-gap: 12px;
+	--ftvc-bar-h: 64px;
+	--ftvc-bar-top: 0px;
+	position: relative;
+	isolation: isolate;
+	min-height: 60vh;
+	scroll-margin-top: var(--ftvc-bar-top);
+	background: var(--ftvc-bg);
+	color: var(--ftvc-text);
+	font-family: var(--ftvs-font);
+	font-size: 16px;
+	line-height: 1.45;
+	text-align: start;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* The WordPress toolbar sits over the top of the page for signed-in people. */
+.admin-bar .ftvc {
+	--ftvc-bar-top: 32px;
+}
+
+@media (max-width: 782px) {
+	.admin-bar .ftvc {
+		--ftvc-bar-top: 46px;
+	}
+}
+
+@media (max-width: 600px) {
+	.admin-bar .ftvc {
+		--ftvc-bar-top: 0px;
+	}
+}
+
+.ftvc *,
+.ftvc *::before,
+.ftvc *::after {
+	box-sizing: border-box;
+}
+
+.ftvc [hidden] {
+	display: none !important;
+}
+
+.ftvc a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.ftvc img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+.ftvc button {
+	font: inherit;
+	color: inherit;
+}
+
+.ftvc ul,
+.ftvc ol {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ftvc h2,
+.ftvc h3,
+.ftvc p {
+	margin: 0;
+	color: inherit;
+	font-family: inherit;
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+.ftvc :focus-visible {
+	outline: 3px solid #fff;
+	outline-offset: 2px;
+}
+
+.ftvc h2:focus,
+.ftvc h2:focus-visible,
+.ftvc-view:focus {
+	outline: none;
+}
+
+.ftvc-sr {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+/* The old channel's dimmed photo; it stays put while the rows scroll past. overflow: clip, not hidden: hidden
+   would make this box the sticky picture's scroller and pin it to the top. */
+.ftvc-backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	overflow: clip;
+	pointer-events: none;
+}
+
+.ftvc--backdrop .ftvc-backdrop::before {
+	content: "";
+	position: sticky;
+	top: 0;
+	display: block;
+	height: 100vh;
+	background: var(--ftvc-backdrop, none) center / cover no-repeat;
+	filter: grayscale(1) brightness(0.3) contrast(1.1);
+}
+
+/* ---------- The channel's own bar ---------- */
+
+.ftvc-bar {
+	position: sticky;
+	top: var(--ftvc-bar-top);
+	z-index: 30;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: var(--ftvc-bar-h);
+	padding: 0 var(--ftvc-gutter);
+	background: rgba(12, 12, 12, 0.94);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@supports (backdrop-filter: blur(8px)) {
+	.ftvc-bar {
+		background: rgba(12, 12, 12, 0.82);
+		backdrop-filter: blur(10px);
+	}
+}
+
+.ftvc-mark {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	min-height: 44px;
+	font-size: 17px;
+	font-weight: 700;
+	letter-spacing: 0.3em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.ftvc-mark .ftvc-icon {
+	flex: none;
+	width: 30px;
+	height: 26px;
+}
+
+.ftvc-mark__word {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ftvc-mark__word b {
+	color: var(--ftvc-accent);
+	font-weight: 700;
+}
+
+.ftvc-mark__logo {
+	width: auto;
+	max-width: min(220px, 50vw);
+	max-height: 40px;
+	object-fit: contain;
+}
+
+.ftvc-icon__accent {
+	fill: var(--ftvc-accent);
+}
+
+.ftvc-grow {
+	flex: 1;
+}
+
+.ftvc-iconbtn {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 8px;
+	min-height: 44px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: 999px;
+	background: none;
+	font-size: 13px;
+	font-weight: 500;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.ftvc-iconbtn:hover {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.ftvc-search {
+	display: none;
+	align-items: center;
+}
+
+.ftvc-search[data-open] {
+	display: flex;
+}
+
+.ftvc-search input[type="search"] {
+	width: min(38vw, 320px);
+	height: 40px;
+	margin: 0;
+	padding: 0 16px;
+	border: 1px solid var(--ftvc-line);
+	border-radius: 999px;
+	background: rgba(0, 0, 0, 0.6);
+	color: #fff;
+	font: inherit;
+	font-size: 15px;
+	box-shadow: none;
+}
+
+.ftvc-search input[type="search"]::placeholder {
+	color: var(--ftvc-faint);
+}
+
+.ftvc-menu {
+	position: absolute;
+	inset-inline-end: var(--ftvc-gutter);
+	top: calc(var(--ftvc-bar-h) - 4px);
+	z-index: 31;
+	width: min(320px, calc(100vw - 32px));
+	max-height: 70vh;
+	overflow: auto;
+	padding: 8px;
+	background: #111;
+	border: 1px solid var(--ftvc-line);
+	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.ftvc-menu a {
+	display: block;
+	padding: 11px 12px;
+	font-weight: 500;
+}
+
+.ftvc-menu a:hover,
+.ftvc-menu a:focus-visible {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 600px) {
+	.ftvc-iconbtn span {
+		display: none;
+	}
+
+	.ftvc-bar:has(.ftvc-search[data-open]) .ftvc-mark__word {
+		display: none;
+	}
+
+	.ftvc-search input[type="search"] {
+		width: calc(100vw - 180px);
+	}
+}
+
+/* ---------- Loading between views ---------- */
+
+.ftvc-view {
+	position: relative;
+	padding-bottom: 48px;
+	transition: opacity 0.2s ease;
+}
+
+.ftvc.is-loading .ftvc-view {
+	opacity: 0.45;
+}
+
+.ftvc.is-loading .ftvc-bar::after {
+	content: "";
+	position: absolute;
+	inset-inline-start: 0;
+	bottom: -1px;
+	width: 40%;
+	height: 3px;
+	background: var(--ftvc-accent);
+	animation: ftvc-load 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes ftvc-load {
+	from {
+		inset-inline-start: 0;
+	}
+
+	to {
+		inset-inline-start: 60%;
+	}
+}
+
+/* ---------- Buttons ---------- */
+
+.ftvc-pill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	width: fit-content;
+	min-height: 50px;
+	padding: 0 38px;
+	border: 2px solid rgba(255, 255, 255, 0.72);
+	border-radius: 999px;
+	background: rgba(0, 0, 0, 0.35);
+	color: #fff;
+	font-size: 17px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	line-height: 1;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ftvc-pill:hover,
+.ftvc-pill:focus-visible {
+	border-color: var(--ftvc-accent);
+	background: var(--ftvc-accent);
+	color: var(--ftvs-on-accent, #fff);
+}
+
+.ftvc-pill .ftvc-icon {
+	width: 16px;
+	height: 16px;
+}
+
+.ftvc-pill--small {
+	min-height: 42px;
+	padding: 0 22px;
+	font-size: 14px;
+}
+
+.ftvc-pill--quiet {
+	border-color: rgba(255, 255, 255, 0.35);
+	background: transparent;
+}
+
+/* ---------- The banner ---------- */
+
+.ftvc-hero {
+	position: relative;
+	overflow: hidden;
+	background: #000;
+}
+
+.ftvc-hero__art {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100% !important;
+	max-width: none !important;
+	object-fit: cover;
+	object-position: center 30%;
+}
+
+.ftvc-hero__shade {
+	position: absolute;
+	inset: 0;
+	background:
+		linear-gradient(to right, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 45%, rgba(0, 0, 0, 0.1) 70%),
+		linear-gradient(to top, var(--ftvc-bg) 0%, rgba(0, 0, 0, 0) 22%);
+}
+
+[dir="rtl"] .ftvc-hero__shade {
+	background:
+		linear-gradient(to left, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 45%, rgba(0, 0, 0, 0.1) 70%),
+		linear-gradient(to top, var(--ftvc-bg) 0%, rgba(0, 0, 0, 0) 22%);
+}
+
+.ftvc-hero__copy {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	gap: 24px;
+	max-width: 760px;
+	min-height: clamp(360px, 42vw, 600px);
+	padding: clamp(28px, 4.5vw, 64px) var(--ftvc-gutter) clamp(40px, 5vw, 72px);
+}
+
+.ftvc .ftvc-hero__title {
+	font-size: clamp(30px, 3.6vw, 52px);
+	font-weight: 500;
+	line-height: 1.1;
+	letter-spacing: -0.01em;
+}
+
+.ftvc .ftvc-hero__meta {
+	margin-top: 14px;
+	color: var(--ftvc-muted);
+	font-weight: 700;
+}
+
+.ftvc .ftvc-eyebrow {
+	margin-bottom: 10px;
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.24em;
+	text-transform: uppercase;
+}
+
+.ftvc .ftvc-live {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	width: fit-content;
+	margin-bottom: 14px;
+	padding: 4px 10px;
+	border-radius: 4px;
+	background: #dc2626;
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.ftvc-live::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #fff;
+	animation: ftvc-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes ftvc-blink {
+	50% {
+		opacity: 0.35;
+	}
+}
+
+@media (max-width: 767px) {
+	.ftvc-hero__copy {
+		justify-content: flex-end;
+		min-height: 0;
+		padding-top: 42vw;
+	}
+
+	.ftvc-hero__art {
+		bottom: auto;
+		height: 56.25vw !important;
+	}
+
+	.ftvc-hero__shade {
+		background: linear-gradient(to top, var(--ftvc-bg) 0%, rgba(5, 5, 5, 0.92) calc(100% - 56.25vw + 30px), rgba(0, 0, 0, 0) calc(100% - 30vw));
+	}
+}
+
+/* ---------- Rows ---------- */
+
+.ftvc-rows {
+	display: grid;
+	gap: clamp(28px, 3.4vw, 44px);
+	padding-top: clamp(20px, 2.4vw, 32px);
+}
+
+.ftvc-row__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 6px;
+	padding: 0 var(--ftvc-gutter);
+}
+
+.ftvc .ftvc-row__title {
+	font-size: clamp(19px, 1.6vw, 24px);
+	font-weight: 700;
+	line-height: 1.25;
+	letter-spacing: -0.01em;
+}
+
+.ftvc-row__title a:hover {
+	text-decoration: underline;
+	text-underline-offset: 4px;
+}
+
+.ftvc-row__all {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 2px;
+	min-height: 44px;
+	color: var(--ftvc-muted);
+	font-size: 14px;
+}
+
+.ftvc-row__all:hover {
+	color: #fff;
+}
+
+[dir="rtl"] .ftvc-row__all .ftvc-icon,
+[dir="rtl"] .ftvc-arrow .ftvc-icon,
+[dir="rtl"] .ftvc-back .ftvc-icon,
+[dir="rtl"] .ftvc-feature__go .ftvc-icon {
+	transform: scaleX(-1);
+}
+
+.ftvc-rail {
+	position: relative;
+}
+
+.ftvc-track {
+	--per: 4;
+	display: grid;
+	grid-auto-columns: calc((100% - (var(--per) - 1) * var(--ftvc-gap)) / var(--per));
+	grid-auto-flow: column;
+	gap: var(--ftvc-gap);
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+	padding: 6px var(--ftvc-gutter) 10px !important;
+	scroll-padding-inline: var(--ftvc-gutter);
+	scroll-snap-type: x mandatory;
+	scrollbar-width: none;
+}
+
+.ftvc-track::-webkit-scrollbar {
+	display: none;
+}
+
+.ftvc-track > li {
+	min-width: 0;
+	margin: 0;
+	scroll-snap-align: start;
+}
+
+.ftvc-row[data-style="slider"] .ftvc-track {
+	gap: 0;
+}
+
+@media (max-width: 1100px) {
+	.ftvc-track {
+		--per: 3;
+	}
+
+	.ftvc-row[data-style="slider"] .ftvc-track {
+		--per: 2.4;
+	}
+}
+
+@media (max-width: 767px) {
+	.ftvc-track {
+		--per: 1.7;
+	}
+
+	.ftvc-row[data-style="slider"] .ftvc-track {
+		--per: 1.15;
+	}
+}
+
+@media (max-width: 420px) {
+	.ftvc-track {
+		--per: 1.45;
+	}
+}
+
+.ftvc-arrow {
+	position: absolute;
+	top: var(--ftvc-arrow-top, 40%);
+	z-index: 5;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	width: 38px;
+	height: 38px;
+	margin-top: -19px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(235, 235, 235, 0.72);
+	color: #111;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.ftvc-arrow:hover {
+	background: #fff;
+}
+
+.ftvc-arrow--prev {
+	inset-inline-start: max(6px, calc(var(--ftvc-gutter) - 22px));
+}
+
+.ftvc-arrow--next {
+	inset-inline-end: max(6px, calc(var(--ftvc-gutter) - 22px));
+}
+
+.ftvc-row[data-style="slider"] .ftvc-arrow {
+	top: 50%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.ftvc-arrow:not([hidden]) {
+		display: inline-flex;
+	}
+}
+
+/* ---------- Pictures and cards ---------- */
+
+.ftvc-art {
+	position: relative;
+	display: block;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background: #111;
+	transition: box-shadow 0.15s ease;
+}
+
+.ftvc-art img {
+	width: 100%;
+	height: 100% !important;
+	object-fit: cover;
+	transition: transform 0.25s ease;
+}
+
+.ftvc-art--blank {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12px;
+	background: radial-gradient(120% 120% at 0% 0%, #2a2a2e 0%, #0c0c0e 60%, #000 100%);
+	color: rgba(255, 255, 255, 0.55);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+.ftvc-dur {
+	position: absolute;
+	inset-inline-end: 6px;
+	bottom: 6px;
+	padding: 2px 6px;
+	border-radius: 3px;
+	background: rgba(0, 0, 0, 0.82);
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0;
+}
+
+.ftvc-now {
+	position: absolute;
+	inset-inline-start: 6px;
+	top: 6px;
+	padding: 3px 8px;
+	background: var(--ftvc-accent);
+	color: var(--ftvs-on-accent, #fff);
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.ftvc-progress {
+	position: absolute;
+	inset: auto 0 0 0;
+	height: 4px;
+	background: rgba(255, 255, 255, 0.28);
+}
+
+.ftvc-progress i {
+	display: block;
+	height: 100%;
+	background: var(--ftvc-accent);
+}
+
+.ftvc-tile,
+.ftvc-card {
+	display: block;
+}
+
+.ftvc-tile:hover .ftvc-art img,
+.ftvc-card:hover .ftvc-art img,
+.ftvc-tile:focus-visible .ftvc-art img,
+.ftvc-card:focus-visible .ftvc-art img {
+	transform: scale(1.04);
+}
+
+.ftvc-tile:hover .ftvc-art,
+.ftvc-card:hover .ftvc-art,
+.ftvc-card[aria-current] .ftvc-art {
+	box-shadow: 0 0 0 2px var(--ftvc-accent);
+}
+
+.ftvc-tile__name {
+	display: block;
+	margin-top: 10px;
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.ftvc-card__title {
+	display: -webkit-box;
+	margin-top: 10px;
+	overflow: hidden;
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.3;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.ftvc-card__meta {
+	display: block;
+	margin-top: 3px;
+	overflow: hidden;
+	color: var(--ftvc-faint);
+	font-size: 13px;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+/* A Featured slide: black box, picture with the name over it, the description, a round arrow. */
+.ftvc-feature {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	margin-inline-start: -1px;
+	border: 1px solid rgba(255, 255, 255, 0.28);
+	background: #000;
+}
+
+.ftvc-feature__art {
+	position: relative;
+	display: block;
+	margin: 8px 8px 0;
+}
+
+.ftvc-feature__art .ftvc-art::after {
+	content: "";
+	position: absolute;
+	inset: 55% 0 0 0;
+	background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+}
+
+.ftvc-feature__name {
+	position: absolute;
+	inset: auto 0 0 0;
+	z-index: 1;
+	padding: 10px 12px;
+	font-size: clamp(16px, 1.25vw, 19px);
+	font-weight: 500;
+}
+
+.ftvc-feature__desc {
+	display: -webkit-box;
+	flex: 1;
+	margin: 14px 16px 0;
+	overflow: hidden;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 14px;
+	line-height: 1.5;
+	white-space: pre-line;
+	-webkit-line-clamp: 7;
+	-webkit-box-orient: vertical;
+}
+
+.ftvc-feature__go {
+	display: inline-flex;
+	align-self: flex-end;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	margin: 12px 14px 14px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ftvc-feature:hover .ftvc-feature__go,
+.ftvc-feature:focus-visible .ftvc-feature__go {
+	border-color: var(--ftvc-accent);
+	background: var(--ftvc-accent);
+}
+
+@media (max-width: 767px) {
+	.ftvc-feature__desc {
+		-webkit-line-clamp: 4;
+	}
+}
+
+/* ---------- Series pages ---------- */
+
+.ftvc-series {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.9fr);
+	gap: 20px clamp(18px, 2.4vw, 36px);
+	align-items: start;
+	padding: clamp(20px, 2.4vw, 32px) var(--ftvc-gutter) clamp(24px, 2.6vw, 36px);
+	border-bottom: 1px solid var(--ftvc-line);
+}
+
+.ftvc-series--plain {
+	grid-template-columns: auto minmax(0, 1fr);
+}
+
+.ftvc-back {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	min-width: 56px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.ftvc-back__ring {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ftvc-back:hover .ftvc-back__ring,
+.ftvc-back:focus-visible .ftvc-back__ring {
+	border-color: var(--ftvc-accent);
+	background: var(--ftvc-accent);
+}
+
+.ftvc-crumbs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 6px !important;
+	color: var(--ftvc-faint);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+}
+
+.ftvc-crumbs li {
+	margin: 0;
+}
+
+.ftvc-crumbs li + li::before {
+	content: "/";
+	margin-inline-end: 6px;
+	opacity: 0.6;
+}
+
+.ftvc-crumbs a:hover {
+	color: #fff;
+}
+
+.ftvc .ftvc-series__title,
+.ftvc .ftvc-watch__title {
+	font-size: clamp(26px, 2.6vw, 38px);
+	font-weight: 700;
+	line-height: 1.15;
+}
+
+.ftvc-series__desc,
+.ftvc-watch__desc {
+	max-width: 66ch;
+	margin-top: 12px;
+	color: rgba(255, 255, 255, 0.88);
+	font-size: 15px;
+	line-height: 1.6;
+}
+
+.ftvc-series__desc p,
+.ftvc-watch__desc p {
+	margin: 0 0 0.8em;
+}
+
+.ftvc .ftvc-series__count {
+	margin-top: 12px;
+	color: var(--ftvc-faint);
+	font-size: 14px;
+}
+
+.ftvc-series__actions,
+.ftvc-watch__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 20px;
+}
+
+.ftvc-series__art {
+	box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+@media (max-width: 900px) {
+	.ftvc-series {
+		grid-template-columns: auto minmax(0, 1fr);
+	}
+
+	.ftvc-series__art {
+		grid-column: 1 / -1;
+		grid-row: 1;
+		max-width: 640px;
+	}
+}
+
+.ftvc .ftvc-label {
+	margin: 0 0 12px;
+	padding: 0 var(--ftvc-gutter);
+	color: var(--ftvc-faint);
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+}
+
+.ftvc-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+	gap: 26px var(--ftvc-gap);
+	padding: 0 var(--ftvc-gutter) !important;
+}
+
+.ftvc-grid > li {
+	margin: 0;
+}
+
+/* ---------- Watching ---------- */
+
+.ftvc-stage {
+	position: relative;
+	background: #000;
+}
+
+.ftvc-stage__in {
+	position: relative;
+	width: min(100%, calc((100vh - var(--ftvc-bar-h) - var(--ftvc-bar-top) - 90px) * 16 / 9));
+	min-width: min(100%, 560px);
+	margin: 0 auto;
+	aspect-ratio: 16 / 9;
+}
+
+.ftvc-stage__video,
+.ftvc-stage__frame,
+.ftvc-stage__poster {
+	position: absolute;
+	inset: 0;
+	width: 100% !important;
+	height: 100% !important;
+	max-width: none !important;
+	border: 0;
+	background: #000;
+	object-fit: cover;
+}
+
+.ftvc-stage__video {
+	object-fit: contain;
+}
+
+/* Our play button covers the picture until the video starts (so the first tap always starts it properly). */
+.ftvc-stage__play {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: linear-gradient(to top, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0) 40%);
+	cursor: pointer;
+}
+
+.ftvc-stage__play .ftvc-icon {
+	box-sizing: content-box;
+	width: 38px;
+	height: 38px;
+	padding: 24px 22px 24px 26px;
+	border-radius: 50%;
+	background: var(--ftvc-accent);
+	color: var(--ftvs-on-accent, #fff);
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+	transition: transform 0.2s ease;
+}
+
+.ftvc-stage__play:hover .ftvc-icon,
+.ftvc-stage__play:focus-visible .ftvc-icon {
+	transform: scale(1.08);
+}
+
+.ftvc .ftvc-stage__msg {
+	position: absolute;
+	inset-inline: 16px;
+	bottom: 64px;
+	z-index: 3;
+	width: fit-content;
+	max-width: calc(100% - 32px);
+	margin: 0 auto;
+	padding: 10px 16px;
+	background: rgba(0, 0, 0, 0.85);
+	color: #fff;
+	font-size: 15px;
+	text-align: center;
+}
+
+.ftvc-stage__off {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 24px;
+	background: rgba(0, 0, 0, 0.72);
+	text-align: center;
+}
+
+.ftvc-stage__off strong {
+	font-size: clamp(20px, 2.2vw, 28px);
+}
+
+.ftvc-stage__off span {
+	color: var(--ftvc-muted);
+}
+
+.ftvc-chip {
+	position: absolute;
+	inset-inline-start: 14px;
+	top: 14px;
+	z-index: 3;
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 6px 6px 14px;
+	border-radius: 999px;
+	background: rgba(0, 0, 0, 0.8);
+	font-size: 14px;
+}
+
+.ftvc-chip button {
+	min-height: 32px;
+	padding: 0 12px;
+	border: 1px solid rgba(255, 255, 255, 0.4);
+	border-radius: 999px;
+	background: none;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.ftvc-chip button:hover {
+	background: #fff;
+	color: #000;
+}
+
+.ftvc-upnext {
+	position: absolute;
+	inset-inline-end: 16px;
+	bottom: 64px;
+	z-index: 4;
+	width: min(380px, calc(100% - 32px));
+	padding: 12px;
+	border: 1px solid var(--ftvc-line);
+	background: rgba(10, 10, 10, 0.94);
+	box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+.ftvc-upnext__card {
+	display: grid;
+	grid-template-columns: 120px minmax(0, 1fr);
+	gap: 12px;
+}
+
+.ftvc-upnext__card img {
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+}
+
+.ftvc .ftvc-upnext__title {
+	margin: 2px 0 6px;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.ftvc-upnext__count {
+	color: var(--ftvc-faint);
+	font-size: 13px;
+}
+
+.ftvc-upnext__btns {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.ftvc-watch__info {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: 20px clamp(18px, 2.4vw, 36px);
+	padding: clamp(20px, 2.4vw, 30px) var(--ftvc-gutter) 8px;
+}
+
+.ftvc .ftvc-watch__meta {
+	margin-top: 8px;
+	color: var(--ftvc-muted);
+	font-weight: 500;
+}
+
+.ftvc-watch .ftvc-rows {
+	padding-top: 26px;
+}
+
+/* The church's next-step buttons and online check-in, inside the channel. */
+.ftvc .ftvs-next {
+	margin-top: 22px;
+}
+
+.ftvc .ftvs-ci {
+	max-width: 640px;
+}
+
+/* ---------- Nothing here, or trouble ---------- */
+
+.ftvc-empty {
+	padding: 72px var(--ftvc-gutter);
+	text-align: center;
+}
+
+.ftvc .ftvc-empty h2 {
+	margin-bottom: 8px;
+	font-size: 24px;
+	font-weight: 700;
+}
+
+.ftvc .ftvc-empty p {
+	max-width: 46ch;
+	margin: 0 auto 20px;
+	color: var(--ftvc-muted);
+}
+
+.ftvc-empty .ftvc-pill {
+	margin: 0 auto;
+}
+
+.ftvc .ftvc-empty__why {
+	color: var(--ftvc-faint);
+	font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ftvc *,
+	.ftvc *::before,
+	.ftvc *::after {
+		animation: none !important;
+		transition: none !important;
+	}
+}

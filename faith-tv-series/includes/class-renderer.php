@@ -47,14 +47,14 @@ class FTVS_Renderer {
 		$css    = '';
 		$accent = sanitize_hex_color( (string) FTVS_Settings::get( 'accent' ) );
 		if ( $accent ) {
-			$css .= '.ftvs,.ftvs-dialog,.ftvs-livebar{--ftvs-accent:' . $accent . ';--ftvs-on-accent:' . self::on_color( $accent ) . '}';
+			$css .= '.ftvs,.ftvs-dialog,.ftvs-livebar,.ftvc{--ftvs-accent:' . $accent . ';--ftvs-on-accent:' . self::on_color( $accent ) . '}';
 		}
 		$text = FTVS_Settings::text_css_vars( (array) FTVS_Settings::get( 'text' ) );
 		if ( '' !== $text ) {
 			$css .= '.ftvs{' . $text . '}';
 		}
 		if ( 'inherit' === FTVS_Settings::get( 'font' ) ) {
-			$css .= '.ftvs,.ftvs-dialog,.ftvs-livebar{--ftvs-font:inherit}';
+			$css .= '.ftvs,.ftvs-dialog,.ftvs-livebar,.ftvc{--ftvs-font:inherit}';
 		}
 		return $css;
 	}
@@ -1074,7 +1074,7 @@ class FTVS_Renderer {
 		if ( ! $post ) {
 			return false;
 		}
-		foreach ( array( 'faith_tv_series', 'faithstream', 'faith_tv_live', 'faith_tv_library', 'faith_tv_watch' ) as $tag ) {
+		foreach ( array( 'faith_tv_series', 'faithstream', 'faith_tv_live', 'faith_tv_library', 'faith_tv_watch', 'faith_tv_channel' ) as $tag ) {
 			if ( has_shortcode( $post->post_content, $tag ) ) {
 				return true;
 			}
@@ -1092,6 +1092,9 @@ class FTVS_Renderer {
 	public static function early_enqueue() {
 		if ( self::page_has_section() ) {
 			wp_enqueue_style( 'faith-tv-series' );
+			if ( is_singular() && FTVS_Channel::page_has_channel( get_queried_object_id() ) ) {
+				wp_enqueue_style( 'faith-tv-channel' );
+			}
 			$GLOBALS['ftvs_hints'] = true;
 		}
 	}
@@ -1251,6 +1254,8 @@ class FTVS_Renderer {
 				'familyDone'    => __( 'Thank you! They\'re checked in too.', 'faith-tv-series' ),
 				'noFamily'      => __( 'No one else is in your household on file.', 'faith-tv-series' ),
 				'continueWatching' => __( 'Continue watching', 'faith-tv-series' ),
+				'rowBack'          => __( 'Scroll back', 'faith-tv-series' ),
+				'rowOn'            => __( 'Scroll forward', 'faith-tv-series' ),
 				/* translators: %d: minutes */
 				'minLeft'          => __( '%d min left', 'faith-tv-series' ),
 				'listen'       => __( 'Listen', 'faith-tv-series' ),

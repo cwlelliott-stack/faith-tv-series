@@ -129,6 +129,33 @@
 		save: function () { return null; }
 	});
 
+	wp.blocks.registerBlockType('faith-tv/channel', {
+		apiVersion: 3,
+		title: __('Faith TV Channel', 'faith-tv-series'),
+		description: __('Your whole channel on this page, like your TV site: the banner, the Featured slider, every series, the player and search. Visitors never leave your website.', 'faith-tv-series'),
+		icon: ICON,
+		category: 'media',
+		keywords: ['channel', 'tv', 'watch', 'series', 'sermons', 'faith'],
+		attributes: { align: { type: 'string', 'default': 'full' } },
+		edit: function (props) {
+			var a = props.attributes;
+			return el(wp.element.Fragment, null,
+				el(be.InspectorControls, null,
+					el(c.PanelBody, { title: __('Faith TV Channel', 'faith-tv-series') },
+						ctl(c.TextControl, { label: __('Name in the bar (optional)', 'faith-tv-series'), help: __('Empty: the name under Faith Stream > Channel page.', 'faith-tv-series'), value: a.name, onChange: set(props, 'name') }),
+						ctl(c.SelectControl, { label: __('Photo behind the rows', 'faith-tv-series'), value: a.backdrop, options: [
+							{ value: '', label: __('Site default', 'faith-tv-series') },
+							{ value: 'on', label: __('On', 'faith-tv-series') },
+							{ value: 'off', label: __('Off', 'faith-tv-series') }
+						], onChange: set(props, 'backdrop') })
+					)
+				),
+				preview('faith-tv/channel', props)
+			);
+		},
+		save: function () { return null; }
+	});
+
 	wp.blocks.registerBlockType('faith-tv/library', {
 		apiVersion: 3,
 		title: __('Sermon Library', 'faith-tv-series'),

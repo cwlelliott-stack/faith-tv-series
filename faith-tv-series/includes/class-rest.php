@@ -3,6 +3,7 @@
  * Endpoints the page script uses. Reads are public: everything served here is already public
  * on the church's channel, and only ids already seen on this site are fetched.
  *
+ *   GET  channel         one view of the channel page, as HTML (?view=home|series|video|live|search&id=&in=&q=&page=)
  *   GET  category/<id>   a series' episodes (or a row's series)
  *   GET  video/<id>      how to play one video, plus related videos
  *   GET  live            Sunday live state (never cached by the browser)
@@ -27,6 +28,7 @@ class FTVS_Rest {
 	public static function register_routes() {
 		$public = '__return_true';
 		$routes = array(
+			'/channel'              => array( 'GET', 'channel', $public ),
 			'/category/' . self::ID => array( 'GET', 'category', $public ),
 			'/video/' . self::ID    => array( 'GET', 'video', $public ),
 			'/live'                 => array( 'GET', 'live', $public ),
@@ -66,6 +68,36 @@ class FTVS_Rest {
 		return FTVS_Catalog::is_demo() && ! current_user_can( 'edit_posts' );
 	}
 
+	/** One view of the channel page (FTVS_Channel), rendered the way the page itself renders it. */
+	public static function channel( WP_REST_Request $request ) {
+		if ( self::hidden() ) {
+			return self::unknown();
+		}
+		$route = FTVS_Channel::route( (string) $request['view'], (string) $request['id'], (string) $request['in'], (string) $request['q'] );
+		if ( 'search' === $route['v'] && strlen( $route['q'] ) >= 2 && self::limited( 'search', 30, MINUTE_IN_SECONDS ) ) {
+			return new WP_Error( 'ftvs_slow_down', __( 'Too many searches. Try again in a minute.', 'faith-tv-series' ), array( 'status' => 429 ) );
+		}
+		$ctx  = FTVS_Channel::context( absint( $request['page'] ) );
+		$view = FTVS_Channel::view( $route, $ctx );
+		$page = $ctx['page'] ? get_the_title( $ctx['page'] ) : '';
+		$sep  = apply_filters( 'document_title_separator', '-' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals -- WordPress's own filter.
+		$url  = FTVS_Channel::link( 'video' === $route['v'] ? 'video' : $route['v'], $route['id'], $route['in'], $ctx, $route['q'] );
+		$out  = array(
+			'html'     => $view['html'],
+			'title'    => $view['title'],
+			// Written the way WordPress writes the page's own <title> ("Long Game – Watch – Faith Tabernacle").
+			'document' => html_entity_decode( wptexturize( implode( ' ' . $sep . ' ', array_filter( array( $view['title'], $page, get_bloginfo( 'name' ) ) ) ) ), ENT_QUOTES, 'UTF-8' ),
+			'url'      => $url,
+			'found'    => $view['found'],
+			'backdrop' => $view['backdrop'],
+			'state'    => FTVS_Channel::state_of( $route ),
+		);
+		$response = rest_ensure_response( $out );
+		// Search and live change by the minute; the rest is as fresh as the saved catalog.
+		$response->header( 'Cache-Control', in_array( $route['v'], array( 'search', 'live' ), true ) || 'home' === $route['v'] ? 'public, max-age=30' : 'public, max-age=120' );
+		return $response;
+	}
+
 	public static function category( WP_REST_Request $request ) {
 		$id = self::id( $request );
 		if ( self::hidden() || ! FTVS_Catalog::is_known( $id ) ) {
@@ -80,6 +112,7 @@ class FTVS_Rest {
 		if ( empty( $data['self'] ) ) {
 			$data['self'] = array( 'id' => $id, 'title' => FTVS_Catalog::title_of( $id ) );
 		}
+		unset( $data['sections'] ); // the channel page's group rows; the player lists the series itself
 		return self::cacheable( $data );
 	}
 

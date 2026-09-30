@@ -146,7 +146,7 @@
 		}
 	};
 
-	/* Where each video was left off: { id: { t, d, at, s (series), done } }, newest 200. */
+	/* Where each video was left off: { id: { t, d, at, s (series), done, n (title), im (picture) } }, newest 200. */
 	var Progress = {
 		all: function () {
 			return Store.get('progress', {}) || {};
@@ -154,10 +154,10 @@
 		of: function (id) {
 			return this.all()[id] || null;
 		},
-		save: function (id, t, d, series, done, title) {
+		save: function (id, t, d, series, done, title, image) {
 			if (!CONFIG.resume || !id) return;
 			var all = this.all();
-			all[id] = { t: Math.round(t), d: Math.round(d || 0), at: Date.now(), s: series || '', done: !!done, n: String(title || '').slice(0, 120) };
+			all[id] = { t: Math.round(t), d: Math.round(d || 0), at: Date.now(), s: series || '', done: !!done, n: String(title || '').slice(0, 120), im: safeUrl(image, true).slice(0, 500) };
 			var keys = Object.keys(all);
 			if (keys.length > 200) {
 				keys.sort(function (a, b) { return all[a].at - all[b].at; });
@@ -2436,7 +2436,7 @@
 			var entry = entryOf();
 			if (!ep || !entry || entry.kind === 'live' || !video || !(video.currentTime > 0)) return;
 			var series = entry.kind === 'category' ? entry.item.id : ep.parent || '';
-			Progress.save(ep.id, done ? 0 : video.currentTime, isFinite(video.duration) ? video.duration : ep.length, series, done || (video.duration && video.currentTime / video.duration > 0.95), ep.title);
+			Progress.save(ep.id, done ? 0 : video.currentTime, isFinite(video.duration) ? video.duration : ep.length, series, done || (video.duration && video.currentTime / video.duration > 0.95), ep.title, ep.image);
 		}
 
 		function onEnded() {
@@ -2659,6 +2659,832 @@
 		return { open: open, openLive: openLive, warm: warm, dialog: function () { return dialog; } };
 	})();
 
+	/* ---------- Channel page: the whole channel on one page (FTVS_Channel) ---------- */
+
+	/* Each view is a real address the server renders; clicks inside the channel swap the view in place (with the
+	   browser's history), and anything that goes wrong falls back to loading that address the normal way. */
+	var Channel = (function () {
+		var CH_RE = /^(home|series|video|live)\|([A-Za-z0-9_-]{0,128})\|([A-Za-z0-9_-]{0,128})$/;
+		var ICON_PREV = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+		var ICON_NEXT = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+		function enc(v) {
+			return encodeURIComponent(v || '');
+		}
+
+		function routeOf(a) {
+			var m = String(a.getAttribute('data-ftvc') || '').match(CH_RE);
+			return m ? { v: m[1], id: m[2], in: m[3], q: '' } : null;
+		}
+
+		function keyOf(s) {
+			return [s.v, s.id, s.in, s.q].join('|');
+		}
+
+		function editing() {
+			return !!(window.elementorFrontend && window.elementorFrontend.isEditMode && window.elementorFrontend.isEditMode());
+		}
+
+		/* Rows slide sideways; the arrows sit on the pictures and hide at either end. */
+		function initRail(rail) {
+			var track = rail.querySelector('.ftvc-track');
+			var prev = rail.querySelector('[data-ftvc-prev]');
+			var next = rail.querySelector('[data-ftvc-next]');
+			if (!track || !prev || !next) return;
+			var dir = window.getComputedStyle(track).direction === 'rtl' ? -1 : 1;
+			var queued = false;
+			var update = function () {
+				queued = false;
+				var max = track.scrollWidth - track.clientWidth - 2;
+				var at = Math.abs(track.scrollLeft);
+				prev.hidden = at <= 2;
+				next.hidden = at >= max;
+				var art = track.querySelector('.ftvc-art');
+				if (art) rail.style.setProperty('--ftvc-arrow-top', Math.round(art.offsetTop + art.offsetHeight / 2) + 'px');
+			};
+			var schedule = function () {
+				if (!queued) {
+					queued = true;
+					window.requestAnimationFrame(update);
+				}
+			};
+			track.addEventListener('scroll', schedule, { passive: true });
+			if (window.ResizeObserver) new ResizeObserver(schedule).observe(track);
+			else window.addEventListener('resize', schedule);
+			prev.addEventListener('click', function () { scrollRow(track, -dir * Math.max(200, track.clientWidth - 80), true); });
+			next.addEventListener('click', function () { scrollRow(track, dir * Math.max(200, track.clientWidth - 80), true); });
+			update();
+			// The playing episode sits in the middle of its row.
+			var cur = track.querySelector('[aria-current]');
+			if (cur) {
+				var li = cur.closest('li') || cur;
+				track.scrollLeft = dir * Math.max(0, li.offsetLeft - (track.clientWidth - li.offsetWidth) / 2);
+			}
+		}
+
+		/* A thin bar under each card someone started on this device. */
+		function markCards(scope) {
+			if (!CONFIG.resume) return;
+			var all = Progress.all();
+			Array.prototype.forEach.call(scope.querySelectorAll('.ftvc-card[data-id]'), function (card) {
+				var p = all[card.getAttribute('data-id')];
+				var art = card.querySelector('.ftvc-art');
+				if (!p || !art || art.querySelector('.ftvc-progress')) return;
+				var pct = p.done ? 100 : (p.d ? Math.round((100 * p.t) / p.d) : 0);
+				if (pct < 3) return;
+				var bar = el('span', { 'class': 'ftvc-progress', 'aria-hidden': 'true' }, [el('i')]);
+				bar.firstChild.style.width = Math.min(100, pct) + '%';
+				art.appendChild(bar);
+			});
+		}
+
+		/* ---- The player inside a watch view ---- */
+
+		function Stage(root, box, item, opts) {
+			var video = box.querySelector('video');
+			var startBtn = box.querySelector('[data-ftvc-start]');
+			var msg = box.querySelector('.ftvc-stage__msg');
+			var chipEl = box.querySelector('.ftvc-chip');
+			var upEl = box.querySelector('.ftvc-upnext');
+			var stage = box.closest('.ftvc-stage');
+			var hls = null;
+			var frame = null;
+			var reporter = null;
+			var started = false;
+			var alive = true;
+			var retries = 0;
+			var saveTimer = 0;
+			var upTimer = 0;
+			var milestones = {};
+			var counted = {};
+			var info = {};
+			var live = !!opts.live;
+
+			if (!video) return { start: function () {}, stop: function () {} };
+			var vol = Store.get('vol', null);
+			if (vol && typeof vol.v === 'number') {
+				video.volume = Math.max(0, Math.min(1, vol.v));
+				video.muted = !!vol.m;
+			}
+
+			function say(text, soft) {
+				if (!msg) return;
+				msg.hidden = !text;
+				msg.textContent = text || '';
+				msg.classList.toggle('is-soft', !!soft);
+			}
+
+			function count(what) {
+				var k = what + ':' + item.id;
+				if (counted[k]) return;
+				counted[k] = true;
+				countLocal(what, item);
+			}
+
+			function needsHls() {
+				var native = !!video.canPlayType('application/vnd.apple.mpegurl');
+				var safari = /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent);
+				return !(native && (safari || !(window.MediaSource || window.ManagedMediaSource)));
+			}
+
+			function attach(url) {
+				if (!url || url.indexOf('https://') !== 0) return Promise.reject(new Error('no stream'));
+				var native = !!video.canPlayType('application/vnd.apple.mpegurl');
+				if (!needsHls()) {
+					video.src = url;
+					return Promise.resolve();
+				}
+				return loadHlsScript().then(function (Hls) {
+					if (!alive) return;
+					if (!Hls || !Hls.isSupported()) {
+						if (!native) throw new Error('HLS not supported');
+						video.src = url;
+						return;
+					}
+					return new Promise(function (resolve, reject) {
+						var ready = false;
+						var fixes = 0;
+						if (hls) hls.destroy();
+						hls = new Hls({ capLevelToPlayerSize: true, renderTextTracksNatively: true, lowLatencyMode: live });
+						hls.on(Hls.Events.MANIFEST_PARSED, function () {
+							ready = true;
+							resolve();
+						});
+						hls.on(Hls.Events.FRAG_LOADED, function () {
+							retries = 0;
+							if (msg && msg.classList.contains('is-soft')) say('');
+						});
+						hls.on(Hls.Events.ERROR, function (evt, data) {
+							if (!data || !data.fatal) return;
+							if (!ready) {
+								reject(new Error('stream failed'));
+								return;
+							}
+							if (data.type === Hls.ErrorTypes.MEDIA_ERROR && fixes < 2) {
+								if (fixes++ === 1) hls.swapAudioCodec();
+								hls.recoverMediaError();
+								return;
+							}
+							if (data.type === Hls.ErrorTypes.NETWORK_ERROR && retries < 3) {
+								retries++;
+								say(str('retrying', 'Reconnecting...'), true);
+								window.setTimeout(function () { if (hls) hls.startLoad(); }, 1000 * retries);
+								return;
+							}
+							failed();
+						});
+						hls.loadSource(url);
+						hls.attachMedia(video);
+					});
+				}).catch(function (err) {
+					if (!native) throw err;
+					video.src = url;
+				});
+			}
+
+			function embed(src) {
+				src = safeUrl(src, true);
+				if (!src) return failed();
+				video.hidden = true;
+				frame = el('iframe', { src: src, allow: 'autoplay; fullscreen; picture-in-picture; encrypted-media', allowfullscreen: true, title: item.title || str('live', 'Live'), 'class': 'ftvc-stage__frame' });
+				box.insertBefore(frame, video);
+				stage.classList.add('is-playing');
+				count(live ? 'live' : 'play');
+			}
+
+			function failed() {
+				stopMedia();
+				say(str('failed', 'This video could not be loaded right now.'));
+				if (startBtn) startBtn.hidden = false;
+				started = false;
+				countLocal('error', item);
+			}
+
+			function chip(text) {
+				if (!chipEl) return;
+				chipEl.textContent = '';
+				chipEl.appendChild(el('span', { text: text }));
+				var again = el('button', { type: 'button', text: str('startOver', 'Start over') });
+				again.addEventListener('click', function () {
+					chipEl.hidden = true;
+					try { video.currentTime = 0; } catch (err) {}
+				});
+				chipEl.appendChild(again);
+				chipEl.hidden = false;
+				window.setTimeout(function () { chipEl.hidden = true; }, 7000);
+			}
+
+			function seekStart() {
+				var saved = CONFIG.resume && !live ? Progress.of(item.id) : null;
+				if (!saved || saved.done || saved.t <= 30 || (saved.d && saved.t >= saved.d - 30)) return;
+				var go = function () {
+					try { video.currentTime = saved.t; } catch (err) {}
+				};
+				if (video.readyState >= 1) go();
+				else video.addEventListener('loadedmetadata', go, { once: true });
+				chip(str('resumed', 'Picking up where you left off (%s)').replace('%s', duration(saved.t)));
+			}
+
+			function save(done) {
+				if (live || !(video.currentTime > 0)) return;
+				var d = isFinite(video.duration) ? video.duration : item.length;
+				Progress.save(item.id, done ? 0 : video.currentTime, d, item.parent || '', done || (d && video.currentTime / d > 0.95), item.title, item.image);
+			}
+
+			function start() {
+				if (started) {
+					video.play().catch(function () {});
+					if (startBtn) startBtn.hidden = true;
+					return;
+				}
+				started = true;
+				if (startBtn) startBtn.hidden = true;
+				say('');
+				stage.classList.add('is-on');
+				if (live) {
+					var p = opts.play || {};
+					reporter = p.id ? new Reporter('live', p.id) : null;
+					if (reporter) reporter.position = function () { return video.currentTime; };
+					if (p.kind === 'embed') return embed(p.src);
+					attach(p.src).then(function () {
+						if (!alive) return;
+						video.play().catch(function () { if (alive && startBtn) startBtn.hidden = false; });
+					}).catch(failed);
+					// Faith Stream live only: signed-in viewers are counted present.
+					var ci = root.querySelector('[data-ftvc-checkin]');
+					if (ci && p.kind === 'hls' && p.id) Checkin.start(ci, function () { return !video.paused; });
+					return;
+				}
+				getJSON('video/' + enc(item.id)).then(function (data) {
+					if (!alive) return;
+					info = data || {};
+					reporter = new Reporter('video', item.id);
+					reporter.position = function () { return video.currentTime; };
+					if (info.embed) return embed(info.embed);
+					return attach(info.hls).then(function () {
+						if (!alive) return;
+						seekStart();
+						// Someone pressed play (ours, the browser's, or a link that says play): the browser may still
+						// want a fresh tap, and then our play button comes back.
+						var pr = video.play();
+						if (pr && pr.catch) pr.catch(function () { if (alive && startBtn) startBtn.hidden = false; });
+					});
+				}).catch(function () {
+					if (alive) failed();
+				});
+			}
+
+			function onPlaying() {
+				stage.classList.add('is-playing');
+				say('');
+				if (live) {
+					count('live');
+					if (reporter && !reporter.started) {
+						reporter.started = true;
+						reporter.start(0);
+					}
+					if (!counted.emit) {
+						counted.emit = true;
+						emit('play', { id: item.id, title: item.title, live: true });
+					}
+				} else {
+					if (!counted['play:' + item.id]) emit('play', { id: item.id, title: item.title, series: item.parent || '' });
+					count('play');
+					if (reporter && !reporter.started) {
+						reporter.started = true;
+						reporter.start(video.currentTime);
+					} else if (reporter && reporter.resumed) {
+						reporter.resumed = false;
+						reporter.event('play', video.currentTime);
+					}
+				}
+				media();
+			}
+
+			function onTime() {
+				if (live || !video.duration || !isFinite(video.duration)) return;
+				var pct = (100 * video.currentTime) / video.duration;
+				[25, 50, 75, 90].forEach(function (m) {
+					if (pct >= m && !milestones[m]) {
+						milestones[m] = true;
+						if (m === 90) {
+							count('complete');
+							if (reporter) reporter.event('complete', video.currentTime);
+							emit('complete', { id: item.id, title: item.title });
+						} else {
+							emit('progress', { id: item.id, title: item.title, percent: m });
+						}
+					}
+				});
+				if (!saveTimer) {
+					saveTimer = window.setTimeout(function () {
+						saveTimer = 0;
+						save();
+					}, 5000);
+				}
+			}
+
+			function onEnded() {
+				if (live) return;
+				save(true);
+				count('complete');
+				stage.classList.remove('is-playing');
+				var nxt = opts.next;
+				if (!nxt) return;
+				if (!CONFIG.upnext) {
+					opts.onNext(nxt);
+					return;
+				}
+				var left = 8;
+				upEl.textContent = '';
+				upEl.hidden = false;
+				var countEl = el('span', { 'class': 'ftvc-upnext__count', text: str('startsIn', 'Starts in %d').replace('%d', left) });
+				var now = el('button', { type: 'button', 'class': 'ftvc-pill ftvc-pill--small', text: str('playNow', 'Play now') });
+				var cancel = el('button', { type: 'button', 'class': 'ftvc-pill ftvc-pill--small ftvc-pill--quiet', text: str('cancel', 'Cancel') });
+				upEl.appendChild(el('div', { 'class': 'ftvc-upnext__card' }, [
+					nxt.image ? el('img', { src: safeUrl(nxt.image, true), alt: '' }) : null,
+					el('div', null, [
+						el('p', { 'class': 'ftvc-eyebrow', text: str('upNext', 'Up next') }),
+						el('p', { 'class': 'ftvc-upnext__title', text: nxt.title }),
+						countEl,
+						el('div', { 'class': 'ftvc-upnext__btns' }, [now, cancel])
+					])
+				]));
+				var tick = function () {
+					left--;
+					if (left <= 0) {
+						opts.onNext(nxt);
+						return;
+					}
+					countEl.textContent = str('startsIn', 'Starts in %d').replace('%d', left);
+					upTimer = window.setTimeout(tick, 1000);
+				};
+				upTimer = window.setTimeout(tick, 1000);
+				now.addEventListener('click', function () {
+					window.clearTimeout(upTimer);
+					opts.onNext(nxt);
+				});
+				cancel.addEventListener('click', function () {
+					window.clearTimeout(upTimer);
+					upEl.hidden = true;
+				});
+				now.focus({ preventScroll: true });
+			}
+
+			/* Lock screen and notification controls on phones. */
+			function media() {
+				if (!('mediaSession' in navigator) || !window.MediaMetadata) return;
+				try {
+					navigator.mediaSession.metadata = new window.MediaMetadata({
+						title: item.title || '',
+						artist: CONFIG.church || '',
+						album: opts.series || '',
+						artwork: item.poster || item.image ? [{ src: item.poster || item.image, sizes: '1280x720' }] : []
+					});
+					var set = function (action, fn) {
+						try { navigator.mediaSession.setActionHandler(action, fn); } catch (err) {}
+					};
+					set('play', function () { video.play(); });
+					set('pause', function () { video.pause(); });
+					set('seekbackward', function () { video.currentTime = Math.max(0, video.currentTime - 10); });
+					set('seekforward', function () { video.currentTime = video.currentTime + 10; });
+					set('previoustrack', opts.prev ? function () { opts.onNext(opts.prev); } : null);
+					set('nexttrack', opts.next ? function () { opts.onNext(opts.next); } : null);
+				} catch (err) {}
+			}
+
+			function stopMedia() {
+				if (reporter) {
+					reporter.stop(video.currentTime);
+					reporter = null;
+				}
+				if (hls) {
+					hls.destroy();
+					hls = null;
+				}
+				if (frame) {
+					frame.remove();
+					frame = null;
+				}
+				video.hidden = false;
+				video.pause();
+				video.removeAttribute('src');
+				try { video.load(); } catch (err) {}
+				stage.classList.remove('is-playing');
+			}
+
+			function stop() {
+				if (!alive) return;
+				save();
+				alive = false;
+				window.clearTimeout(saveTimer);
+				window.clearTimeout(upTimer);
+				stopMedia();
+				if (live) Checkin.stop();
+				if ('mediaSession' in navigator) {
+					try { navigator.mediaSession.metadata = null; } catch (err) {}
+				}
+			}
+
+			video.addEventListener('playing', onPlaying);
+			video.addEventListener('timeupdate', onTime);
+			video.addEventListener('ended', onEnded);
+			video.addEventListener('volumechange', function () { Store.set('vol', { v: video.volume, m: video.muted }); });
+			video.addEventListener('pause', function () {
+				stage.classList.remove('is-playing');
+				if (reporter) {
+					reporter.paused = true;
+					reporter.event('pause', video.currentTime);
+				}
+				save();
+			});
+			video.addEventListener('play', function () {
+				if (!started) start(); // the browser's own play button, before ours
+				if (reporter && reporter.paused) {
+					reporter.paused = false;
+					reporter.resumed = true;
+				}
+			});
+			if (startBtn) startBtn.addEventListener('click', start);
+
+			return { start: start, stop: stop };
+		}
+
+		/* ---- One channel on the page ---- */
+
+		function init(root) {
+			if (root.getAttribute('data-ftvs-ready')) return;
+			root.setAttribute('data-ftvs-ready', '1');
+			var view = root.querySelector('[data-ftvc-view]');
+			var announce = root.querySelector('[data-ftvc-announce]');
+			var menu = root.querySelector('[data-ftvc-menu]');
+			var menuBtn = root.querySelector('[data-ftvc-menu-toggle]');
+			var form = root.querySelector('[data-ftvc-search]');
+			var searchBtn = root.querySelector('[data-ftvc-search-toggle]');
+			var input = form ? form.querySelector('input[type="search"]') : null;
+			var page = root.getAttribute('data-page') || '0';
+			var cache = {};
+			var stage = null;
+			var token = 0;
+			var pollTimer = 0;
+			var typing = 0;
+			var loadingTimer = 0;
+			var current = readState();
+			// Only one channel on a page drives the address bar (a second one still works, with normal page loads).
+			var owner = !root.ownerDocument.querySelector('[data-ftvs-channel][data-ftvc-owner]') && !!(window.history && window.history.pushState) && !CONFIG.embed;
+			if (owner) root.setAttribute('data-ftvc-owner', '1');
+
+			function readState() {
+				try {
+					var s = JSON.parse(view.getAttribute('data-state') || '{}');
+					return { v: s.v || 'home', id: s.id || '', in: s.in || '', q: s.q || '' };
+				} catch (err) {
+					return { v: 'home', id: '', in: '', q: '' };
+				}
+			}
+
+			function fetchView(s, fresh) {
+				var k = keyOf(s);
+				if (fresh || !cache[k]) {
+					cache[k] = getJSON('channel?view=' + enc(s.v) + '&id=' + enc(s.id) + '&in=' + enc(s.in) + '&q=' + enc(s.q) + '&page=' + enc(page)).catch(function (err) {
+						delete cache[k];
+						throw err;
+					});
+				}
+				return cache[k];
+			}
+
+			function depth() {
+				var st = window.history.state;
+				return st && st.ftvc && typeof st.depth === 'number' ? st.depth : 0;
+			}
+
+			/* A history entry of ours that keeps what other scripts put in the current one. WordPress's interactivity
+			   script tags each page load's entries with an id and reloads the page when Back lands on one without it. */
+			function entry(s, y, d) {
+				var st = window.history.state;
+				var out = {};
+				if (st && typeof st === 'object') {
+					Object.keys(st).forEach(function (k) {
+						if (k !== 'ftvc' && k !== 'y' && k !== 'depth' && k !== 'ftvs') out[k] = st[k];
+					});
+				}
+				out.ftvc = s;
+				out.y = y;
+				out.depth = d;
+				return out;
+			}
+
+			/**
+			 * @param opts { push, replace, autoplay, restoreY, keepFocus, href, fresh }
+			 */
+			function go(s, opts) {
+				opts = opts || {};
+				if (!owner) {
+					if (opts.href) window.location.href = opts.href;
+					return;
+				}
+				var mine = ++token;
+				window.clearTimeout(loadingTimer);
+				loadingTimer = window.setTimeout(function () { root.classList.add('is-loading'); }, 150);
+				if (s.v === 'video' && needsHlsHere() && !saveData()) loadHlsScript().catch(function () {});
+				fetchView(s, opts.fresh).then(function (res) {
+					if (mine !== token) return;
+					if (opts.push) {
+						window.history.replaceState(entry(current, window.scrollY, depth()), '');
+						window.history.pushState(entry(s, 0, depth() + 1), '', res.url);
+					} else if (opts.replace) {
+						window.history.replaceState(entry(s, window.scrollY, depth()), '', res.url);
+					}
+					show(res, s, opts);
+				}).catch(function (err) {
+					if (mine !== token) return;
+					window.clearTimeout(loadingTimer);
+					root.classList.remove('is-loading');
+					if (window.console && window.console.warn) window.console.warn('Faith TV channel: loading the page instead.', err);
+					// The address works on its own: load it the normal way.
+					if (opts.href) window.location.href = opts.href;
+				});
+			}
+
+			function show(res, s, opts) {
+				stopStage();
+				window.clearTimeout(loadingTimer);
+				root.classList.remove('is-loading');
+				current = s;
+				view.innerHTML = res.html;
+				view.setAttribute('data-state', JSON.stringify(s));
+				if (res.backdrop && root.classList.contains('ftvc--backdrop')) {
+					var bg = safeUrl(res.backdrop, true);
+					if (bg) root.style.setProperty('--ftvc-backdrop', 'url("' + bg.replace(/"/g, '%22').replace(/\\/g, '%5C').replace(/[\r\n]/g, '') + '")');
+				}
+				if (res.document) document.title = res.document;
+				if (input && s.v !== 'search') {
+					form.removeAttribute('data-open');
+					if (searchBtn) searchBtn.setAttribute('aria-expanded', 'false');
+				}
+				wire(opts);
+				if (typeof opts.restoreY === 'number') {
+					window.scrollTo(0, opts.restoreY);
+				} else if (!opts.keepFocus) {
+					var top = root.getBoundingClientRect().top;
+					if (top < 0 || s.v === 'video' || s.v === 'live') root.scrollIntoView({ block: 'start' });
+				}
+				if (!opts.keepFocus) {
+					var h = view.querySelector('h2[tabindex]');
+					if (h) h.focus({ preventScroll: true });
+				}
+				if (announce) announce.textContent = res.title || '';
+				emit('channel', { view: s.v, id: s.id });
+			}
+
+			function needsHlsHere() {
+				var v = document.createElement('video');
+				var native = !!(v.canPlayType && v.canPlayType('application/vnd.apple.mpegurl'));
+				var safari = /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent);
+				return !(native && (safari || !(window.MediaSource || window.ManagedMediaSource)));
+			}
+
+			function stopStage() {
+				window.clearInterval(pollTimer);
+				pollTimer = 0;
+				if (stage) {
+					stage.stop();
+					stage = null;
+				}
+			}
+
+			/* What a freshly shown view needs: rows, progress, the player, "Continue watching", live checks. */
+			function wire(opts) {
+				Array.prototype.forEach.call(view.querySelectorAll('.ftvc-rail'), initRail);
+				continueRow();
+				markCards(view);
+				var watch = view.querySelector('[data-ftvc-video]');
+				var liveBox = view.querySelector('[data-ftvc-live]');
+				if (watch) watchView(watch, opts);
+				else if (liveBox) liveView(liveBox, opts);
+				var home = view.querySelector('[data-ftvc-home]');
+				if (home && root.hasAttribute('data-live-poll')) {
+					var was = home.getAttribute('data-live') === '1';
+					pollTimer = window.setInterval(function () {
+						if (document.hidden) return;
+						getJSON('live').then(function (st) {
+							var on = !!(st && st.status === 'live' && st.play);
+							if (on !== was) go(current, { replace: true, keepFocus: true, restoreY: window.scrollY, fresh: true });
+						}).catch(function () {});
+					}, 60000);
+				}
+			}
+
+			function watchView(box, opts) {
+				var item;
+				var eps = [];
+				try {
+					item = JSON.parse(box.getAttribute('data-ftvc-video'));
+					eps = JSON.parse(box.getAttribute('data-ftvc-eps') || '[]');
+				} catch (err) {
+					return;
+				}
+				if (!item || !ID_RE.test(item.id || '')) return;
+				var at = -1;
+				eps.forEach(function (e, i) { if (e.id === item.id) at = i; });
+				var next = at >= 0 && at < eps.length - 1 ? eps[at + 1] : null;
+				var prev = at > 0 ? eps[at - 1] : null;
+				stage = Stage(root, box.querySelector('.ftvc-stage__in'), item, {
+					next: next,
+					prev: prev,
+					series: box.getAttribute('data-series-title') || '',
+					onNext: function (e) {
+						go({ v: 'video', id: e.id, in: item.parent || '', q: '' }, { push: true, autoplay: true, href: e.url });
+					}
+				});
+				if (opts.autoplay) stage.start();
+			}
+
+			function liveView(box, opts) {
+				var st;
+				try {
+					st = JSON.parse(box.getAttribute('data-ftvc-live'));
+				} catch (err) {
+					return;
+				}
+				var on = !!(st && st.on && st.play);
+				if (on) {
+					stage = Stage(root, box.querySelector('.ftvc-stage__in'), { id: st.play.id || 'live', title: st.title, image: st.image, poster: st.image }, { live: true, play: st.play, onNext: function () {} });
+					if (opts.autoplay) stage.start();
+				}
+				// Starts or ends while someone is on the page: show the other state.
+				pollTimer = window.setInterval(function () {
+					if (document.hidden) return;
+					getJSON('live' + (st && st.channel ? '?channel=' + enc(st.channel) : '')).then(function (s) {
+						var now = !!(s && s.status === 'live' && s.play);
+						if (now !== on) go(current, { replace: true, keepFocus: true, restoreY: window.scrollY, fresh: true });
+					}).catch(function () {});
+				}, 60000);
+			}
+
+			/* "Continue watching" at the top of the home view: what this device left partway. */
+			function continueRow() {
+				var home = view.querySelector('[data-ftvc-home]');
+				if (!home || !CONFIG.resume || home.querySelector('.ftvc-row--continue')) return;
+				var tpl = root.getAttribute('data-video') || '';
+				var tplIn = root.getAttribute('data-video-in') || '';
+				if (!tpl) return;
+				var all = Progress.all();
+				var list = Object.keys(all).filter(function (id) {
+					var p = all[id];
+					return ID_RE.test(id) && !p.done && p.t >= 30 && p.n && p.d && p.t < p.d * 0.95 && Date.now() - p.at < 60 * 86400000;
+				}).sort(function (a, b) { return all[b].at - all[a].at; }).slice(0, 12);
+				if (!list.length) return;
+				var track = el('ul', { 'class': 'ftvc-track', role: 'list', 'aria-label': str('continueWatching', 'Continue watching') });
+				list.forEach(function (id) {
+					var p = all[id];
+					var series = ID_RE.test(p.s || '') ? p.s : '';
+					var href = (series ? tplIn.replace('FTVCIN', enc(series)) : tpl).replace('FTVCID', enc(id));
+					var img = safeUrl(p.im, true);
+					var art = el('span', { 'class': 'ftvc-art' + (img ? '' : ' ftvc-art--blank') }, [img ? el('img', { src: img, alt: '', loading: 'lazy' }) : el('span', { text: p.n })]);
+					var bar = el('span', { 'class': 'ftvc-progress', 'aria-hidden': 'true' }, [el('i')]);
+					bar.firstChild.style.width = Math.min(100, Math.round((100 * p.t) / p.d)) + '%';
+					art.appendChild(bar);
+					var left = Math.max(1, Math.round((p.d - p.t) / 60));
+					track.appendChild(el('li', null, [el('a', { 'class': 'ftvc-card', href: href, 'data-ftvc': 'video|' + id + '|' + series }, [
+						art,
+						el('span', { 'class': 'ftvc-card__title', text: p.n }),
+						el('span', { 'class': 'ftvc-card__meta', text: str('minLeft', '%d min left').replace('%d', left) })
+					])]));
+				});
+				var section = el('section', { 'class': 'ftvc-row ftvc-row--continue', 'data-style': 'videos' }, [
+					el('div', { 'class': 'ftvc-row__head' }, [el('h3', { 'class': 'ftvc-row__title', text: str('continueWatching', 'Continue watching') })]),
+					el('div', { 'class': 'ftvc-rail' }, [
+						el('button', { type: 'button', 'class': 'ftvc-arrow ftvc-arrow--prev', 'data-ftvc-prev': true, 'aria-label': str('rowBack', 'Scroll back'), hidden: true, html: ICON_PREV }),
+						track,
+						el('button', { type: 'button', 'class': 'ftvc-arrow ftvc-arrow--next', 'data-ftvc-next': true, 'aria-label': str('rowOn', 'Scroll forward'), hidden: true, html: ICON_NEXT })
+					])
+				]);
+				home.insertBefore(section, home.firstChild);
+				initRail(section.querySelector('.ftvc-rail'));
+			}
+
+			function closeMenu() {
+				if (!menu || menu.hidden) return;
+				menu.hidden = true;
+				if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
+			}
+
+			function search(replace) {
+				var q = input.value.trim();
+				if (q.length < 2) return;
+				go({ v: 'search', id: '', in: '', q: q }, { push: !replace, replace: replace, keepFocus: true, href: form.action + (form.action.indexOf('?') < 0 ? '?' : '&') + 'ftvs_q=' + enc(q) });
+			}
+
+			// Every link inside the channel.
+			root.addEventListener('click', function (e) {
+				var a = e.target.closest && e.target.closest('a[data-ftvc]');
+				if (!a || !root.contains(a) || e.defaultPrevented || !plainClick(e) || editing()) return;
+				var s = routeOf(a);
+				if (!s || !owner) return;
+				e.preventDefault();
+				closeMenu();
+				// "Back" goes back when we came from inside the channel, so the page lands where it was.
+				if (a.hasAttribute('data-ftvc-back') && depth() > 0) {
+					window.history.back();
+					return;
+				}
+				go(s, { push: true, href: a.href, autoplay: a.hasAttribute('data-ftvc-play') || a.classList.contains('ftvc-card') });
+			});
+
+			// Ask for a view as soon as the pointer rests on its link (the click then opens instantly).
+			var warmTimer = 0;
+			root.addEventListener('pointerover', function (e) {
+				var a = e.target.closest && e.target.closest('a[data-ftvc]');
+				if (!a || saveData() || !owner) return;
+				window.clearTimeout(warmTimer);
+				warmTimer = window.setTimeout(function () {
+					var s = routeOf(a);
+					if (s && keyOf(s) !== keyOf(current)) fetchView(s).catch(function () {});
+				}, 90);
+			});
+
+			if (menuBtn && menu) {
+				menuBtn.addEventListener('click', function () {
+					var open = menu.hidden;
+					menu.hidden = !open;
+					menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+					if (open) {
+						var first = menu.querySelector('a');
+						if (first) first.focus();
+					}
+				});
+				document.addEventListener('click', function (e) {
+					if (!menu.hidden && !menu.contains(e.target) && !menuBtn.contains(e.target)) closeMenu();
+				});
+				root.addEventListener('keydown', function (e) {
+					if (e.key === 'Escape' && !menu.hidden) {
+						closeMenu();
+						menuBtn.focus();
+					}
+				});
+			}
+
+			if (form && input) {
+				if (searchBtn) {
+					searchBtn.addEventListener('click', function () {
+						var open = !form.hasAttribute('data-open');
+						if (open) form.setAttribute('data-open', '');
+						else form.removeAttribute('data-open');
+						searchBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+						if (open) input.focus();
+					});
+				}
+				input.addEventListener('input', function () {
+					window.clearTimeout(typing);
+					typing = window.setTimeout(function () { search(current.v === 'search'); }, 450);
+				});
+				form.addEventListener('submit', function (e) {
+					if (!owner) return;
+					e.preventDefault();
+					window.clearTimeout(typing);
+					search(current.v === 'search');
+				});
+			}
+
+			if (owner) {
+				window.history.replaceState(entry(current, window.scrollY, depth()), '');
+				// Capture phase, and the step is ours alone: WordPress's own page router (block themes) reloads the page
+				// for any Back it did not make itself.
+				window.addEventListener('popstate', function (e) {
+					var st = e.state;
+					if (!st || !st.ftvc) return; // another part of the page (the pop-up player) moved the history
+					e.stopImmediatePropagation();
+					go(st.ftvc, { restoreY: typeof st.y === 'number' ? st.y : 0, href: window.location.href });
+				}, true);
+			}
+			window.addEventListener('pagehide', stopStage);
+			wire({});
+		}
+
+		return { init: init };
+	})();
+
+	var hlsScript = null;
+	function loadHlsScript() {
+		if (window.Hls) return Promise.resolve(window.Hls);
+		if (!hlsScript) {
+			hlsScript = new Promise(function (resolve, reject) {
+				var s = document.createElement('script');
+				s.src = CONFIG.hls;
+				s.async = true;
+				s.onload = function () { resolve(window.Hls); };
+				s.onerror = function () {
+					hlsScript = null;
+					reject(new Error('hls.js failed to load'));
+				};
+				document.head.appendChild(s);
+			});
+		}
+		return hlsScript;
+	}
+
 	/* ---------- Embed pages ---------- */
 
 	var heightQueued = false;
@@ -2731,6 +3557,7 @@
 	function init() {
 		Array.prototype.forEach.call(document.querySelectorAll('[data-ftvs]'), initRoot);
 		Array.prototype.forEach.call(document.querySelectorAll('[data-ftvs-livebar]'), initLiveBar);
+		Array.prototype.forEach.call(document.querySelectorAll('[data-ftvs-channel]'), Channel.init);
 		// Share buttons outside the player (message pages).
 		document.addEventListener('click', function (e) {
 			var b = e.target.closest && e.target.closest('[data-ftvs-share]');
@@ -2763,6 +3590,10 @@
 				var node = $scope && $scope[0] ? $scope[0].querySelector('[data-ftvs]') : null;
 				if (node) initRoot(node);
 			});
+		});
+		window.elementorFrontend.hooks.addAction('frontend/element_ready/faith_tv_channel.default', function ($scope) {
+			var node = $scope && $scope[0] ? $scope[0].querySelector('[data-ftvs-channel]') : null;
+			if (node) Channel.init(node);
 		});
 	}
 	hookElementor();

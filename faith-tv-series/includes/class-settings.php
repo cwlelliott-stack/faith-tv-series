@@ -69,6 +69,12 @@ class FTVS_Settings {
 			'checkin'        => 1,
 			// Pages for every message, and the podcast feed.
 			'watch_page_id'  => 0,
+			// The whole channel on one page (FTVS_Channel): its name and logo in the bar, the dimmed photo behind
+			// the rows, and each home row's layout (row id => hero|slider|tiles|videos|hide; missing = automatic).
+			'channel_name'     => '',
+			'channel_logo'     => '',
+			'channel_backdrop' => 1,
+			'channel_rows'     => array(),
 			'podcast'        => 0,
 			'podcast_title'  => '',
 			'podcast_author' => '',
@@ -127,7 +133,7 @@ class FTVS_Settings {
 		if ( isset( $input['account_id'] ) ) {
 			$out['account_id'] = preg_replace( '/[^A-Za-z0-9_-]/', '', $input['account_id'] );
 		}
-		foreach ( array( 'tv_url', 'fs_url', 'church_logo', 'live_url', 'live_page', 'podcast_image', 'remind_webhook', 'new_webhook' ) as $key ) {
+		foreach ( array( 'tv_url', 'fs_url', 'church_logo', 'channel_logo', 'live_url', 'live_page', 'podcast_image', 'remind_webhook', 'new_webhook' ) as $key ) {
 			if ( isset( $input[ $key ] ) ) {
 				$out[ $key ] = untrailingslashit( esc_url_raw( trim( $input[ $key ] ) ) );
 			}
@@ -138,7 +144,7 @@ class FTVS_Settings {
 		if ( isset( $input['fs_tenant'] ) ) {
 			$out['fs_tenant'] = preg_replace( '/[^a-z0-9-]/', '', strtolower( $input['fs_tenant'] ) );
 		}
-		foreach ( array( 'church_name', 'label', 'badge', 'next_title', 'podcast_title', 'podcast_author', 'live_channel' ) as $key ) {
+		foreach ( array( 'church_name', 'channel_name', 'label', 'badge', 'next_title', 'podcast_title', 'podcast_author', 'live_channel' ) as $key ) {
 			if ( isset( $input[ $key ] ) ) {
 				$out[ $key ] = sanitize_text_field( $input[ $key ] );
 			}
@@ -183,7 +189,10 @@ class FTVS_Settings {
 		if ( isset( $input['text'] ) && is_array( $input['text'] ) ) {
 			$out['text'] = self::text_styles( $input['text'] );
 		}
-		foreach ( array( 'powered_by', 'share', 'resume', 'upnext', 'count_plays', 'report_plays', 'stats_email', 'live_bar', 'podcast', 'remind', 'alert_email', 'checkin' ) as $key ) {
+		if ( isset( $input['channel_rows'] ) && is_array( $input['channel_rows'] ) ) {
+			$out['channel_rows'] = self::channel_rows( $input['channel_rows'] );
+		}
+		foreach ( array( 'powered_by', 'share', 'resume', 'upnext', 'count_plays', 'report_plays', 'stats_email', 'live_bar', 'podcast', 'remind', 'alert_email', 'checkin', 'channel_backdrop' ) as $key ) {
 			if ( isset( $input[ $key ] ) ) {
 				$out[ $key ] = empty( $input[ $key ] ) ? 0 : 1;
 			}
@@ -250,6 +259,18 @@ class FTVS_Settings {
 			$step   = self::next_steps( array( $row ) );
 			if ( '' !== $series && $step && count( $out ) < 30 ) {
 				$out[ $series ] = $step[0];
+			}
+		}
+		return $out;
+	}
+
+	/** The channel page's row layouts: row id => hero|slider|tiles|videos|hide ("auto" is left out), at most 100. */
+	public static function channel_rows( $raw ) {
+		$out = array();
+		foreach ( (array) $raw as $id => $style ) {
+			$id = is_string( $id ) || is_int( $id ) ? (string) $id : '';
+			if ( preg_match( '/^[A-Za-z0-9_-]{1,128}$/D', $id ) && is_string( $style ) && in_array( $style, array( 'hero', 'slider', 'tiles', 'videos', 'hide' ), true ) && count( $out ) < 100 ) {
+				$out[ $id ] = $style;
 			}
 		}
 		return $out;

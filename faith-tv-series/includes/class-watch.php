@@ -46,6 +46,11 @@ class FTVS_Watch {
 		add_shortcode( 'faith_tv_watch', array( __CLASS__, 'shortcode' ) );
 	}
 
+	/** The message this request shows (on its /watch/<video>/ page), or null. */
+	public static function current() {
+		return self::$video;
+	}
+
 	public static function page_id() {
 		$id   = (int) FTVS_Settings::get( 'watch_page_id' );
 		$page = $id ? get_post( $id ) : null;
@@ -77,9 +82,12 @@ class FTVS_Watch {
 		}
 		$uri = get_page_uri( $page );
 		add_rewrite_rule( '^' . preg_quote( $uri, '#' ) . '/([A-Za-z0-9_-]{1,128})/?$', 'index.php?page_id=' . $page . '&' . self::VAR . '=$matches[1]', 'top' );
+		// The whole channel on the Watch page: its series and live pages (FTVS_Channel).
+		add_rewrite_rule( '^' . preg_quote( $uri, '#' ) . '/series/([A-Za-z0-9_-]{1,128})/?$', 'index.php?page_id=' . $page . '&' . FTVS_Channel::SERIES_VAR . '=$matches[1]', 'top' );
+		add_rewrite_rule( '^' . preg_quote( $uri, '#' ) . '/live/([a-z0-9-]{1,128})/?$', 'index.php?page_id=' . $page . '&' . FTVS_Channel::LIVE_VAR . '=$matches[1]', 'top' );
 		add_rewrite_rule( '^faith-tv-messages\.xml$', 'index.php?' . self::SITEMAP_VAR . '=1', 'top' );
 		// New Watch page, or its address changed: rebuild the rules once (and the SEO plugins' sitemap lists).
-		$ver = md5( $page . '|' . $uri . '|faith-tv-messages.xml' );
+		$ver = md5( $page . '|' . $uri . '|faith-tv-messages.xml|channel' );
 		if ( get_option( 'ftvs_rewrite_ver' ) !== $ver ) {
 			update_option( 'ftvs_rewrite_ver', $ver, true );
 			delete_option( 'rewrite_rules' ); // rebuilt when this request is parsed, with every plugin's rules
@@ -98,7 +106,8 @@ class FTVS_Watch {
 	 * with a permanent redirect, which search engines treat as a broken page anyway.
 	 */
 	public static function no_guessing( $redirect ) {
-		return '' !== (string) get_query_var( self::VAR ) && is_404() ? false : $redirect;
+		$ours = '' !== (string) get_query_var( self::VAR ) || '' !== (string) get_query_var( FTVS_Channel::SERIES_VAR ) || '' !== (string) get_query_var( FTVS_Channel::LIVE_VAR );
+		return $ours && is_404() ? false : $redirect;
 	}
 
 	/** A real page under the Watch page (watch/live/, say) is that page, not a message called "live". */
@@ -118,6 +127,10 @@ class FTVS_Watch {
 		}
 		$id    = sanitize_text_field( $id );
 		$video = FTVS_Catalog::is_known( $id ) ? FTVS_Catalog::find_video( $id ) : null;
+		if ( ! $video && FTVS_Channel::page_has_channel( self::page_id() ) ) {
+			// The whole channel is on this page: a message inside a season (below what the library lists) is fine.
+			$video = FTVS_Channel::resolve_video( FTVS_Channel::clean_id( $id ), FTVS_Channel::clean_id( (string) get_query_var( FTVS_Channel::SERIES_VAR ) ) );
+		}
 		if ( ! $video || ( FTVS_Catalog::is_demo() && ! current_user_can( 'edit_posts' ) ) ) {
 			global $wp_query;
 			$wp_query->set_404();
@@ -136,6 +149,10 @@ class FTVS_Watch {
 		if ( null === self::$video || ! in_the_loop() || ! is_main_query() || (int) get_the_ID() !== self::page_id() ) {
 			return $content;
 		}
+		// The whole channel is on this page and shows the message in its own player.
+		if ( FTVS_Channel::page_has_channel( self::page_id() ) || false !== strpos( (string) $content, 'data-ftvs-channel' ) ) {
+			return $content;
+		}
 		return self::render( self::$video );
 	}
 
@@ -145,7 +162,7 @@ class FTVS_Watch {
 
 	/** The theme's heading for the Watch page shows the message's title instead. */
 	public static function page_title( $title, $post_id = 0 ) {
-		if ( null === self::$video || (int) $post_id !== self::page_id() || is_admin() || ! in_the_loop() ) {
+		if ( null === self::$video || (int) $post_id !== self::page_id() || is_admin() || ! in_the_loop() || FTVS_Channel::page_has_channel( self::page_id() ) ) {
 			return $title;
 		}
 		self::$titled = true;
@@ -280,20 +297,59 @@ class FTVS_Watch {
 
 	/** SEO plugins describe the Watch page itself; point them at the message instead. */
 	private static function quiet_seo_plugins() {
-		$v     = self::$video;
-		$title = function () use ( $v ) {
-			return $v['title'] . ' - ' . get_bloginfo( 'name' );
-		};
-		$desc  = function () use ( $v ) {
-			return wp_trim_words( $v['description'], 40, '…' );
-		};
-		$url   = function () use ( $v ) {
-			return FTVS_Watch::url( $v['id'] );
-		};
-		$image = function () use ( $v ) {
-			return '' !== $v['poster'] ? $v['poster'] : $v['image'];
-		};
+		$v = self::$video;
 		add_filter( 'get_canonical_url', array( __CLASS__, 'canonical' ), 99, 2 );
+		self::seo_filters( $v['title'], wp_trim_words( $v['description'], 40, '…' ), FTVS_Watch::url( $v['id'] ), '' !== $v['poster'] ? $v['poster'] : $v['image'] );
+	}
+
+	/**
+	 * Another view of a page speaks for itself (the channel's series pages): its title, description, address
+	 * and picture, for search engines and link previews. Prints them when no SEO plugin does.
+	 */
+	public static function speak_for( $title, $desc, $url, $image ) {
+		remove_action( 'wp_head', 'rel_canonical' );
+		add_filter(
+			'get_canonical_url',
+			function () use ( $url ) {
+				return $url;
+			},
+			99
+		);
+		self::seo_filters( $title, $desc, $url, $image );
+		if ( self::seo_plugin() ) {
+			return;
+		}
+		add_action(
+			'wp_head',
+			function () use ( $title, $desc, $url, $image ) {
+				printf( '<link rel="canonical" href="%s">' . "\n", esc_url( $url ) );
+				if ( '' !== $desc ) {
+					printf( '<meta name="description" content="%s">' . "\n", esc_attr( $desc ) );
+				}
+				foreach ( array( 'og:title' => $title, 'og:description' => $desc, 'og:url' => $url, 'og:image' => $image, 'og:site_name' => get_bloginfo( 'name' ) ) as $prop => $value ) {
+					if ( '' !== (string) $value ) {
+						printf( '<meta property="%s" content="%s">' . "\n", esc_attr( $prop ), esc_attr( $value ) );
+					}
+				}
+			},
+			1
+		);
+	}
+
+	/** The SEO plugins' own title, description, address and picture for this request. */
+	private static function seo_filters( $the_title, $the_desc, $the_url, $the_image ) {
+		$title = function () use ( $the_title ) {
+			return $the_title . ' - ' . get_bloginfo( 'name' );
+		};
+		$desc  = function () use ( $the_desc ) {
+			return $the_desc;
+		};
+		$url   = function () use ( $the_url ) {
+			return $the_url;
+		};
+		$image = function () use ( $the_image ) {
+			return $the_image;
+		};
 		foreach ( array( 'wpseo_title', 'wpseo_opengraph_title', 'wpseo_twitter_title', 'rank_math/frontend/title', 'rank_math/opengraph/facebook/og_title', 'aioseo_title', 'seopress_titles_title' ) as $hook ) {
 			add_filter( $hook, $title, 99 );
 		}

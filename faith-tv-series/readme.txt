@@ -24,6 +24,11 @@ Videos can come from:
 
 What you can put on a page (Elementor widget, block, or shortcode):
 
+* Your whole channel on one page, laid out like your TV site: the big banner, the Featured
+  slider, a row for each group of series, series pages with a row per season, the player,
+  search and Sunday live. People never leave your website, every view has its own address (so
+  Back, sharing and Google work), and on your Watch page the addresses are tidy
+  (/watch/series/name/). Set it up under Faith Stream > Channel page.
 * Videos: any row or series, in five layouts (Showcase, 3D carousel, Featured + list, Row, Grid),
   or two automatic picks: the newest messages, and what you feature on your channel.
 * One video, with a big play button, for a blog post or landing page.
@@ -76,6 +81,7 @@ Shortcodes (leave any option out to use the Look & feel defaults):
   category="@newest" and category="@featured" pick themselves.
 * [faith_tv_live] with title, eyebrow, theme, channel="<campus channel id>".
 * [faith_tv_library] with title, eyebrow, theme, category (only messages in one row), per.
+* [faith_tv_channel] with name (in its bar), logo (a picture address) and backdrop="on|off".
 * [faithstream ...]: the shortcode Faith Stream's Embeds page hands out works too.
 
 Share links: yourchurch.com/<page>#faith-tv-<series id> opens a series,
@@ -141,8 +147,8 @@ for example).
 
 = Do I need Elementor? =
 
-No. There are blocks for the block editor ("Faith TV Series", "Sunday Live", "Sermon Library")
-and shortcodes for everything else.
+No. There are blocks for the block editor ("Faith TV Series", "Sunday Live", "Sermon Library",
+"Faith TV Channel") and shortcodes for everything else.
 
 = Does it collect anything about visitors? =
 

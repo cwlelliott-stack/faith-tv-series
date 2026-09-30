@@ -70,6 +70,21 @@ class FTVS_Blocks {
 			)
 		);
 		register_block_type(
+			'faith-tv/channel',
+			array(
+				'api_version'     => 3,
+				'editor_script'   => 'faith-tv-blocks',
+				'editor_style'    => 'faith-tv-channel',
+				'render_callback' => array( __CLASS__, 'channel' ),
+				'supports'        => array( 'align' => array( 'wide', 'full' ) ),
+				'attributes'      => array(
+					'align'    => array( 'type' => 'string', 'default' => 'full' ),
+					'name'     => $text,
+					'backdrop' => $text,
+				),
+			)
+		);
+		register_block_type(
 			'faith-tv/library',
 			array(
 				'api_version'     => 3,
@@ -126,6 +141,15 @@ class FTVS_Blocks {
 				'title'   => (string) $a['title'],
 				'eyebrow' => (string) $a['eyebrow'],
 				'theme'   => self::blank( (string) $a['theme'] ),
+			)
+		) );
+	}
+
+	public static function channel( $a ) {
+		return self::wrap( FTVS_Channel::render(
+			array(
+				'name'     => (string) $a['name'],
+				'backdrop' => (string) $a['backdrop'],
 			)
 		) );
 	}

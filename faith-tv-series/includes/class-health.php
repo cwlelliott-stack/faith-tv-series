@@ -130,7 +130,7 @@ class FTVS_Health {
 	/** @return array List of { kind, category, layout, from, until }. */
 	private static function sections_in( $post ) {
 		$out = array();
-		$pattern = get_shortcode_regex( array( 'faith_tv_series', 'faithstream', 'faith_tv_live', 'faith_tv_library' ) );
+		$pattern = get_shortcode_regex( array( 'faith_tv_series', 'faithstream', 'faith_tv_live', 'faith_tv_library', 'faith_tv_channel' ) );
 		if ( preg_match_all( '/' . $pattern . '/', $post->post_content, $m, PREG_SET_ORDER ) ) {
 			foreach ( $m as $sc ) {
 				$atts  = shortcode_parse_atts( $sc[3] );
@@ -154,7 +154,7 @@ class FTVS_Health {
 				if ( 'custom' === $category ) {
 					$category = isset( $s['category_id'] ) ? $s['category_id'] : '';
 				}
-				$tag   = in_array( $w['widgetType'], array( 'faith_tv_live', 'faith_tv_library' ), true ) ? $w['widgetType'] : 'faith_tv_series';
+				$tag   = in_array( $w['widgetType'], array( 'faith_tv_live', 'faith_tv_library', 'faith_tv_channel' ), true ) ? $w['widgetType'] : 'faith_tv_series';
 				$out[] = self::section( 'elementor', $tag, array_merge( $s, array( 'category' => $category ) ) );
 			}
 		}
@@ -174,10 +174,15 @@ class FTVS_Health {
 				$category = 'video:' . $atts['video'];
 			}
 		}
+		$types = array(
+			'faith_tv_live'    => 'live',
+			'faith_tv_library' => 'library',
+			'faith_tv_channel' => 'channel',
+		);
 		return array(
 			'kind'     => $kind,
-			'type'     => 'faith_tv_live' === $tag ? 'live' : ( 'faith_tv_library' === $tag ? 'library' : 'series' ),
-			'category' => 'faith_tv_live' === $tag ? 'live' : $category,
+			'type'     => isset( $types[ $tag ] ) ? $types[ $tag ] : 'series',
+			'category' => 'faith_tv_live' === $tag ? 'live' : ( 'faith_tv_channel' === $tag ? '' : $category ),
 			'video'    => isset( $atts['video'] ) ? (string) $atts['video'] : '',
 			'layout'   => isset( $atts['layout'] ) && 'default' !== $atts['layout'] ? (string) $atts['layout'] : '',
 			'from'     => isset( $atts['from'] ) ? (string) $atts['from'] : '',
@@ -244,6 +249,11 @@ class FTVS_Health {
 						$problem = __( 'This category has nothing published yet.', 'faith-tv-series' );
 					}
 				}
+			}
+			if ( 'channel' === $row['type'] ) {
+				// The whole channel: it works as long as the channel's rows can be listed.
+				$rows_now = FTVS_Channel::home_rows();
+				$problem  = is_wp_error( $rows_now ) ? $rows_now->get_error_message() : '';
 			}
 			$rows[ $i ]['ok']      = '' === $problem;
 			$rows[ $i ]['problem'] = $problem;

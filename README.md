@@ -86,7 +86,18 @@ their old updater once, then use the signed path.
 - `includes/class-renderer.php` renders every section (the shortcodes, widgets and blocks all go
   through it); `class-live.php` works out Sunday live; `class-watch.php` serves the message pages
   (`/watch/<video>/` under the chosen Watch page) with link previews and structured data, and
-  `class-sitemap.php` lists them in WordPress's sitemap. With Yoast, Rank Math or All in One SEO (which
+  `class-sitemap.php` lists them in WordPress's sitemap. `class-channel.php` is the whole channel on one
+  page (`[faith_tv_channel]`, the "Faith TV Channel" block and widget, Faith Stream > Channel page): every
+  view (home, series, group of series, video, live, search) is rendered on the server and has its own
+  address (`/watch/series/<id>/`, `/watch/<video>/?ftvs_series=<id>`, `/watch/live/<id>/` on the Watch
+  page; `?ftvs_series=`, `?ftvs_video=`, `?ftvs_live=` elsewhere; `?ftvs_q=` for search). The page
+  script swaps views through `GET /wp-json/faith-tv/v1/channel` and the browser's history (its entries
+  keep WordPress's interactivity id, or 7.x reloads the page on Back), and plays videos inline.
+  Gideo does not say how its rows are laid out, so the first row of videos is the banner, a row named
+  Featured the slider and rows of series tiles; any row can be changed or hidden (`channel_rows`).
+  What each listing said about its series (title, description, picture, parent) is kept in
+  `ftvs_chcats_<md5(identity)>` for titles and breadcrumbs. Styles are in `assets/faith-tv-channel.css`
+  (logical properties, so it needs no RTL copy). With Yoast, Rank Math or All in One SEO (which
   turn WordPress's off) the pages are at `/faith-tv-messages.xml`, added to that plugin's sitemap index
   (no "sitemap" in the name: those plugins claim every `*-sitemap.xml`). `class-podcast.php` serves
   `/feed/faith-tv/`.

@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Faith TV · Faith Tabernacle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+/*
+ * POC: the whole Faith TV channel, one to one, inside a page of the church website.
+ * Home (banner, Featured slider, series tiles, video rows), series pages (one row per sub-series),
+ * the player and search all stay on this page. Live data from Faith Stream (tenant faithtv).
+ * Every view has its own address (?tv=series/<slug>, ?tv=watch/<slug>), so Back, sharing and
+ * open-in-new-tab work like the TV site.
+ *
+ * Test flags: ?autoplay=0 (never starts a video), ?simlive=1 (shows the live banner with no stream),
+ * ?tenant=<slug>, ?base=<Faith Stream address>.
+ */
+:root {
+	--site-accent: #c40d3c;
+	--site-ink: #111114;
+	--site-font: Roboto, "Helvetica Neue", Arial, sans-serif;
+
+	--ftv-accent: #c40d3c;
+	--ftv-accent-hover: #a00a31;
+	--ftv-bg: #050505;
+	--ftv-card: #000;
+	--ftv-elev: #1a1a1a;
+	--ftv-line: rgba(255, 255, 255, 0.16);
+	--ftv-text: #fff;
+	--ftv-muted: rgba(255, 255, 255, 0.72);
+	--ftv-faint: rgba(255, 255, 255, 0.5);
+	--ftv-gutter: clamp(16px, 2.6vw, 40px);
+	--ftv-gap: 12px;
+	--ftv-bar-h: 64px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: #fff; color: var(--site-ink); font-family: var(--site-font); -webkit-font-smoothing: antialiased; }
+img { display: block; max-width: 100%; }
+button { font: inherit; color: inherit; }
+a { color: inherit; }
+
+/* ---------- Stand-in for the church website (not part of the feature) ---------- */
+.poc-ribbon {
+	display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+	padding: 8px 16px; background: #1f1f23; color: #d4d4d8; font-size: 13px; line-height: 1.4;
+}
+.poc-ribbon strong { color: #fff; }
+.poc-ribbon code { padding: 2px 8px; background: #000; color: #fff; font-size: 12px; border-radius: 4px; word-break: break-all; }
+.poc-ribbon .poc-flags { margin-left: auto; display: flex; gap: 12px; }
+.poc-ribbon a { color: #fff; }
+.site-head { background: #fff; border-bottom: 1px solid #e5e5e5; }
+.site-head__in { max-width: 1280px; margin: 0 auto; padding: 18px 24px; display: flex; align-items: center; gap: 24px; }
+.site-logo { font-weight: 900; font-size: 20px; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; }
+.site-logo span { color: var(--site-accent); }
+.site-nav { margin-left: auto; display: flex; gap: 22px; }
+.site-nav a { font-weight: 800; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; color: #333; }
+.site-nav a[aria-current] { color: var(--site-accent); }
+.site-foot { background: var(--site-ink); color: #a1a1aa; }
+.site-foot__in { max-width: 1280px; margin: 0 auto; padding: 36px 24px; display: flex; flex-wrap: wrap; gap: 12px 32px; font-size: 14px; }
+.site-foot strong { color: #fff; letter-spacing: 0.08em; text-transform: uppercase; }
+@media (max-width: 767px) {
+	.site-nav { display: none; }
+	.poc-ribbon .poc-flags { margin-left: 0; }
+}
+
+/* ---------- Faith TV mirror ---------- */
+.ftv {
+	position: relative; isolation: isolate; min-height: 70vh;
+	background: var(--ftv-bg); color: var(--ftv-text);
+	font-family: var(--site-font); font-size: 16px; line-height: 1.45;
+}
+.ftv *:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.ftv a { text-decoration: none; }
+/* The old channel's dimmed black-and-white backdrop; it stays put while the rows scroll past. */
+/* overflow: clip, not hidden: hidden would make this box the sticky's scroller and pin it to the top. */
+.ftv-backdrop { position: absolute; inset: 0; z-index: -1; overflow: clip; pointer-events: none; }
+.ftv-backdrop::before {
+	content: ""; position: sticky; top: 0; display: block; height: 100vh;
+	background: var(--ftv-backdrop, none) center / cover no-repeat;
+	filter: grayscale(1) brightness(0.3) contrast(1.1);
+}
+
+/* Channel bar (the TV site's own header) */
+.ftv-bar {
+	position: sticky; top: 0; z-index: 30; height: var(--ftv-bar-h);
+	display: flex; align-items: center; gap: 12px; padding: 0 var(--ftv-gutter);
+	background: rgba(12, 12, 12, 0.94); border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+@supports (backdrop-filter: blur(8px)) { .ftv-bar { background: rgba(12, 12, 12, 0.82); backdrop-filter: blur(10px); } }
+.ftv-mark { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 700; font-size: 17px; letter-spacing: 0.34em; }
+.ftv-mark svg { width: 30px; height: 24px; flex: none; }
+.ftv-mark b { color: var(--ftv-accent); font-weight: 700; }
+.ftv-bar__spacer { flex: 1; }
+.ftv-iconbtn {
+	display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px;
+	border: 0; background: none; cursor: pointer; font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+	border-radius: 999px;
+}
+.ftv-iconbtn:hover { background: rgba(255, 255, 255, 0.08); }
+.ftv-iconbtn svg { width: 22px; height: 22px; }
+.ftv-search { display: none; align-items: center; gap: 6px; }
+.ftv-search.is-open { display: flex; }
+.ftv-search input {
+	width: min(40vw, 320px); height: 40px; padding: 0 14px; border-radius: 999px;
+	border: 1px solid var(--ftv-line); background: rgba(0, 0, 0, 0.6); color: #fff; font: inherit; font-size: 15px;
+}
+.ftv-search input::placeholder { color: var(--ftv-faint); }
+.ftv-menu {
+	position: absolute; right: var(--ftv-gutter); top: calc(var(--ftv-bar-h) - 4px); z-index: 31;
+	width: min(320px, calc(100vw - 32px)); max-height: 70vh; overflow: auto;
+	padding: 8px; background: #111; border: 1px solid var(--ftv-line); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+.ftv-menu[hidden] { display: none; }
+.ftv-menu a { display: block; padding: 11px 12px; font-weight: 500; }
+.ftv-menu a:hover, .ftv-menu a[aria-current] { background: rgba(255, 255, 255, 0.08); }
+.ftv-menu a[aria-current] { box-shadow: inset 3px 0 0 var(--ftv-accent); }
+@media (max-width: 600px) {
+	.ftv-iconbtn span { display: none; }
+	.ftv-bar:has(.ftv-search.is-open) .ftv-mark span { display: none; }
+	.ftv-search input { width: calc(100vw - 170px); }
+}
+
+.ftv-view { position: relative; padding-bottom: 48px; }
+.ftv-view:focus { outline: none; }
+.ftv-view h1:focus, .ftv-view h2:focus { outline: none; }
+
+/* Banner (the pinned "Welcome to Faith TV" video, or Live now) */
+.ftv-hero { position: relative; overflow: hidden; background: #000; }
+.ftv-hero__art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+.ftv-hero__shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 45%, rgba(0, 0, 0, 0.1) 70%), linear-gradient(0deg, var(--ftv-bg) 0%, rgba(0, 0, 0, 0) 22%); }
+.ftv-hero__copy {
+	position: relative; min-height: clamp(360px, 42vw, 600px);
+	display: flex; flex-direction: column; justify-content: space-between; gap: 24px;
+	padding: clamp(28px, 4.5vw, 64px) var(--ftv-gutter) clamp(40px, 5vw, 72px); max-width: 760px;
+}
+.ftv-hero h1 { margin: 0; font-size: clamp(30px, 3.6vw, 52px); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
+.ftv-hero__meta { margin: 14px 0 0; font-weight: 700; color: var(--ftv-muted); }
+.ftv-hero__eyebrow { margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; }
+.ftv-hero__desc { margin: 12px 0 0; max-width: 52ch; color: var(--ftv-muted); }
+.ftv-live {
+	display: inline-flex; align-items: center; gap: 8px; width: fit-content; margin-bottom: 14px;
+	padding: 4px 10px; background: #dc2626; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; border-radius: 4px;
+}
+.ftv-live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: ftv-blink 1.6s ease-in-out infinite; }
+@keyframes ftv-blink { 50% { opacity: 0.35; } }
+.ftv-pill {
+	display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: fit-content; min-height: 50px;
+	padding: 0 38px; border: 2px solid rgba(255, 255, 255, 0.72); border-radius: 999px; background: rgba(0, 0, 0, 0.35);
+	font-size: 17px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.ftv-pill:hover { background: var(--ftv-accent); border-color: var(--ftv-accent); }
+.ftv-pill svg { width: 16px; height: 16px; }
+.ftv-pill--small { min-height: 42px; padding: 0 22px; font-size: 14px; }
+@media (max-width: 767px) {
+	.ftv-hero__copy { min-height: 0; justify-content: flex-end; padding-top: 42vw; }
+	.ftv-hero__art { height: 56.25vw; bottom: auto; }
+	.ftv-hero__shade { background: linear-gradient(0deg, var(--ftv-bg) 0%, rgba(5, 5, 5, 0.9) calc(100% - 56.25vw + 30px), rgba(0, 0, 0, 0) calc(100% - 30vw)); }
+}
+
+/* Rows */
+.ftv-rows { display: grid; gap: clamp(28px, 3.4vw, 44px); padding-top: clamp(20px, 2.4vw, 32px); }
+.ftv-row__head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 0 var(--ftv-gutter); margin-bottom: 10px; }
+.ftv-row__head h2 { margin: 0; font-size: clamp(19px, 1.6vw, 24px); font-weight: 700; letter-spacing: -0.01em; }
+.ftv-row__head h2 a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.ftv-row__all { flex: none; display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; color: var(--ftv-muted); }
+.ftv-row__all:hover { color: #fff; }
+.ftv-rail { position: relative; }
+.ftv-track {
+	--per: 4;
+	display: grid; grid-auto-flow: column; gap: var(--ftv-gap);
+	grid-auto-columns: calc((100% - (var(--per) - 1) * var(--ftv-gap)) / var(--per));
+	overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
+	padding: 6px var(--ftv-gutter) 10px; scroll-padding-inline: var(--ftv-gutter);
+}
+.ftv-track::-webkit-scrollbar { display: none; }
+.ftv-track > * { scroll-snap-align: start; min-width: 0; }
+.ftv-row[data-style="slider"] .ftv-track { --per: 4; gap: 0; }
+@media (max-width: 1100px) { .ftv-track { --per: 3; } .ftv-row[data-style="slider"] .ftv-track { --per: 2.4; } }
+@media (max-width: 767px) { .ftv-track { --per: 1.7; } .ftv-row[data-style="slider"] .ftv-track { --per: 1.15; } }
+@media (max-width: 420px) { .ftv-track { --per: 1.45; } }
+.ftv-arrow {
+	position: absolute; top: var(--arrow-top, 40%); z-index: 5; width: 38px; height: 38px; margin-top: -19px;
+	display: none; align-items: center; justify-content: center; padding: 0;
+	border: 0; border-radius: 50%; background: rgba(235, 235, 235, 0.7); color: #111; cursor: pointer;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4); transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.ftv-arrow:hover { background: #fff; }
+.ftv-arrow svg { width: 20px; height: 20px; }
+.ftv-arrow--prev { left: max(6px, calc(var(--ftv-gutter) - 22px)); }
+.ftv-arrow--next { right: max(6px, calc(var(--ftv-gutter) - 22px)); }
+@media (hover: hover) and (pointer: fine) { .ftv-arrow:not([hidden]) { display: inline-flex; } }
+
+/* Art */
+.ftv-art { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #111; }
+.ftv-art img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.25s ease; }
+.ftv-art--blank { display: flex; align-items: center; justify-content: center; padding: 12px; background: radial-gradient(120% 120% at 0% 0%, #2a2a2e 0%, #0c0c0e 60%, #000 100%); color: rgba(255, 255, 255, 0.55); font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-align: center; text-transform: uppercase; }
+.ftv-dur { position: absolute; right: 6px; bottom: 6px; padding: 2px 6px; background: rgba(0, 0, 0, 0.82); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 3px; }
+.ftv-progress { position: absolute; inset: auto 0 0 0; height: 4px; background: rgba(255, 255, 255, 0.28); }
+.ftv-progress i { display: block; height: 100%; background: var(--ftv-accent); }
+.ftv-now { position: absolute; left: 6px; top: 6px; padding: 3px 8px; background: var(--ftv-accent); font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* Series tile (home "tiles" rows, series pages) */
+.ftv-tile { display: block; }
+.ftv-tile .ftv-art { box-shadow: 0 0 0 0 transparent; transition: box-shadow 0.15s ease; }
+.ftv-tile:hover .ftv-art img, .ftv-card:hover .ftv-art img { transform: scale(1.04); }
+.ftv-tile:hover .ftv-art, .ftv-card:hover .ftv-art { box-shadow: 0 0 0 2px var(--ftv-accent); }
+.ftv-tile__name { margin-top: 10px; font-size: 16px; font-weight: 700; line-height: 1.25; }
+.ftv-tile__sub { margin-top: 2px; font-size: 13px; color: var(--ftv-faint); }
+
+/* Video card */
+.ftv-card { display: block; }
+.ftv-card__title { margin-top: 10px; font-size: 15px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ftv-card__meta { margin-top: 3px; font-size: 13px; color: var(--ftv-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ftv-card[aria-current] .ftv-art { box-shadow: 0 0 0 2px var(--ftv-accent); }
+
+/* Featured slide (home "slider" row) */
+.ftv-feature { display: flex; flex-direction: column; background: var(--ftv-card); border: 1px solid rgba(255, 255, 255, 0.28); margin-left: -1px; }
+.ftv-feature__art { position: relative; margin: 8px 8px 0; }
+.ftv-feature__art .ftv-art::after { content: ""; position: absolute; inset: 55% 0 0 0; background: linear-gradient(0deg, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0)); }
+.ftv-feature__name { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; padding: 10px 12px; font-size: clamp(16px, 1.25vw, 19px); font-weight: 500; }
+.ftv-feature__desc { flex: 1; margin: 14px 16px 0; font-size: 14px; line-height: 1.5; color: rgba(255, 255, 255, 0.9); display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.ftv-feature__go { align-self: flex-end; margin: 12px 14px 14px; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff; border-radius: 50%; transition: background-color 0.15s ease, border-color 0.15s ease; }
+.ftv-feature__go svg { width: 22px; height: 22px; }
+.ftv-feature:hover .ftv-feature__go { background: var(--ftv-accent); border-color: var(--ftv-accent); }
+.ftv-row[data-style="slider"] .ftv-arrow { --arrow-top: 50%; }
+@media (max-width: 767px) { .ftv-feature__desc { -webkit-line-clamp: 4; } }
+
+/* Series page */
+.ftv-series { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.9fr); gap: 20px clamp(18px, 2.4vw, 36px); align-items: start; padding: clamp(20px, 2.4vw, 32px) var(--ftv-gutter) clamp(24px, 2.6vw, 36px); border-bottom: 1px solid var(--ftv-line); }
+.ftv-back { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; min-width: 56px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; background: none; border: 0; padding: 0; }
+.ftv-back i { width: 48px; height: 48px; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff; border-radius: 50%; transition: background-color 0.15s ease, border-color 0.15s ease; }
+.ftv-back i svg { width: 24px; height: 24px; }
+.ftv-back:hover i { background: var(--ftv-accent); border-color: var(--ftv-accent); }
+.ftv-crumbs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; padding: 0; list-style: none; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ftv-faint); }
+.ftv-crumbs li + li::before { content: "/"; margin-right: 6px; opacity: 0.6; }
+.ftv-crumbs a:hover { color: #fff; }
+.ftv-series h1 { margin: 0; font-size: clamp(26px, 2.6vw, 38px); font-weight: 700; line-height: 1.15; }
+.ftv-series__desc { margin: 12px 0 0; max-width: 62ch; font-size: 15px; line-height: 1.6; color: rgba(255, 255, 255, 0.88); white-space: pre-line; }
+.ftv-series__count { margin: 12px 0 0; font-size: 14px; color: var(--ftv-faint); }
+.ftv-series__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.ftv-series__art { box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
+@media (max-width: 900px) {
+	.ftv-series { grid-template-columns: auto minmax(0, 1fr); }
+	.ftv-series__art { grid-column: 1 / -1; grid-row: 1; max-width: 640px; }
+}
+.ftv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 26px var(--ftv-gap); padding: 0 var(--ftv-gutter); }
+.ftv-section-title { margin: 0 0 12px; padding: 0 var(--ftv-gutter); font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ftv-faint); }
+.ftv-more { display: flex; justify-content: center; margin-top: 28px; }
+
+/* Watch */
+.ftv-stage { position: relative; background: #000; }
+.ftv-stage__in { position: relative; margin: 0 auto; width: min(100%, calc((100vh - var(--ftv-bar-h) - 90px) * 16 / 9)); min-width: min(100%, 560px); aspect-ratio: 16 / 9; }
+.ftv-stage video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; }
+.ftv-stage__msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; background: rgba(0, 0, 0, 0.78); text-align: center; }
+.ftv-stage__msg[hidden] { display: none; }
+.ftv-stage__msg p { margin: 0; max-width: 46ch; color: var(--ftv-muted); }
+.ftv-stage__msg strong { font-size: 20px; }
+.ftv-resume { position: absolute; left: 14px; top: 14px; z-index: 2; display: inline-flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; background: rgba(0, 0, 0, 0.78); border-radius: 999px; font-size: 14px; }
+.ftv-resume[hidden] { display: none; }
+.ftv-resume button { min-height: 32px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 999px; background: none; cursor: pointer; font-size: 13px; font-weight: 700; }
+.ftv-resume button:hover { background: #fff; color: #000; }
+.ftv-upnext { position: absolute; right: 16px; bottom: 64px; z-index: 3; width: min(360px, calc(100% - 32px)); display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 12px; background: rgba(10, 10, 10, 0.92); border: 1px solid var(--ftv-line); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); }
+.ftv-upnext[hidden] { display: none; }
+.ftv-upnext__label { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ftv-faint); }
+.ftv-upnext__title { margin: 2px 0 8px; font-weight: 700; line-height: 1.3; }
+.ftv-upnext__btns { display: flex; gap: 8px; grid-column: 1 / -1; }
+.ftv-upnext__btns button { flex: 1; min-height: 40px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.4); background: none; cursor: pointer; font-weight: 700; font-size: 14px; }
+.ftv-upnext__btns button.is-primary { background: var(--ftv-accent); border-color: var(--ftv-accent); }
+.ftv-watch__info { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px clamp(18px, 2.4vw, 36px); padding: clamp(20px, 2.4vw, 30px) var(--ftv-gutter) 8px; }
+.ftv-watch__info h1 { margin: 0; font-size: clamp(24px, 2.4vw, 34px); font-weight: 700; line-height: 1.2; }
+.ftv-watch__meta { margin: 8px 0 0; color: var(--ftv-muted); font-weight: 500; }
+.ftv-watch__desc { margin: 14px 0 0; max-width: 70ch; font-size: 15px; line-height: 1.6; color: rgba(255, 255, 255, 0.88); white-space: pre-line; }
+.ftv-watch__scripture { margin: 10px 0 0; font-weight: 700; color: #fff; }
+.ftv-watch .ftv-rows { padding-top: 26px; }
+
+/* States */
+.ftv-empty { padding: 72px var(--ftv-gutter); text-align: center; }
+.ftv-empty h1, .ftv-empty h2 { margin: 0 0 8px; font-size: 24px; }
+.ftv-empty p { margin: 0 auto 20px; max-width: 46ch; color: var(--ftv-muted); }
+.ftv-skel { background: linear-gradient(90deg, #151515 0%, #222 50%, #151515 100%); background-size: 200% 100%; animation: ftv-shimmer 1.3s linear infinite; }
+@keyframes ftv-shimmer { to { background-position: -200% 0; } }
+.ftv-skel-hero { height: clamp(360px, 42vw, 600px); }
+.ftv-skel-line { height: 18px; width: 220px; margin: 0 var(--ftv-gutter) 12px; }
+@media (prefers-reduced-motion: reduce) {
+	.ftv *, .ftv *::before { animation: none !important; transition: none !important; }
+	.ftv-track { scroll-behavior: auto; }
+}
+.ftv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="poc-ribbon" role="note">
+	<span><strong>Proof of concept.</strong> The header and footer stand in for faithtabernacle.com. Everything in black is Faith TV, live, and it never leaves this page.</span>
+	<span>This page's address: <code id="poc-url">?</code></span>
+	<span class="poc-flags" id="poc-flags"></span>
+</div>
+
+<header class="site-head">
+	<div class="site-head__in">
+		<a class="site-logo" href="#">Faith <span>Tabernacle</span></a>
+		<nav class="site-nav" aria-label="Website">
+			<a href="#">Home</a><a href="#">About</a><a href="#">Next steps</a><a href="#">Kids</a><a href="#" aria-current="page">Faith TV</a><a href="#">Give</a>
+		</nav>
+	</div>
+</header>
+
+<!-- ======== The feature: [faith_tv_channel] ======== -->
+<section class="ftv" id="ftv" aria-label="Faith TV">
+	<div class="ftv-backdrop" aria-hidden="true"></div>
+	<div class="ftv-bar">
+		<a class="ftv-mark" href="?" data-ftv-link aria-label="Faith TV home">
+			<svg viewBox="0 0 30 24" aria-hidden="true"><rect x="1.5" y="1.5" width="27" height="21" rx="4" fill="none" stroke="#fff" stroke-width="2"/><path d="M11 7.5v9l8-4.5z" fill="#c40d3c"/></svg>
+			<span><b>FAITH</b>TV</span>
+		</a>
+		<div class="ftv-bar__spacer"></div>
+		<form class="ftv-search" id="ftv-search" role="search">
+			<label class="ftv-sr" for="ftv-q">Search Faith TV</label>
+			<input id="ftv-q" type="search" placeholder="Search videos and series" autocomplete="off">
+		</form>
+		<button class="ftv-iconbtn" type="button" id="ftv-search-btn" aria-controls="ftv-search" aria-expanded="false">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg><span>Search</span>
+		</button>
+		<button class="ftv-iconbtn" type="button" id="ftv-menu-btn" aria-controls="ftv-menu" aria-expanded="false">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span>
+		</button>
+		<nav class="ftv-menu" id="ftv-menu" aria-label="Faith TV" hidden></nav>
+	</div>
+	<div class="ftv-view" id="ftv-view" tabindex="-1"></div>
+	<p class="ftv-sr" aria-live="polite" id="ftv-announce"></p>
+</section>
+<!-- ======== end of the feature ======== -->
+
+<footer class="site-foot">
+	<div class="site-foot__in">
+		<strong>Faith Tabernacle</strong><span>Sundays 10:30 AM</span><span>Plan a visit</span><span>Give</span>
+	</div>
+</footer>
+
+<script>
+(function () {
+	'use strict';
+
+	// ---------- Settings (in the plugin these come from Settings > Faith Stream) ----------
+	var qs = new URLSearchParams(location.search);
+	var BASE = (qs.get('base') || 'https://faith-stream-production.up.railway.app').replace(/\/+$/, '');
+	var TENANT = qs.get('tenant') || 'faithtv';
+	var AUTOPLAY = qs.get('autoplay') !== '0';
+	var SIMLIVE = qs.get('simlive') === '1';
+	var SITE = 'Faith Tabernacle';
+	var HLS_SRC = '../faith-tv-series/assets/vendor/hls.min.js';
+	var KEEP = ['base', 'tenant', 'autoplay', 'simlive']; // POC flags carried from view to view
+
+	var root = document.getElementById('ftv');
+	var view = document.getElementById('ftv-view');
+	var announce = document.getElementById('ftv-announce');
+	var menu = document.getElementById('ftv-menu');
+	var menuBtn = document.getElementById('ftv-menu-btn');
+	var searchForm = document.getElementById('ftv-search');
+	var searchBtn = document.getElementById('ftv-search-btn');
+	var searchInput = document.getElementById('ftv-q');
+
+	// ---------- Small helpers ----------
+	function esc(s) {
+		return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+			return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+		});
+	}
+	function media(u) {
+		if (!u) return '';
+		if (/^https?:\/\//i.test(u)) return u;
+		return BASE + (u.charAt(0) === '/' ? '' : '/') + u;
+	}
+	function mins(s) {
+		s = Math.round(s || 0);
+		if (s <= 0) return '';
+		var h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+		if (m === 60) { h += 1; m = 0; }
+		if (h) return h + 'h' + (m ? ' ' + m + 'm' : '');
+		return Math.max(1, m) + 'm';
+	}
+	function clock(s) {
+		s = Math.max(0, Math.round(s || 0));
+		var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+		return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
+	}
+	function date(iso) {
+		if (!iso) return '';
+		var d = new Date(iso);
+		if (isNaN(d)) return '';
+		return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+	}
+	function plural(n, word, many) { return n + ' ' + (n === 1 ? word : (many || word + 's')); }
+	var ICON = {
+		play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>',
+		left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+		right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+		back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 5l-7 7 7 7"/></svg>',
+		arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>'
+	};
+
+	// ---------- Addresses: every view has one (?tv=series/<slug>, ?tv=watch/<slug>, ?tv=search/<q>) ----------
+	function href(route, inSeries) {
+		var p = new URLSearchParams();
+		KEEP.forEach(function (k) { if (qs.has(k)) p.set(k, qs.get(k)); });
+		if (route) p.set('tv', route);
+		if (inSeries) p.set('in', inSeries); // which series the viewer came from (a video can sit in several)
+		return '?' + p.toString().replace(/%2F/gi, '/'); // ?tv=series/long-game reads better than series%2Flong-game
+	}
+	function currentRoute() {
+		var r = new URLSearchParams(location.search).get('tv') || '';
+		var i = r.indexOf('/');
+		return { kind: i < 0 ? (r || 'home') : r.slice(0, i), arg: i < 0 ? '' : r.slice(i + 1) };
+	}
+
+	// ---------- Faith Stream public API (read-only; answers any website since faith-stream #9) ----------
+	var cache = new Map();
+	function api(path, params) {
+		var p = new URLSearchParams(params || {});
+		p.set('tenant', TENANT);
+		var url = BASE + path + '?' + p.toString();
+		if (cache.has(url)) return cache.get(url);
+		var req = fetch(url, { credentials: 'omit' }).then(function (r) {
+			if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
+			return r.json();
+		});
+		cache.set(url, req);
+		req.catch(function () { cache.delete(url); });
+		return req;
+	}
+
+	// ---------- Watch history on this device (Continue watching + resume) ----------
+	var POS = 'ftv:pos:';
+	function store(fn) { try { return fn(window.localStorage); } catch (e) { return null; } }
+	function savePos(v, t, d) {
+		if (!v || !d) return;
+		store(function (ls) {
+			ls.setItem(POS + v.slug, JSON.stringify({ t: Math.round(t), d: Math.round(d), at: Date.now(), title: v.title, thumb: v.thumbnail_url, slug: v.slug }));
+		});
+	}
+	function getPos(slug) {
+		return store(function (ls) { try { return JSON.parse(ls.getItem(POS + slug) || 'null'); } catch (e) { return null; } });
+	}
+	function continueList() {
+		return store(function (ls) {
+			var out = [];
+			for (var i = 0; i < ls.length; i++) {
+				var k = ls.key(i);
+				if (k && k.indexOf(POS) === 0) {
+					try {
+						var x = JSON.parse(ls.getItem(k));
+						if (x && x.d > 0 && x.t > 15 && x.t < x.d * 0.95) out.push(x);
+					} catch (e) { /* skip */ }
+				}
+			}
+			return out.sort(function (a, b) { return b.at - a.at; }).slice(0, 12);
+		}) || [];
+	}
+
+	// ---------- Cards ----------
+	function art(src, alt, blankLabel, extra) {
+		if (!src) return '<div class="ftv-art ftv-art--blank">' + esc(blankLabel || '') + (extra || '') + '</div>';
+		return '<div class="ftv-art"><img src="' + esc(media(src)) + '" alt="' + esc(alt || '') + '" loading="lazy" decoding="async">' + (extra || '') + '</div>';
+	}
+	function videoCard(v, opts) {
+		opts = opts || {};
+		var pos = getPos(v.slug);
+		var pct = pos && pos.d ? Math.min(100, Math.round(pos.t / pos.d * 100)) : 0;
+		var extra = (v.duration_s > 0 ? '<span class="ftv-dur">' + clock(v.duration_s) + '</span>' : '') +
+			(opts.current ? '<span class="ftv-now">Now playing</span>' : '') +
+			(pct > 2 && pct < 97 ? '<span class="ftv-progress" aria-hidden="true"><i style="width:' + pct + '%"></i></span>' : '');
+		var meta = [v.speaker, date(v.published_at)].filter(Boolean).join(' · ');
+		return '<a class="ftv-card" role="listitem" data-ftv-link href="' + esc(href('watch/' + v.slug, opts.in)) + '"' + (opts.current ? ' aria-current="true"' : '') + '>' +
+			art(v.thumbnail_url, '', v.title, extra) +
+			'<div class="ftv-card__title">' + esc(v.title) + '</div>' +
+			(meta ? '<div class="ftv-card__meta">' + esc(meta) + '</div>' : '') +
+			'</a>';
+	}
+	function tile(c) {
+		var n = c.video_count || 0;
+		return '<a class="ftv-tile" role="listitem" data-ftv-link href="' + esc(href('series/' + c.slug)) + '" aria-label="' + esc(c.name + (n ? ', ' + plural(n, 'video') : '')) + '">' +
+			art(c.thumbnail_url, '', c.name) +
+			'<div class="ftv-tile__name">' + esc(c.name) + '</div>' +
+			'</a>';
+	}
+	function feature(c) {
+		return '<a class="ftv-feature" role="listitem" data-ftv-link href="' + esc(href('series/' + c.slug)) + '">' +
+			'<div class="ftv-feature__art">' + art(c.thumbnail_url, '', c.name) + '<div class="ftv-feature__name">' + esc(c.name) + '</div></div>' +
+			'<p class="ftv-feature__desc">' + esc(c.description || '') + '</p>' +
+			'<span class="ftv-feature__go" aria-hidden="true">' + ICON.arrow + '</span>' +
+			'</a>';
+	}
+	function row(title, to, style, items) {
+		if (!items.length) return '';
+		var head = to
+			? '<h2><a data-ftv-link href="' + esc(href(to)) + '">' + esc(title) + '</a></h2><a class="ftv-row__all" data-ftv-link href="' + esc(href(to)) + '" aria-label="See all of ' + esc(title) + '">See all</a>'
+			: '<h2>' + esc(title) + '</h2>';
+		return '<section class="ftv-row" data-style="' + esc(style) + '">' +
+			'<div class="ftv-row__head">' + head + '</div>' +
+			'<div class="ftv-rail">' +
+			'<button class="ftv-arrow ftv-arrow--prev" type="button" aria-label="Scroll ' + esc(title) + ' left" hidden>' + ICON.left + '</button>' +
+			'<div class="ftv-track" role="list" aria-label="' + esc(title) + '">' + items.join('') + '</div>' +
+			'<button class="ftv-arrow ftv-arrow--next" type="button" aria-label="Scroll ' + esc(title) + ' right" hidden>' + ICON.right + '</button>' +
+			'</div></section>';
+	}
+	function wireRails(scope) {
+		scope.querySelectorAll('.ftv-rail').forEach(function (rail) {
+			var track = rail.querySelector('.ftv-track');
+			var prev = rail.querySelector('.ftv-arrow--prev');
+			var next = rail.querySelector('.ftv-arrow--next');
+			var art0 = track.querySelector('.ftv-art');
+			function update() {
+				prev.hidden = track.scrollLeft <= 4;
+				next.hidden = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+				if (art0) rail.style.setProperty('--arrow-top', (art0.offsetTop + art0.offsetHeight / 2) + 'px');
+			}
+			function go(dir) {
+				track.scrollBy({ left: dir * (track.clientWidth - 80), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+			}
+			prev.addEventListener('click', function () { go(-1); });
+			next.addEventListener('click', function () { go(1); });
+			track.addEventListener('scroll', update, { passive: true });
+			if ('ResizeObserver' in window) new ResizeObserver(update).observe(track);
+			update();
+		});
+	}
+
+	// ---------- Views ----------
+	var player = null; // the live <video> + hls.js of the watch view
+	var homeData = null;
+
+	function setBackdrop(src) {
+		if (src) root.style.setProperty('--ftv-backdrop', 'url("' + media(src).replace(/"/g, '%22') + '")');
+	}
+	function skeleton(kind) {
+		if (kind === 'home') {
+			view.innerHTML = '<div class="ftv-skel ftv-skel-hero"></div><div class="ftv-rows">' +
+				[0, 1].map(function () { return '<div><div class="ftv-skel ftv-skel-line"></div><div class="ftv-track">' + [0, 1, 2, 3].map(function () { return '<div class="ftv-art ftv-skel"></div>'; }).join('') + '</div></div>'; }).join('') + '</div>';
+		} else {
+			view.innerHTML = '<div style="padding:32px var(--ftv-gutter)"><div class="ftv-skel" style="height:36px;width:40%;margin-bottom:16px"></div><div class="ftv-skel" style="height:16px;width:60%"></div></div>' +
+				'<div class="ftv-grid">' + [0, 1, 2, 3, 4, 5].map(function () { return '<div class="ftv-art ftv-skel"></div>'; }).join('') + '</div>';
+		}
+	}
+	function failed(err, retry) {
+		var gone = err && err.status === 404;
+		view.innerHTML = '<div class="ftv-empty"><h1 tabindex="-1">' + (gone ? 'We couldn\'t find that' : 'Faith TV isn\'t answering right now') + '</h1>' +
+			'<p>' + (gone ? 'It may have been renamed or taken down.' : 'Check your connection and try again in a moment.') + '</p>' +
+			(gone ? '<a class="ftv-pill ftv-pill--small" data-ftv-link href="' + esc(href('')) + '">Back to Faith TV</a>' : '<button class="ftv-pill ftv-pill--small" type="button" data-retry>Try again</button>') + '</div>';
+		var b = view.querySelector('[data-retry]');
+		if (b) b.addEventListener('click', retry);
+	}
+
+	function heroHtml(home) {
+		var live = home.live && home.live.status === 'live' ? home.live : null;
+		if (!live && SIMLIVE && home.hero) {
+			live = { slug: 'sunday-service', name: 'Sunday Service', title: 'Sunday Morning Service', thumbnail_url: home.hero.thumbnail_url, viewers: 128, simulated: true };
+		}
+		if (live) {
+			return '<section class="ftv-hero" aria-label="Live now">' +
+				(live.thumbnail_url ? '<img class="ftv-hero__art" src="' + esc(media(live.thumbnail_url)) + '" alt="">' : '') +
+				'<div class="ftv-hero__shade"></div><div class="ftv-hero__copy"><div>' +
+				'<span class="ftv-live">Live</span>' +
+				'<h1 tabindex="-1">' + esc(live.title || live.name) + '</h1>' +
+				'<p class="ftv-hero__meta">' + esc(live.name) + (live.viewers ? ' · ' + live.viewers + ' watching' : '') + '</p></div>' +
+				'<a class="ftv-pill" data-ftv-link data-play href="' + esc(href('live/' + live.slug)) + '">' + ICON.play + 'Watch live</a>' +
+				'</div></section>';
+		}
+		var v = home.hero;
+		if (!v) return '';
+		if (v.status) { // a scheduled service stands in the banner
+			return '<section class="ftv-hero" aria-label="Coming up">' +
+				(v.thumbnail_url ? '<img class="ftv-hero__art" src="' + esc(media(v.thumbnail_url)) + '" alt="">' : '') +
+				'<div class="ftv-hero__shade"></div><div class="ftv-hero__copy"><div>' +
+				'<p class="ftv-hero__eyebrow">Coming up</p>' +
+				'<h1 tabindex="-1">' + esc(v.title || v.name) + '</h1>' +
+				(v.scheduled_at ? '<p class="ftv-hero__meta">' + esc(new Date(v.scheduled_at).toLocaleString(undefined, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + '</p>' : '') + '</div>' +
+				'<a class="ftv-pill" data-ftv-link href="' + esc(href('live/' + v.slug)) + '">Go to the live page</a>' +
+				'</div></section>';
+		}
+		var pinned = !!home.hero_pinned;
+		var meta = pinned ? mins(v.duration_s) : [v.speaker, date(v.published_at)].filter(Boolean).join(' · ');
+		return '<section class="ftv-hero" aria-label="Featured">' +
+			(v.thumbnail_url ? '<img class="ftv-hero__art" src="' + esc(media(v.thumbnail_url)) + '" alt="">' : '') +
+			'<div class="ftv-hero__shade"></div><div class="ftv-hero__copy"><div>' +
+			(pinned ? '' : '<p class="ftv-hero__eyebrow">Latest message</p>') +
+			'<h1 tabindex="-1">' + esc(v.title) + '</h1>' +
+			(meta ? '<p class="ftv-hero__meta">' + esc(meta) + '</p>' : '') + '</div>' +
+			'<a class="ftv-pill" data-ftv-link data-play href="' + esc(href('watch/' + v.slug)) + '">' + (pinned ? 'Watch now' : ICON.play + 'Play') + '</a>' +
+			'</div></section>';
+	}
+
+	function renderHome(home) {
+		homeData = home;
+		setBackdrop(home.hero && home.hero.thumbnail_url);
+		buildMenu(home);
+		var liveOn = !!(home.live && home.live.status === 'live') || SIMLIVE;
+		var heroShown = !!home.hero_pinned && !liveOn;
+		var rows = [];
+		var cont = continueList();
+		if (cont.length) {
+			rows.push(row('Continue watching', '', 'videos', cont.map(function (x) {
+				return videoCard({ slug: x.slug, title: x.title, thumbnail_url: x.thumb, duration_s: x.d });
+			})));
+		}
+		(home.rows || []).forEach(function (r) {
+			var kids = r.children || [];
+			var to = 'series/' + r.category.slug;
+			if (r.style === 'hero' && heroShown) return; // its video is the banner above
+			if (r.style === 'slider' && kids.length) rows.push(row(r.category.name, to, 'slider', kids.map(feature)));
+			else if (r.style === 'tiles' && kids.length) rows.push(row(r.category.name, to, 'tiles', kids.map(tile)));
+			else if (r.videos && r.videos.length) rows.push(row(r.category.name, to, 'videos', r.videos.map(function (v) { return videoCard(v, { in: r.category.slug }); })));
+		});
+		view.innerHTML = heroHtml(home) + '<div class="ftv-rows">' + rows.join('') + '</div>';
+		if (!rows.length && !home.hero) {
+			view.innerHTML = '<div class="ftv-empty"><h1 tabindex="-1">Nothing here yet</h1><p>Messages and series show up here as soon as they are posted.</p></div>';
+		}
+		wireRails(view);
+		return 'Faith TV';
+	}
+
+	function backButton(to) {
+		return '<a class="ftv-back" data-ftv-link data-back href="' + esc(href(to)) + '"><i>' + ICON.back + '</i>Back</a>';
+	}
+	function crumbs(list, current) {
+		var items = (list || []).filter(function (c) { return c.slug !== current; });
+		if (!items.length) return '';
+		return '<ol class="ftv-crumbs">' + items.map(function (c) {
+			return '<li><a data-ftv-link href="' + esc(href('series/' + c.slug)) + '">' + esc(c.name) + '</a></li>';
+		}).join('') + '</ol>';
+	}
+
+	var seriesPages = {}; // slug -> {page, videos} for "Show more"
+	function renderSeries(slug, page) {
+		var c = page.category;
+		var crumbsList = page.breadcrumbs || [];
+		var parent = crumbsList.length > 1 ? crumbsList[crumbsList.length - 2] : null;
+		var sections = page.sections || [];
+		var own = page.has_own_videos !== false || !sections.length;
+		var videos = own ? (page.videos || []) : [];
+		var artSrc = c.thumbnail_url || (videos[0] && videos[0].thumbnail_url) || (sections[0] && ((sections[0].videos[0] || {}).thumbnail_url || (sections[0].children[0] || {}).thumbnail_url)) || '';
+		var count = own ? (page.total || videos.length) : sections.length;
+		var first = videos[0]; // a group of series (Kids Rock) has no single start, like the old channel
+		seriesPages[slug] = { page: page, videos: videos.slice() };
+		if (artSrc) setBackdrop(artSrc);
+
+		var body = '';
+		if (sections.length) {
+			body += '<div class="ftv-rows">' + sections.map(function (s) {
+				var to = 'series/' + s.category.slug;
+				return s.videos.length || !s.children.length
+					? row(s.category.name, to, 'videos', s.videos.map(function (v) { return videoCard(v, { in: s.category.slug }); }))
+					: row(s.category.name, to, 'tiles', s.children.map(tile));
+			}).join('') + '</div>';
+		} else if ((page.children || []).length) {
+			body += '<div class="ftv-rows"><div><h2 class="ftv-section-title">Series</h2><div class="ftv-grid" role="list">' + page.children.map(tile).join('') + '</div></div></div>';
+		}
+		if (videos.length) {
+			body += '<div class="ftv-rows"><div>' + ((page.children || []).length ? '<h2 class="ftv-section-title">Videos</h2>' : '') +
+				'<div class="ftv-grid" role="list" id="ftv-episodes">' + videos.map(function (v) { return videoCard(v, { in: slug }); }).join('') + '</div>' +
+				(page.total > videos.length ? '<div class="ftv-more"><button class="ftv-pill ftv-pill--small" type="button" data-more>Show more</button></div>' : '') +
+				'</div></div>';
+		}
+		if (!body) body = '<div class="ftv-empty"><h2>Nothing here yet</h2><p>Videos filed here show up as soon as they are published.</p></div>';
+
+		view.innerHTML = '<header class="ftv-series">' +
+			backButton(parent ? 'series/' + parent.slug : '') +
+			'<div>' + crumbs(crumbsList, c.slug) +
+			'<h1 tabindex="-1">' + esc(c.name) + '</h1>' +
+			(c.description ? '<p class="ftv-series__desc">' + esc(c.description) + '</p>' : '') +
+			(count ? '<p class="ftv-series__count">' + (own ? plural(count, 'video') : plural(count, 'series', 'series')) + '</p>' : '') +
+			(first ? '<div class="ftv-series__actions"><a class="ftv-pill ftv-pill--small" data-ftv-link data-play href="' + esc(href('watch/' + first.slug, slug)) + '">' + ICON.play + 'Play from the start</a></div>' : '') +
+			'</div>' +
+			(artSrc ? '<div class="ftv-series__art">' + art(artSrc, '', c.name) + '</div>' : '') +
+			'</header>' + body;
+		wireRails(view);
+		var more = view.querySelector('[data-more]');
+		if (more) more.addEventListener('click', function () { loadMore(slug, more); });
+		return c.name;
+	}
+	function loadMore(slug, btn) {
+		var st = seriesPages[slug];
+		if (!st) return;
+		var nextPage = Math.floor(st.videos.length / 200) + 1;
+		btn.disabled = true; btn.textContent = 'Loading…';
+		api('/api/public/categories/' + encodeURIComponent(slug), { per_page: 200, page: nextPage }).then(function (p) {
+			var add = (p.videos || []).filter(function (v) { return !st.videos.some(function (o) { return o.id === v.id; }); });
+			st.videos = st.videos.concat(add);
+			var grid = document.getElementById('ftv-episodes');
+			if (grid) grid.insertAdjacentHTML('beforeend', add.map(function (v) { return videoCard(v, { in: slug }); }).join(''));
+			if (!add.length || st.videos.length >= (p.total || 0)) btn.parentNode.remove();
+			else { btn.disabled = false; btn.textContent = 'Show more'; }
+		}).catch(function () { btn.disabled = false; btn.textContent = 'Try again'; });
+	}
+
+	// The series a video belongs to: the one the viewer came from, else its smallest category (the
+	// series itself rather than a "Latest" or "Featured" shelf that also holds it).
+	function pickSeries(data, inSeries) {
+		var cats = data.categories || [];
+		var hit = cats.find(function (c) { return c.slug === inSeries; });
+		if (hit) return hit;
+		if (inSeries) return { slug: inSeries, name: '' };
+		var best = null;
+		cats.forEach(function (c) { if (!best || (c.video_count || 0) <= (best.video_count || 0)) best = c; });
+		return best;
+	}
+
+	function renderWatch(data, cat, series, autoplay) {
+		var v = data.video;
+		if (cat && !cat.name && series && series.category) cat = series.category;
+		var list = series && series.videos && series.videos.length ? series.videos : [];
+		var idx = list.findIndex(function (x) { return x.slug === v.slug; });
+		var next = idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
+		var related = (data.related || []).filter(function (x) { return x.slug !== v.slug && !list.some(function (y) { return y.slug === x.slug; }); });
+		var meta = [v.speaker, date(v.published_at || v.recorded_at), mins(v.duration_s)].filter(Boolean).join(' · ');
+		setBackdrop(v.thumbnail_url);
+
+		view.innerHTML = '<div class="ftv-watch">' +
+			'<div class="ftv-stage"><div class="ftv-stage__in">' +
+			'<video playsinline controls preload="metadata" poster="' + esc(media(v.thumbnail_url)) + '" aria-label="' + esc(v.title) + '"></video>' +
+			'<div class="ftv-resume" hidden><span></span><button type="button" data-restart>Start over</button></div>' +
+			'<div class="ftv-stage__msg" hidden><strong></strong><p></p></div>' +
+			'<div class="ftv-upnext" hidden aria-live="polite"></div>' +
+			'</div></div>' +
+			'<div class="ftv-watch__info">' + backButton(cat ? 'series/' + cat.slug : '') +
+			'<div>' + (cat ? '<ol class="ftv-crumbs"><li><a data-ftv-link href="' + esc(href('series/' + cat.slug)) + '">' + esc(cat.name) + '</a></li></ol>' : '') +
+			'<h1 tabindex="-1">' + esc(v.title) + '</h1>' +
+			(meta ? '<p class="ftv-watch__meta">' + esc(meta) + '</p>' : '') +
+			(v.scripture ? '<p class="ftv-watch__scripture">' + esc(v.scripture) + '</p>' : '') +
+			(v.description ? '<p class="ftv-watch__desc">' + esc(v.description) + '</p>' : '') +
+			'</div></div>' +
+			'<div class="ftv-rows">' +
+			(list.length > 1 ? row(cat ? 'More from ' + cat.name : 'In this series', cat ? 'series/' + cat.slug : '', 'videos', list.map(function (x) { return videoCard(x, { current: x.slug === v.slug, in: cat && cat.slug }); })) : '') +
+			row('You may also like', '', 'videos', related.slice(0, 16).map(function (x) { return videoCard(x); })) +
+			'</div></div>';
+		wireRails(view);
+		// Bring the playing episode into view in its row.
+		var cur = view.querySelector('.ftv-card[aria-current]');
+		if (cur) { var tr = cur.parentNode; tr.scrollLeft = Math.max(0, cur.offsetLeft - tr.clientWidth / 2 + cur.offsetWidth / 2); }
+		mountPlayer(v, { autoplay: autoplay, next: next, live: false, inSeries: cat && cat.slug });
+		return v.title;
+	}
+
+	function renderLive(slug, list, autoplay) {
+		var ch = (list || []).find(function (c) { return c.slug === slug; });
+		if (SIMLIVE && !(ch && ch.status === 'live')) {
+			ch = Object.assign({ slug: slug, name: 'Sunday Service', title: 'Sunday Morning Service' }, ch || {}, { status: 'live', simulated: true, viewers: 128 });
+			if (!ch.thumbnail_url && homeData && homeData.hero) ch.thumbnail_url = homeData.hero.thumbnail_url;
+		}
+		if (!ch) { failed({ status: 404 }); return 'Live'; }
+		var on = ch.status === 'live' && (ch.hls_url || ch.simulated);
+		view.innerHTML = '<div class="ftv-watch">' +
+			'<div class="ftv-stage"><div class="ftv-stage__in">' +
+			'<video playsinline controls poster="' + esc(media(ch.thumbnail_url)) + '" aria-label="' + esc(ch.title || ch.name) + '"></video>' +
+			'<div class="ftv-stage__msg"' + (on && !ch.simulated ? ' hidden' : '') + '><strong>' + (ch.simulated ? 'Live preview' : 'We are not live right now') + '</strong><p>' +
+			(ch.simulated ? 'This is what the page looks like during a service. There is no stream running, so nothing plays.' : (ch.scheduled_at ? 'Next service: ' + esc(new Date(ch.scheduled_at).toLocaleString(undefined, { weekday: 'long', hour: 'numeric', minute: '2-digit' })) : 'Come back during a service. This page switches to the stream on its own.')) + '</p></div>' +
+			'</div></div>' +
+			'<div class="ftv-watch__info">' + backButton('') +
+			'<div>' + (on ? '<span class="ftv-live">Live</span>' : '') + '<h1 tabindex="-1">' + esc(ch.title || ch.name) + '</h1>' +
+			'<p class="ftv-watch__meta">' + esc(ch.name) + (ch.viewers ? ' · ' + ch.viewers + ' watching' : '') + '</p></div></div></div>';
+		if (on && !ch.simulated) mountPlayer({ slug: 'live:' + ch.slug, title: ch.title || ch.name, hls_url: ch.hls_url }, { autoplay: autoplay, live: true });
+		return (ch.title || ch.name) + ' (live)';
+	}
+
+	function renderSearch(q, res) {
+		var vids = res.videos || [], cats = res.categories || [];
+		view.innerHTML = '<header class="ftv-series" style="grid-template-columns:auto minmax(0,1fr)">' + backButton('') +
+			'<div><ol class="ftv-crumbs"><li>Search</li></ol><h1 tabindex="-1">' + (q.length < 2 ? 'Search Faith TV' : 'Results for “' + esc(q) + '”') + '</h1>' +
+			'<p class="ftv-series__count">' + (q.length < 2 ? 'Type at least two letters.' : plural(vids.length, 'video') + ' · ' + plural(cats.length, 'series', 'series')) + '</p></div></header>' +
+			(cats.length ? '<div class="ftv-rows"><div><h2 class="ftv-section-title">Series</h2><div class="ftv-grid" role="list">' + cats.map(tile).join('') + '</div></div></div>' : '') +
+			(vids.length ? '<div class="ftv-rows"><div><h2 class="ftv-section-title">Videos</h2><div class="ftv-grid" role="list">' + vids.map(function (v) { return videoCard(v); }).join('') + '</div></div></div>' : '') +
+			(q.length >= 2 && !vids.length && !cats.length ? '<div class="ftv-empty"><h2>Nothing matched</h2><p>Try a series name, a speaker or a word from the title.</p></div>' : '');
+		return 'Search';
+	}
+
+	// ---------- Player (hls.js outside Safari: Mux streams carry separate audio groups) ----------
+	var hlsLoading = null;
+	function loadHls() {
+		if (window.Hls) return Promise.resolve(window.Hls);
+		if (hlsLoading) return hlsLoading;
+		hlsLoading = new Promise(function (resolve, reject) {
+			var s = document.createElement('script');
+			s.src = HLS_SRC; s.async = true;
+			s.onload = function () { resolve(window.Hls); };
+			s.onerror = function () { hlsLoading = null; reject(new Error('hls.js failed to load')); };
+			document.head.appendChild(s);
+		});
+		return hlsLoading;
+	}
+	function isSafari() { return /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent); }
+
+	function stopPlayer() {
+		if (!player) return;
+		var p = player; player = null;
+		clearInterval(p.timer); clearInterval(p.countdown);
+		try { if (p.video.currentTime > 0) savePos(p.v, p.video.currentTime, p.video.duration); } catch (e) { /* ignore */ }
+		try { p.video.pause(); } catch (e) { /* ignore */ }
+		if (p.hls) { try { p.hls.destroy(); } catch (e) { /* ignore */ } }
+		p.video.removeAttribute('src');
+		try { p.video.load(); } catch (e) { /* ignore */ }
+	}
+
+	function mountPlayer(v, opts) {
+		stopPlayer();
+		var video = view.querySelector('.ftv-stage video');
+		var msg = view.querySelector('.ftv-stage__msg');
+		var resume = view.querySelector('.ftv-resume');
+		var upnext = view.querySelector('.ftv-upnext');
+		if (!video) return;
+		var p = player = { v: v, video: video, hls: null, timer: 0, countdown: 0 };
+		function showMsg(title, text) { if (!msg) return; msg.hidden = false; msg.querySelector('strong').textContent = title; msg.querySelector('p').textContent = text; }
+		if (!v.hls_url) { showMsg('This video is still getting ready', 'Check back in a few minutes.'); return; }
+
+		function start() {
+			if (player !== p) return;
+			if (!opts.live) {
+				var pos = getPos(v.slug);
+				if (pos && pos.t > 15 && pos.d && pos.t < pos.d * 0.95) {
+					video.addEventListener('loadedmetadata', function once() {
+						video.removeEventListener('loadedmetadata', once);
+						video.currentTime = pos.t;
+						resume.hidden = false;
+						resume.querySelector('span').textContent = 'Picking up at ' + clock(pos.t);
+						resume.querySelector('button').onclick = function () { video.currentTime = 0; resume.hidden = true; };
+						setTimeout(function () { resume.hidden = true; }, 8000);
+					});
+				}
+				p.timer = setInterval(function () { if (!video.paused) savePos(v, video.currentTime, video.duration); }, 5000);
+				video.addEventListener('pause', function () { if (video.currentTime > 0) savePos(v, video.currentTime, video.duration); });
+				video.addEventListener('ended', function () { savePos(v, 0, video.duration); if (opts.next) showUpNext(opts.next); });
+			}
+			if (opts.autoplay && AUTOPLAY) {
+				var pr = video.play();
+				if (pr && pr.catch) pr.catch(function () { /* the viewer presses play */ });
+			}
+		}
+
+		var native = video.canPlayType('application/vnd.apple.mpegurl');
+		if (native && isSafari()) { video.src = v.hls_url; start(); return; }
+		loadHls().then(function (Hls) {
+			if (player !== p) return;
+			if (Hls && Hls.isSupported()) {
+				var hls = p.hls = new Hls({ capLevelToPlayerSize: true, lowLatencyMode: !!opts.live });
+				hls.on(Hls.Events.MANIFEST_PARSED, start);
+				hls.on(Hls.Events.ERROR, function (_e, d) {
+					if (!d.fatal) return;
+					if (d.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+					else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+					else showMsg('This video won\'t play right now', 'Try again in a moment.');
+				});
+				hls.loadSource(v.hls_url);
+				hls.attachMedia(video);
+			} else if (native) { video.src = v.hls_url; start(); }
+			else showMsg('This browser can\'t play the video', 'Try another browser, or the Faith TV app.');
+		}).catch(function () {
+			if (native) { video.src = v.hls_url; start(); } else showMsg('The player didn\'t load', 'Check your connection and try again.');
+		});
+
+		function showUpNext(n) {
+			var left = 8;
+			upnext.hidden = false;
+			upnext.innerHTML = art(n.thumbnail_url, '', n.title) +
+				'<div><div class="ftv-upnext__label">Up next</div><div class="ftv-upnext__title">' + esc(n.title) + '</div><div class="ftv-upnext__label" data-left>Plays in ' + left + '</div></div>' +
+				'<div class="ftv-upnext__btns"><button type="button" data-cancel>Cancel</button><button type="button" class="is-primary" data-now>Play now</button></div>';
+			function goNext() { clearInterval(p.countdown); navigate(href('watch/' + n.slug, opts.inSeries), { autoplay: true }); }
+			upnext.querySelector('[data-now]').addEventListener('click', goNext);
+			upnext.querySelector('[data-cancel]').addEventListener('click', function () { clearInterval(p.countdown); upnext.hidden = true; });
+			p.countdown = setInterval(function () {
+				left -= 1;
+				var el = upnext.querySelector('[data-left]');
+				if (el) el.textContent = 'Plays in ' + left;
+				if (left <= 0) goNext();
+			}, 1000);
+		}
+	}
+
+	// ---------- Menu + search in the channel bar ----------
+	function buildMenu(home) {
+		var cur = currentRoute();
+		var links = [{ to: '', name: 'Home' }].concat((home.rows || []).map(function (r) { return { to: 'series/' + r.category.slug, name: r.category.name }; }));
+		menu.innerHTML = links.map(function (l) {
+			var on = (l.to === '' && cur.kind === 'home') || (l.to === cur.kind + '/' + cur.arg);
+			return '<a data-ftv-link href="' + esc(href(l.to)) + '"' + (on ? ' aria-current="page"' : '') + '>' + esc(l.name) + '</a>';
+		}).join('');
+	}
+	function closeMenu() { menu.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); }
+	menuBtn.addEventListener('click', function () {
+		var open = menu.hidden;
+		if (open && !menu.children.length) api('/api/public/home').then(buildMenu).catch(function () {});
+		menu.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open));
+		if (open) { var f = menu.querySelector('a'); if (f) f.focus(); }
+	});
+	document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target) && !menuBtn.contains(e.target)) closeMenu(); });
+	root.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { closeMenu(); menuBtn.focus(); } });
+	searchBtn.addEventListener('click', function () {
+		var open = !searchForm.classList.contains('is-open');
+		searchForm.classList.toggle('is-open', open);
+		searchBtn.setAttribute('aria-expanded', String(open));
+		if (open) searchInput.focus();
+	});
+	var typing = 0;
+	searchInput.addEventListener('input', function () {
+		clearTimeout(typing);
+		typing = setTimeout(function () {
+			var q = searchInput.value.trim();
+			if (q.length >= 2) navigate(href('search/' + q), { replace: currentRoute().kind === 'search', keepFocus: true });
+		}, 400);
+	});
+	searchForm.addEventListener('submit', function (e) {
+		e.preventDefault(); clearTimeout(typing);
+		var q = searchInput.value.trim();
+		if (q) navigate(href('search/' + q), { replace: currentRoute().kind === 'search' });
+	});
+
+	// ---------- Router ----------
+	var renderId = 0;
+	var depth = (history.state && history.state.ftvDepth) || 0;
+
+	function render(opts) {
+		opts = opts || {};
+		var id = ++renderId;
+		var r = currentRoute();
+		stopPlayer();
+		closeMenu();
+		document.getElementById('poc-url').textContent = location.search || '(no query: home)';
+		function done(title) {
+			if (id !== renderId) return;
+			document.title = (r.kind === 'home' ? '' : title + ' · ') + 'Faith TV · ' + SITE;
+			if (menu.children.length && homeData) buildMenu(homeData);
+			if (opts.initial) return;
+			if (typeof opts.restoreY === 'number') window.scrollTo(0, opts.restoreY);
+			else {
+				var top = root.getBoundingClientRect().top + window.scrollY;
+				if (window.scrollY > top || r.kind === 'watch' || r.kind === 'live') window.scrollTo(0, top);
+			}
+			if (!opts.keepFocus) {
+				var h = view.querySelector('h1');
+				if (h) h.focus({ preventScroll: true });
+			}
+			announce.textContent = title;
+		}
+		function guard(fn) { return function (x) { if (id === renderId) return fn(x); }; }
+		function fail(err) { if (id === renderId) { failed(err, function () { render(opts); }); done('Error'); } }
+
+		if (r.kind === 'series' && r.arg) {
+			skeleton('series');
+			api('/api/public/categories/' + encodeURIComponent(r.arg), { per_page: 200 }).then(guard(function (p) { done(renderSeries(r.arg, p)); })).catch(fail);
+		} else if (r.kind === 'watch' && r.arg) {
+			skeleton('series');
+			api('/api/public/videos/' + encodeURIComponent(r.arg)).then(guard(function (d) {
+				var cat = pickSeries(d, new URLSearchParams(location.search).get('in'));
+				var series = cat ? api('/api/public/categories/' + encodeURIComponent(cat.slug), { per_page: 200 }).catch(function () { return null; }) : Promise.resolve(null);
+				return series.then(guard(function (s) { done(renderWatch(d, cat, s, !!opts.autoplay)); }));
+			})).catch(fail);
+		} else if (r.kind === 'live' && r.arg) {
+			skeleton('series');
+			api('/api/public/live').then(guard(function (list) { done(renderLive(r.arg, list, !!opts.autoplay)); })).catch(fail);
+		} else if (r.kind === 'search') {
+			var q = r.arg;
+			if (searchInput.value.trim() !== q) searchInput.value = q;
+			searchForm.classList.add('is-open'); searchBtn.setAttribute('aria-expanded', 'true');
+			if (q.length < 2) { done(renderSearch(q, {})); return; }
+			api('/api/public/search', { q: q }).then(guard(function (res) { done(renderSearch(q, res)); })).catch(fail);
+		} else {
+			if (!homeData) skeleton('home');
+			(homeData ? Promise.resolve(homeData) : api('/api/public/home')).then(guard(function (h) { done(renderHome(h)); })).catch(fail);
+		}
+	}
+
+	function navigate(url, opts) {
+		opts = opts || {};
+		if (url === location.search && !opts.replace) { render(opts); return; }
+		history.replaceState(Object.assign({}, history.state, { ftvY: window.scrollY, ftvDepth: depth }), '');
+		if (opts.replace) history.replaceState({ ftvDepth: depth }, '', url);
+		else { depth += 1; history.pushState({ ftvDepth: depth }, '', url); }
+		render(opts);
+	}
+
+	window.addEventListener('popstate', function (e) {
+		depth = (e.state && e.state.ftvDepth) || 0;
+		render({ restoreY: e.state && typeof e.state.ftvY === 'number' ? e.state.ftvY : undefined });
+	});
+
+	// One click handler for every in-channel link; new-tab clicks keep working.
+	root.addEventListener('click', function (e) {
+		var a = e.target.closest && e.target.closest('a[data-ftv-link]');
+		if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+		e.preventDefault();
+		// "Back" goes back when we came from inside the channel, so the page lands where it was.
+		if (a.hasAttribute('data-back') && depth > 0) { history.back(); return; }
+		var autoplay = a.hasAttribute('data-play') || a.classList.contains('ftv-card');
+		navigate(a.getAttribute('href'), { autoplay: autoplay });
+	});
+
+	// Keep the old channel honest when the church goes live while someone is on Home.
+	setInterval(function () {
+		if (document.hidden || currentRoute().kind !== 'home') return;
+		fetch(BASE + '/api/tenant?tenant=' + encodeURIComponent(TENANT), { credentials: 'omit' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (t) {
+			if (!t || !homeData) return;
+			var liveNow = !!t.live_now;
+			var shown = !!(homeData.live && homeData.live.status === 'live');
+			if (liveNow !== shown) { cache.clear(); homeData = null; render({ keepFocus: true, restoreY: window.scrollY }); }
+		}).catch(function () {});
+	}, 60000);
+
+	window.addEventListener('pagehide', stopPlayer);
+
+	// POC flag links
+	(function flags() {
+		function toggled(k, on) { var p = new URLSearchParams(location.search); if (on) p.set(k, k === 'autoplay' ? '0' : '1'); else p.delete(k); return '?' + p.toString(); }
+		document.getElementById('poc-flags').innerHTML =
+			'<a href="' + esc(toggled('simlive', !SIMLIVE)) + '">' + (SIMLIVE ? 'Stop the live preview' : 'Preview it live') + '</a>' +
+			'<a href="' + esc(toggled('autoplay', AUTOPLAY)) + '">' + (AUTOPLAY ? 'Turn autoplay off' : 'Turn autoplay on') + '</a>';
+	})();
+
+	root.querySelector('.ftv-mark').setAttribute('href', href(''));
+	history.replaceState(Object.assign({}, history.state, { ftvDepth: depth }), '');
+	render({ initial: true });
+})();
+</script>
+</body>
+</html>

@@ -22,7 +22,7 @@ define( 'FTVS_FILE', __FILE__ );
 define( 'FTVS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FTVS_URL', plugin_dir_url( __FILE__ ) );
 
-foreach ( array( 'settings', 'cache', 'purge', 'catalog', 'gideo-client', 'faithstream-client', 'youtube-client', 'demo-client', 'manual', 'watch', 'live', 'stats', 'followup', 'health', 'renderer', 'rest', 'admin', 'embed', 'podcast', 'blocks' ) as $ftvs_file ) {
+foreach ( array( 'settings', 'cache', 'purge', 'catalog', 'gideo-client', 'faithstream-client', 'youtube-client', 'demo-client', 'manual', 'watch', 'channel', 'live', 'stats', 'followup', 'health', 'renderer', 'rest', 'admin', 'embed', 'podcast', 'blocks' ) as $ftvs_file ) {
 	require_once FTVS_DIR . 'includes/class-' . $ftvs_file . '.php';
 }
 // The wordpress.org edition is updated by WordPress itself and leaves this file out.
@@ -38,6 +38,7 @@ FTVS_Purge::init();
 FTVS_Catalog::init();
 FTVS_Manual::init();
 FTVS_Watch::init();
+FTVS_Channel::init();
 FTVS_Live::init();
 FTVS_Followup::init();
 FTVS_Health::init();
@@ -73,6 +74,7 @@ add_action(
 		$widgets_manager->register( new FTVS_Elementor_Widget() );
 		$widgets_manager->register( new FTVS_Elementor_Live_Widget() );
 		$widgets_manager->register( new FTVS_Elementor_Library_Widget() );
+		$widgets_manager->register( new FTVS_Elementor_Channel_Widget() );
 	}
 );
 

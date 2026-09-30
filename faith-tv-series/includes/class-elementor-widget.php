@@ -559,3 +559,86 @@ class FTVS_Elementor_Library_Widget extends \Elementor\Widget_Base {
 		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- FTVS_Renderer escapes every value it prints.
 	}
 }
+
+/**
+ * Elementor widget "Faith TV Channel": the whole channel on this page, like the church's TV site.
+ * Put it in a full-width section; visitors browse, search and watch without leaving the website.
+ */
+class FTVS_Elementor_Channel_Widget extends \Elementor\Widget_Base {
+
+	public function get_name() {
+		return 'faith_tv_channel';
+	}
+
+	public function get_title() {
+		return __( 'Faith TV Channel', 'faith-tv-series' );
+	}
+
+	public function get_icon() {
+		return 'eicon-video-playlist';
+	}
+
+	public function get_categories() {
+		return array( 'general' );
+	}
+
+	public function get_keywords() {
+		return array( 'faith', 'channel', 'tv', 'watch', 'series', 'sermons', 'video' );
+	}
+
+	protected function is_dynamic_content(): bool {
+		return true;
+	}
+
+	public function get_style_depends() {
+		return array( 'faith-tv-series', 'faith-tv-channel' );
+	}
+
+	public function get_script_depends() {
+		return array( 'faith-tv-series' );
+	}
+
+	protected function register_controls() {
+		$this->start_controls_section( 'faith_tv_channel_content', array( 'label' => __( 'Faith TV Channel', 'faith-tv-series' ) ) );
+		$this->add_control(
+			'about',
+			array(
+				'type' => \Elementor\Controls_Manager::RAW_HTML,
+				'raw'  => esc_html__( 'Your whole channel: the banner, the Featured slider, every series, the player and search. Use a full-width section. Row layouts, the name and the logo are under Faith Stream > Channel page.', 'faith-tv-series' ),
+			)
+		);
+		$this->add_control(
+			'name',
+			array(
+				'label'       => __( 'Name in the bar (optional)', 'faith-tv-series' ),
+				'type'        => \Elementor\Controls_Manager::TEXT,
+				'description' => __( 'Empty: the name under Faith Stream > Channel page.', 'faith-tv-series' ),
+			)
+		);
+		$this->add_control(
+			'backdrop',
+			array(
+				'label'   => __( 'Photo behind the rows', 'faith-tv-series' ),
+				'type'    => \Elementor\Controls_Manager::SELECT,
+				'options' => array(
+					'default' => __( 'Site default', 'faith-tv-series' ),
+					'on'      => __( 'On', 'faith-tv-series' ),
+					'off'     => __( 'Off', 'faith-tv-series' ),
+				),
+				'default' => 'default',
+			)
+		);
+		$this->end_controls_section();
+	}
+
+	protected function render() {
+		$s    = $this->get_settings_for_display();
+		$html = FTVS_Channel::render(
+			array(
+				'name'     => isset( $s['name'] ) ? (string) $s['name'] : '',
+				'backdrop' => isset( $s['backdrop'] ) && 'default' !== $s['backdrop'] ? (string) $s['backdrop'] : '',
+			)
+		);
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- FTVS_Channel escapes every value it prints.
+	}
+}

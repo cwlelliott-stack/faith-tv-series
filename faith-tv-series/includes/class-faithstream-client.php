@@ -157,11 +157,47 @@ class FTVS_FaithStream_Client {
 			}
 			if ( 1 === $page_no ) {
 				$out['self'] = empty( $page['category'] ) ? null : self::category( $page['category'] );
-				// A series without its own picture borrows its first episode's (from "sections").
-				foreach ( isset( $page['sections'] ) ? (array) $page['sections'] : array() as $section ) {
-					if ( ! empty( $section['category']['slug'] ) && ! empty( $section['videos'][0]['thumbnail_url'] ) ) {
-						$fallback[ $section['category']['slug'] ] = $section['videos'][0]['thumbnail_url'];
+				// The series above this one, top first (the channel page's breadcrumbs).
+				$out['crumbs'] = array();
+				foreach ( isset( $page['breadcrumbs'] ) ? (array) $page['breadcrumbs'] : array() as $crumb ) {
+					if ( ! empty( $crumb['slug'] ) ) {
+						$out['crumbs'][] = array(
+							'id'    => (string) $crumb['slug'],
+							'title' => trim( (string) ( isset( $crumb['name'] ) ? $crumb['name'] : '' ) ),
+						);
 					}
+				}
+				// A series without its own picture borrows its first episode's (from "sections").
+				$out['sections'] = array();
+				foreach ( isset( $page['sections'] ) ? (array) $page['sections'] : array() as $section ) {
+					if ( empty( $section['category']['slug'] ) ) {
+						continue;
+					}
+					$s_slug = (string) $section['category']['slug'];
+					if ( ! empty( $section['videos'][0]['thumbnail_url'] ) ) {
+						$fallback[ $s_slug ] = $section['videos'][0]['thumbnail_url'];
+					}
+					// One row per series inside a group (the channel page's group view).
+					$s_cat = (array) $section['category'];
+					if ( empty( $s_cat['thumbnail_url'] ) && isset( $fallback[ $s_slug ] ) ) {
+						$s_cat['thumbnail_url'] = $fallback[ $s_slug ];
+					}
+					$row = array(
+						'category'   => self::category( $s_cat ),
+						'videos'     => array(),
+						'categories' => array(),
+					);
+					foreach ( isset( $section['videos'] ) ? (array) $section['videos'] : array() as $video ) {
+						if ( ! empty( $video['slug'] ) ) {
+							$row['videos'][] = self::video( $video, $s_slug );
+						}
+					}
+					foreach ( isset( $section['children'] ) ? (array) $section['children'] : array() as $child ) {
+						if ( ! empty( $child['slug'] ) ) {
+							$row['categories'][] = self::category( $child );
+						}
+					}
+					$out['sections'][] = $row;
 				}
 				foreach ( isset( $page['children'] ) ? (array) $page['children'] : array() as $child ) {
 					if ( empty( $child['thumbnail_url'] ) && isset( $child['slug'], $fallback[ $child['slug'] ] ) ) {
