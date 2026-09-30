@@ -224,3 +224,26 @@ function test_podcast_forget_clears_the_cached_feed_and_runs_for_new_videos() {
 	assert_false( get_transient( FTVS_Podcast::CACHE ) );
 	assert_true( false !== has_action( 'ftvs_new_videos', array( 'FTVS_Podcast', 'forget' ) ), 'a new video makes the feed rebuild' );
 }
+
+function test_podcast_background_build_looks_up_each_audio_size_once() {
+	delete_option( FTVS_Podcast::SIZES );
+	ftvs_t_podcast_church();
+	ftvs_t_route( 'cdn.example.test/audio/msg-1.m4a', ftvs_t_text( '', 200, array( 'content-length' => '12345678' ) ) );
+	ftvs_t_route( 'cdn.example.test/audio/msg-3.m4a', ftvs_t_text( '', 404 ) );
+	$feed = ftvs_t_parse_feed( ftvs_t_podcast_xml() );
+	assert_same( '0', (string) $feed->channel->item[0]->enclosure['length'], 'a visitor\'s request never waits for sizes' );
+	assert_count( 0, ftvs_t_requests( 'cdn.example.test/audio/' ) );
+
+	FTVS_Podcast::rebuild();
+	$feed = ftvs_t_parse_feed( get_transient( FTVS_Podcast::CACHE ) );
+	assert_same( '12345678', (string) $feed->channel->item[0]->enclosure['length'], 'the background build asks the audio host' );
+	assert_same( '0', (string) $feed->channel->item[1]->enclosure['length'], 'not found: unknown' );
+	assert_count( 2, ftvs_t_requests( 'cdn.example.test/audio/' ) );
+
+	FTVS_Podcast::rebuild();
+	assert_count( 3, ftvs_t_requests( 'cdn.example.test/audio/' ), 'a known size is not asked again (only the unknown one)' );
+	$feed = ftvs_t_parse_feed( ftvs_t_podcast_xml() );
+	assert_same( '12345678', (string) $feed->channel->item[0]->enclosure['length'], 'and the saved size is used everywhere' );
+	delete_option( FTVS_Podcast::SIZES );
+	delete_transient( FTVS_Podcast::CACHE );
+}

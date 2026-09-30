@@ -15,6 +15,8 @@ class FTVS_Podcast {
 	const CACHE = 'ftvs_podcast_xml';
 	// The last feed that was built from a good answer: served while the channel can't be read.
 	const LAST = 'ftvs_podcast_last';
+	// Each audio file's size in bytes (podcast apps want it), looked up once in the background.
+	const SIZES = 'ftvs_podcast_sizes';
 
 	/** The podcast app's "only if changed" question, kept for render() (WordPress's own answer is about posts). */
 	private static $if_none_match = '';
@@ -65,7 +67,7 @@ class FTVS_Podcast {
 		if ( ! FTVS_Settings::get( 'podcast' ) || ! FTVS_Catalog::connected() || FTVS_Catalog::is_demo() ) {
 			return;
 		}
-		$xml = self::build();
+		$xml = self::build( true );
 		if ( null !== $xml ) {
 			set_transient( self::CACHE, $xml, 2 * HOUR_IN_SECONDS );
 			update_option( self::LAST, $xml, false );
@@ -147,8 +149,35 @@ class FTVS_Podcast {
 		return 'audio/mp4';
 	}
 
+	/**
+	 * An audio file's size in bytes: saved, or (in the background build only, a few per run) asked of its
+	 * host once. 0 when unknown; podcast apps accept that, they just can't show the size before downloading.
+	 */
+	private static function size_of( $url, $measure, &$budget, &$sizes ) {
+		$key = strtok( $url, '?' ); // a signed address changes; the file doesn't
+		if ( isset( $sizes[ $key ] ) ) {
+			return (int) $sizes[ $key ];
+		}
+		if ( ! $measure || $budget <= 0 ) {
+			return 0;
+		}
+		--$budget;
+		$reply = wp_safe_remote_head(
+			$url,
+			array(
+				'timeout'     => 8,
+				'redirection' => 3,
+			)
+		);
+		$bytes = is_wp_error( $reply ) || 200 !== (int) wp_remote_retrieve_response_code( $reply ) ? 0 : (int) wp_remote_retrieve_header( $reply, 'content-length' );
+		if ( $bytes > 0 ) {
+			$sizes[ $key ] = $bytes;
+		}
+		return $bytes;
+	}
+
 	/** @return string|null The feed, or null when the channel couldn't be read (so nothing empty is saved). */
-	private static function build() {
+	private static function build( $measure = false ) {
 		if ( is_wp_error( FTVS_Catalog::library() ) ) {
 			return null;
 		}
@@ -175,7 +204,12 @@ class FTVS_Podcast {
 		if ( '' !== $image ) {
 			$out .= '<itunes:image href="' . $x( $image ) . '"/>' . "\n";
 		}
+		$sizes  = get_option( self::SIZES, array() );
+		$sizes  = is_array( $sizes ) ? $sizes : array();
+		$before = count( $sizes );
+		$budget = 20;
 		foreach ( self::episodes() as $v ) {
+			$bytes = self::size_of( $v['audio'], $measure, $budget, $sizes );
 			$page  = FTVS_Watch::url( $v['id'] );
 			$t     = $v['added'] ? strtotime( $v['added'] ) : false;
 			$desc  = '' !== $v['description'] ? $v['description'] : $v['title'];
@@ -185,11 +219,14 @@ class FTVS_Podcast {
 				. ( '' !== $page ? '<link>' . $x( $page ) . "</link>\n" : '' )
 				. ( $t ? '<pubDate>' . $x( gmdate( DATE_RSS, $t ) ) . "</pubDate>\n" : '' )
 				. '<description>' . $x( $desc ) . "</description>\n"
-				. '<enclosure url="' . $x( $v['audio'] ) . '" length="0" type="' . $x( self::audio_type( $v['audio'] ) ) . '"/>' . "\n"
+				. '<enclosure url="' . $x( $v['audio'] ) . '" length="' . (int) $bytes . '" type="' . $x( self::audio_type( $v['audio'] ) ) . '"/>' . "\n"
 				. ( $v['length'] ? '<itunes:duration>' . (int) $v['length'] . "</itunes:duration>\n" : '' )
 				. ( '' !== $v['image'] ? '<itunes:image href="' . $x( $v['image'] ) . '"/>' . "\n" : '' )
 				. ( '' !== $v['speaker'] ? '<itunes:author>' . $x( $v['speaker'] ) . "</itunes:author>\n" : '' )
 				. "</item>\n";
+		}
+		if ( count( $sizes ) !== $before ) {
+			update_option( self::SIZES, array_slice( $sizes, -500, null, true ), false );
 		}
 		return $out . "</channel>\n</rss>\n";
 	}
