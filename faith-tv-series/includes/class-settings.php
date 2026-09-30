@@ -339,6 +339,15 @@ class FTVS_Settings {
 		return $css;
 	}
 
+	/**
+	 * YouTube as a video source and series built by hand: built and tested, but not offered for now (the plugin
+	 * is about Faith Stream and Gideo). define( 'FTVS_EXTRA_SOURCES', true ) in wp-config.php, or the
+	 * ftvs_extra_sources filter, brings them back.
+	 */
+	public static function extra_sources() {
+		return (bool) apply_filters( 'ftvs_extra_sources', defined( 'FTVS_EXTRA_SOURCES' ) && FTVS_EXTRA_SOURCES );
+	}
+
 	/** The edition FaithStream hands out (it updates itself); the wordpress.org build leaves the updater out. */
 	public static function direct_edition() {
 		return class_exists( 'FTVS_Updater' );

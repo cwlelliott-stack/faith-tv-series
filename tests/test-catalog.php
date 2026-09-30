@@ -741,3 +741,19 @@ function test_catalog_gone_clears_page_caches_only_for_something_known() {
 	assert_true( (bool) wp_next_scheduled( FTVS_Purge::CRON ) );
 	wp_clear_scheduled_hook( FTVS_Purge::CRON );
 }
+
+function test_catalog_youtube_and_hand_built_series_are_off_unless_turned_on() {
+	remove_filter( 'ftvs_extra_sources', '__return_true' );
+	ftvs_t_cleanup(
+		function () {
+			add_filter( 'ftvs_extra_sources', '__return_true' );
+			FTVS_Manual::forget_posts();
+		}
+	);
+	FTVS_Manual::forget_posts();
+	assert_false( FTVS_Settings::extra_sources() );
+	assert_same( array( 'faithstream', 'gideo', 'demo' ), array_keys( FTVS_Catalog::sources() ), 'the plugin is about Faith Stream and Gideo for now' );
+	ftvs_t_settings( array( 'source' => 'youtube' ) );
+	assert_same( '', FTVS_Catalog::source(), 'a YouTube connection is not used' );
+	assert_same( array(), FTVS_Manual::library(), 'series built by hand are not listed' );
+}

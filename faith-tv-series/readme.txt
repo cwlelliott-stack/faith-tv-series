@@ -19,9 +19,6 @@ Videos can come from:
 
 * Faith Stream (type your Faith Stream address)
 * A Gideo TV channel (type your TV website, for example tv.yourchurch.com)
-* YouTube (paste playlist links or your channel link; each playlist becomes a series)
-* Series you build by hand from any video links (YouTube, Vimeo, anything WordPress can embed,
-  or a direct .m3u8 stream), under Faith Stream > Build a series
 * Not ready yet? "Try it with sample videos" shows every layout on your own site (only people
   who can edit the site see them).
 
@@ -111,13 +108,11 @@ sent anywhere until a church is connected (or "Try it with sample videos" is cho
   Privacy: https://gideo.video/privacy
 * Mux (image.mux.com, stream.mux.com) delivers Faith Stream pictures and video; the sample videos
   come from test-streams.mux.dev. Terms: https://www.mux.com/terms  Privacy: https://www.mux.com/privacy
-* YouTube (www.youtube.com feeds, www.googleapis.com with the church's own optional API key,
-  i.ytimg.com pictures, and www.youtube-nocookie.com for playing).
-  Terms: https://www.youtube.com/t/terms  Privacy: https://policies.google.com/privacy
-* Vimeo, or any site a hand-built series or the Sunday live link points to (Boxcast, Resi, Church
-  Online...): the video plays in that site's own player, and the site is asked (through WordPress's
-  oEmbed) about a hand-built series' links when it is saved. Vimeo terms: https://vimeo.com/terms
-  Privacy: https://vimeo.com/privacy
+* The site a church's Sunday live link points to (YouTube, Vimeo, Boxcast, Resi, Church
+  Online...), for churches not streaming on Faith Stream: the stream plays in that site's own
+  player (YouTube's privacy-enhanced www.youtube-nocookie.com) during service times.
+  YouTube terms: https://www.youtube.com/t/terms  Privacy: https://policies.google.com/privacy
+  Vimeo terms: https://vimeo.com/terms  Privacy: https://vimeo.com/privacy
 * "Remind me" sign-ups (email or mobile number, and the texting consent that was shown) and "new
   video" notices go to the webhook addresses the church enters (its own follow-up system).
 * Updates (the direct edition only): the plugin reads a signed latest.json from
@@ -171,7 +166,7 @@ wordpress.org edition).
 6. Look & feel: church color, style and layouts, with a live preview of the real section.
 7. Health: every page with a video section, and whether each one works.
 8. Sunday live settings: service times, the live link for other platforms, and the "We're live" bar.
-9. Connect a church: Faith Stream, a Gideo TV channel, YouTube, series built by hand, or sample videos.
+9. Connect a church: Faith Stream, a Gideo TV channel, or sample videos.
 
 == Installation ==
 

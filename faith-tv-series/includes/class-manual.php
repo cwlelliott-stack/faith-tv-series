@@ -40,6 +40,9 @@ class FTVS_Manual {
 	}
 
 	public static function register() {
+		if ( ! FTVS_Settings::extra_sources() ) {
+			return; // not offered for now (FTVS_Settings::extra_sources())
+		}
 		register_post_type(
 			self::TYPE,
 			array(
@@ -112,6 +115,9 @@ class FTVS_Manual {
 	}
 
 	private static function posts() {
+		if ( ! FTVS_Settings::extra_sources() ) {
+			return array();
+		}
 		if ( null === self::$posts ) {
 			self::$posts = get_posts(
 				array(

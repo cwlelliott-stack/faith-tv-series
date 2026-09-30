@@ -2,9 +2,13 @@
 
 WordPress plugin by FaithStream that puts a church's videos live on its website: series, Sunday
 live, a searchable sermon library, a page for every message and a podcast feed. Videos come from
-**Faith Stream**, a **Gideo** TV channel, **YouTube**, or series built by hand from any video
-links. New series show up by themselves, and visitors watch right on the page. Built first for
-faithtabernacle.com; any church can connect (or try it with sample videos first).
+**Faith Stream** or a **Gideo** TV channel. New series show up by themselves, and visitors watch
+right on the page. Built first for faithtabernacle.com; any church can connect (or try it with
+sample videos first).
+
+YouTube as a source and series built by hand are built and tested but not offered for now:
+`define( 'FTVS_EXTRA_SOURCES', true );` in wp-config.php (or the `ftvs_extra_sources` filter)
+turns them back on. The tests run with them on.
 
 - **Faith Stream** menu in WordPress: Church (connect, Watch page, podcast, instant updates),
   Videos, Look & feel (with a live preview), Player (next steps, counting, follow-up), Sunday

@@ -29,15 +29,16 @@ class FTVS_Catalog {
 
 	/** Every platform the plugin can read, as source id => client class. */
 	public static function sources() {
-		return apply_filters(
-			'ftvs_sources',
-			array(
-				'faithstream' => 'FTVS_FaithStream_Client',
-				'gideo'       => 'FTVS_Gideo_Client',
-				'youtube'     => 'FTVS_YouTube_Client',
-				'demo'        => 'FTVS_Demo_Client',
-			)
+		$sources = array(
+			'faithstream' => 'FTVS_FaithStream_Client',
+			'gideo'       => 'FTVS_Gideo_Client',
+			'youtube'     => 'FTVS_YouTube_Client',
+			'demo'        => 'FTVS_Demo_Client',
 		);
+		if ( ! FTVS_Settings::extra_sources() ) {
+			unset( $sources['youtube'] ); // not offered for now (FTVS_Settings::extra_sources())
+		}
+		return apply_filters( 'ftvs_sources', $sources );
 	}
 
 	/** 'gideo', 'faithstream', 'youtube', 'demo', or '' when no church is connected yet. */

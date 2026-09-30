@@ -9,14 +9,14 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-30T13:54:16+00:00\n"
+"POT-Creation-Date: 2026-09-30T15:48:20+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: faith-tv-series\n"
 
 #. Plugin Name of the plugin
 #: faith-tv-series.php
-#: includes/class-admin.php:95
+#: includes/class-admin.php:97
 #: includes/class-elementor-widget.php:17
 #: assets/blocks.js:70
 msgid "Faith TV Series"
@@ -42,519 +42,524 @@ msgid "Settings"
 msgstr ""
 
 #: includes/class-admin.php:60
-#: includes/class-admin.php:404
-#: includes/class-admin.php:699
-#: includes/class-admin.php:1762
+#: includes/class-admin.php:400
+#: includes/class-admin.php:695
+#: includes/class-admin.php:1715
 #: includes/class-elementor-widget.php:46
 #: includes/class-health.php:310
 msgid "Faith Stream"
 msgstr ""
 
-#: includes/class-admin.php:64
-#: includes/class-admin.php:724
-#: includes/class-admin.php:946
-#: includes/class-manual.php:44
-#: includes/class-manual.php:46
-#: includes/class-manual.php:47
+#: includes/class-admin.php:65
+#: includes/class-admin.php:727
+#: includes/class-admin.php:951
+#: includes/class-manual.php:52
+#: includes/class-manual.php:54
+#: includes/class-manual.php:55
 msgid "Build a series"
 msgstr ""
 
-#: includes/class-admin.php:69
+#: includes/class-admin.php:71
 msgid "Church"
 msgstr ""
 
-#: includes/class-admin.php:70
-#: includes/class-admin.php:1627
+#: includes/class-admin.php:72
+#: includes/class-admin.php:1634
 #: includes/class-embed.php:57
 msgid "Videos"
 msgstr ""
 
-#: includes/class-admin.php:71
-#: includes/class-admin.php:1034
+#: includes/class-admin.php:73
+#: includes/class-admin.php:1040
 msgid "Look & feel"
 msgstr ""
 
-#: includes/class-admin.php:72
-#: includes/class-admin.php:1168
+#: includes/class-admin.php:74
+#: includes/class-admin.php:1174
 msgid "Player"
 msgstr ""
 
-#: includes/class-admin.php:73
-#: includes/class-admin.php:1286
-#: includes/class-admin.php:1424
-#: includes/class-admin.php:1628
+#: includes/class-admin.php:75
+#: includes/class-admin.php:1292
+#: includes/class-admin.php:1430
+#: includes/class-admin.php:1635
 msgid "Sunday live"
 msgstr ""
 
-#: includes/class-admin.php:74
+#: includes/class-admin.php:76
 msgid "Embed"
 msgstr ""
 
-#: includes/class-admin.php:75
-#: includes/class-admin.php:1514
+#: includes/class-admin.php:77
+#: includes/class-admin.php:1520
 msgid "Health"
 msgstr ""
 
-#: includes/class-admin.php:76
-#: includes/class-admin.php:1645
+#: includes/class-admin.php:78
+#: includes/class-updater.php:254
 msgid "Updates"
 msgstr ""
 
-#: includes/class-admin.php:90
+#: includes/class-admin.php:92
 msgid "Our videos are shown from our video platform (Faith Stream, Gideo, YouTube or Vimeo) and its delivery network. When you watch, your browser loads the video and its pictures from there, which, like any website, sees your internet address."
 msgstr ""
 
-#: includes/class-admin.php:91
+#: includes/class-admin.php:93
 msgid "If we count plays in Faith Stream, your browser also tells Faith Stream when a video starts, how long it plays and whether it finishes, with the address of the page (not your name). Faith Stream keeps only a scrambled form of your internet address that changes every day."
 msgstr ""
 
-#: includes/class-admin.php:92
+#: includes/class-admin.php:94
 msgid "If you choose \"Count me present\" while watching our live service, the email or first name and password of your church account (or the email and name you type) go to Faith Stream, which checks you in to our attendance. Your browser keeps a sign-in code until you press \"Not you?\"."
 msgstr ""
 
-#: includes/class-admin.php:93
+#: includes/class-admin.php:95
 msgid "If you ask to be reminded, the email address or mobile number you type (and your agreement to receive texts) goes to our follow-up system. \"Continue watching\" and your volume are remembered only in your own browser."
 msgstr ""
 
-#: includes/class-admin.php:135
+#: includes/class-admin.php:137
 msgid "Copied"
 msgstr ""
 
-#: includes/class-admin.php:136
+#: includes/class-admin.php:138
 msgid "Hard to read: the words on buttons will be switched to dark so they stay readable."
 msgstr ""
 
-#: includes/class-admin.php:231
+#: includes/class-admin.php:238
 msgid "Sample Church"
 msgstr ""
 
-#: includes/class-admin.php:312
-#: includes/class-updater.php:230
+#: includes/class-admin.php:308
+#: includes/class-updater.php:231
+#: includes/class-updater.php:308
 msgid "You are not allowed to do that."
 msgstr ""
 
-#: includes/class-admin.php:387
+#: includes/class-admin.php:383
 msgid "a division of FaithWorks Image Consulting"
 msgstr ""
 
-#: includes/class-admin.php:389
+#: includes/class-admin.php:385
 msgid "Video for WordPress"
 msgstr ""
 
-#: includes/class-admin.php:390
+#: includes/class-admin.php:386
 msgid "Your church's series and sermons, live on your website."
 msgstr ""
 
-#: includes/class-admin.php:395
-#: includes/class-admin.php:485
+#: includes/class-admin.php:391
+#: includes/class-admin.php:481
 #: includes/class-youtube-client.php:385
 msgid "Your church"
 msgstr ""
 
-#: includes/class-admin.php:399
+#: includes/class-admin.php:395
 msgid "No church yet"
 msgstr ""
 
-#: includes/class-admin.php:399
+#: includes/class-admin.php:395
 msgid "Not connected"
 msgstr ""
 
-#: includes/class-admin.php:447
+#: includes/class-admin.php:443
 msgid "Done. Every video section on the site now shows the latest from your channel, and page caches were cleared."
 msgstr ""
 
-#: includes/class-admin.php:448
+#: includes/class-admin.php:444
 msgid "Checked for a new version. The result is below."
 msgstr ""
 
-#: includes/class-admin.php:449
+#: includes/class-admin.php:445
 msgid "Page caches were asked to clear."
 msgstr ""
 
-#: includes/class-admin.php:450
+#: includes/class-admin.php:446
 msgid "Checked every page with a video section."
 msgstr ""
 
-#: includes/class-admin.php:451
+#: includes/class-admin.php:447
 msgid "New secret made. Paste it into Faith Stream again."
 msgstr ""
 
-#: includes/class-admin.php:460
+#: includes/class-admin.php:456
 msgid "You are trying the plugin with sample videos."
 msgstr ""
 
-#: includes/class-admin.php:460
+#: includes/class-admin.php:456
 msgid "Only people who can edit the site see video sections until you connect your church."
 msgstr ""
 
-#: includes/class-admin.php:460
-#: includes/class-admin.php:514
-#: includes/class-admin.php:683
+#: includes/class-admin.php:456
+#: includes/class-admin.php:510
+#: includes/class-admin.php:679
 msgid "Connect your church"
 msgstr ""
 
-#: includes/class-admin.php:484
-#: includes/class-admin.php:1765
+#: includes/class-admin.php:480
+#: includes/class-admin.php:1718
 msgid "Sample videos"
 msgstr ""
 
-#: includes/class-admin.php:484
+#: includes/class-admin.php:480
 msgid "Connected"
 msgstr ""
 
-#: includes/class-admin.php:487
+#: includes/class-admin.php:483
 #: includes/class-health.php:391
 msgid "Videos come from"
 msgstr ""
 
-#: includes/class-admin.php:494
+#: includes/class-admin.php:490
 msgid "Gideo account"
 msgstr ""
 
-#: includes/class-admin.php:494
+#: includes/class-admin.php:490
 msgid "Church ID"
 msgstr ""
 
-#: includes/class-admin.php:497
+#: includes/class-admin.php:493
 msgid "Last checked"
 msgstr ""
 
 #. translators: %s: how long
-#: includes/class-admin.php:502
+#: includes/class-admin.php:498
 #, php-format
 msgid "Not answering for %s. Visitors see the last list the site saved."
 msgstr ""
 
 #. translators: 1: how long ago, 2: minutes
-#: includes/class-admin.php:505
+#: includes/class-admin.php:501
 #, php-format
 msgid "%1$s ago. Checks every %2$d minutes, in the background."
 msgstr ""
 
-#: includes/class-admin.php:507
+#: includes/class-admin.php:503
 msgid "Not yet."
 msgstr ""
 
-#: includes/class-admin.php:514
-#: includes/class-admin.php:683
+#: includes/class-admin.php:510
+#: includes/class-admin.php:679
 msgid "Connect a different church"
 msgstr ""
 
-#: includes/class-admin.php:522
+#: includes/class-admin.php:518
 msgid "Rows on your channel"
 msgstr ""
 
-#: includes/class-admin.php:523
-#: includes/class-admin.php:1212
-#: includes/class-admin.php:1217
+#: includes/class-admin.php:519
+#: includes/class-admin.php:1218
+#: includes/class-admin.php:1223
 #: includes/class-blocks.php:178
-#: includes/class-manual.php:43
-#: includes/class-manual.php:80
+#: includes/class-manual.php:51
+#: includes/class-manual.php:103
 #: includes/class-youtube-client.php:117
 msgid "Series"
 msgstr ""
 
-#: includes/class-admin.php:524
-#: includes/class-admin.php:1066
+#: includes/class-admin.php:520
+#: includes/class-admin.php:1072
 msgid "Layout on computers"
 msgstr ""
 
-#: includes/class-admin.php:525
-#: includes/class-admin.php:1070
+#: includes/class-admin.php:521
+#: includes/class-admin.php:1076
 msgid "Layout on phones"
 msgstr ""
 
-#: includes/class-admin.php:536
+#: includes/class-admin.php:532
 msgid "Advanced"
 msgstr ""
 
-#: includes/class-admin.php:539
+#: includes/class-admin.php:535
 msgid "Check for new videos every"
 msgstr ""
 
-#: includes/class-admin.php:541
-#: includes/class-admin.php:1328
+#: includes/class-admin.php:537
+#: includes/class-admin.php:1334
 msgid "minutes"
 msgstr ""
 
-#: includes/class-admin.php:543
+#: includes/class-admin.php:539
 msgid "YouTube API key (optional)"
 msgstr ""
 
-#: includes/class-admin.php:544
+#: includes/class-admin.php:540
 msgid "Saved (hidden)"
 msgstr ""
 
-#: includes/class-admin.php:546
-#: includes/class-admin.php:574
-#: includes/class-admin.php:606
-#: includes/class-admin.php:1101
-#: includes/class-admin.php:1267
-#: includes/class-admin.php:1364
-#: includes/class-admin.php:1595
+#: includes/class-admin.php:542
+#: includes/class-admin.php:570
+#: includes/class-admin.php:602
+#: includes/class-admin.php:1107
+#: includes/class-admin.php:1273
+#: includes/class-admin.php:1370
+#: includes/class-admin.php:1602
 msgid "Save"
 msgstr ""
 
-#: includes/class-admin.php:549
+#: includes/class-admin.php:545
 msgid "Without a key, each playlist shows its newest 15 videos. With a free YouTube Data API key from Google Cloud, whole playlists show, and if you connected a channel with no playlists picked, every playlist on it becomes a series."
 msgstr ""
 
-#: includes/class-admin.php:563
+#: includes/class-admin.php:559
 msgid "Watch page and a page for every message"
 msgstr ""
 
-#: includes/class-admin.php:564
+#: includes/class-admin.php:560
 msgid "Pick the page where people watch (or let us make one). Every message then also gets its own page under it, like yourchurch.com/watch/message-name, that shows up in Google and looks right when someone texts or posts the link."
 msgstr ""
 
-#: includes/class-admin.php:567
+#: includes/class-admin.php:563
 #: includes/class-health.php:400
 msgid "Watch page"
 msgstr ""
 
-#: includes/class-admin.php:569
+#: includes/class-admin.php:565
 msgid "- No Watch page -"
 msgstr ""
 
-#: includes/class-admin.php:571
+#: includes/class-admin.php:567
 msgid "draft"
 msgstr ""
 
-#: includes/class-admin.php:577
-#: includes/class-admin.php:871
+#: includes/class-admin.php:573
+#: includes/class-admin.php:875
 msgid "Create my Watch page"
 msgstr ""
 
-#: includes/class-admin.php:578
+#: includes/class-admin.php:574
 msgid "Makes a draft page with Sunday live, the newest messages, your series and a sermon search, then opens it so you can look it over and publish."
 msgstr ""
 
 #. translators: %s: page address
-#: includes/class-admin.php:586
+#: includes/class-admin.php:582
 #, php-format
 msgid "Message pages are on: %s"
 msgstr ""
 
-#: includes/class-admin.php:588
+#: includes/class-admin.php:584
 msgid "For example:"
 msgstr ""
 
-#: includes/class-admin.php:593
+#: includes/class-admin.php:589
 msgid "Publish the Watch page to turn on message pages."
 msgstr ""
 
-#: includes/class-admin.php:596
+#: includes/class-admin.php:592
 msgid "Podcast"
 msgstr ""
 
-#: includes/class-admin.php:600
+#: includes/class-admin.php:596
 msgid "Publish a podcast feed of the messages"
 msgstr ""
 
-#: includes/class-admin.php:602
+#: includes/class-admin.php:598
 msgid "Podcast name"
 msgstr ""
 
-#: includes/class-admin.php:603
+#: includes/class-admin.php:599
 msgid "Author"
 msgstr ""
 
-#: includes/class-admin.php:604
+#: includes/class-admin.php:600
 msgid "Square picture (address, 1400 to 3000 pixels)"
 msgstr ""
 
-#: includes/class-admin.php:610
+#: includes/class-admin.php:606
 msgid "Feed address for Apple Podcasts and Spotify:"
 msgstr ""
 
-#: includes/class-admin.php:610
-#: includes/class-admin.php:642
-#: includes/class-admin.php:643
-#: includes/class-admin.php:903
-#: includes/class-admin.php:1369
+#: includes/class-admin.php:606
+#: includes/class-admin.php:638
+#: includes/class-admin.php:639
+#: includes/class-admin.php:907
+#: includes/class-admin.php:1375
 msgid "Copy"
 msgstr ""
 
-#: includes/class-admin.php:612
+#: includes/class-admin.php:608
 msgid "No messages have audio yet. Turn on \"Make an audio file of each new video\" in Faith Stream's Settings; new messages will then appear in the feed."
 msgstr ""
 
-#: includes/class-admin.php:612
+#: includes/class-admin.php:608
 msgid "Podcasts need an audio file of each message, which Faith Stream makes. Your current platform does not provide one."
 msgstr ""
 
-#: includes/class-admin.php:630
+#: includes/class-admin.php:626
 msgid "Instant updates from Faith Stream"
 msgstr ""
 
-#: includes/class-admin.php:631
+#: includes/class-admin.php:627
 msgid "So a new or removed video shows on the website within seconds (instead of at the next check), and so people watching here can be counted present, Faith Stream needs to know this website. One click fills it in there; you check it and press Save."
 msgstr ""
 
-#: includes/class-admin.php:639
+#: includes/class-admin.php:635
 msgid "Set it up in Faith Stream"
 msgstr ""
 
-#: includes/class-admin.php:640
+#: includes/class-admin.php:636
 msgid "Or copy these two into Faith Stream: Settings > Website & media."
 msgstr ""
 
-#: includes/class-admin.php:642
+#: includes/class-admin.php:638
 msgid "Refresh address"
 msgstr ""
 
-#: includes/class-admin.php:643
+#: includes/class-admin.php:639
 msgid "Secret"
 msgstr ""
 
 #. translators: %s: how long ago
-#: includes/class-admin.php:650
+#: includes/class-admin.php:646
 #, php-format
 msgid "Last update from Faith Stream: %s ago."
 msgstr ""
 
-#: includes/class-admin.php:652
+#: includes/class-admin.php:648
 msgid "No update received yet. Faith Stream's \"Send a test ping\" button checks it."
 msgstr ""
 
-#: includes/class-admin.php:656
+#: includes/class-admin.php:652
 msgid "Make a new secret"
 msgstr ""
 
-#: includes/class-admin.php:679
+#: includes/class-admin.php:675
 msgid "Where your videos live"
 msgstr ""
 
-#: includes/class-admin.php:679
+#: includes/class-admin.php:675
 msgid "Find your church"
 msgstr ""
 
-#: includes/class-admin.php:679
+#: includes/class-admin.php:675
 msgid "Pick what to show"
 msgstr ""
 
-#: includes/class-admin.php:684
+#: includes/class-admin.php:680
 msgid "Three quick steps. Videos stay where they already live; nothing is copied or uploaded."
 msgstr ""
 
-#: includes/class-admin.php:699
+#: includes/class-admin.php:695
 msgid "Your church streams and keeps its video library on Faith Stream. Sunday live, instant updates and play counts work automatically."
 msgstr ""
 
-#: includes/class-admin.php:703
+#: includes/class-admin.php:699
 msgid "A Gideo TV channel"
 msgstr ""
 
-#: includes/class-admin.php:703
+#: includes/class-admin.php:699
 msgid "Your church has a TV website and apps on Gideo, for example tv.yourchurch.com."
 msgstr ""
 
-#: includes/class-admin.php:707
-#: includes/class-admin.php:1764
+#: includes/class-admin.php:704
+#: includes/class-admin.php:1717
 msgid "YouTube"
 msgstr ""
 
-#: includes/class-admin.php:707
+#: includes/class-admin.php:704
 msgid "Your videos are on YouTube. Each playlist becomes a series, and new uploads appear by themselves."
 msgstr ""
 
-#: includes/class-admin.php:713
+#: includes/class-admin.php:711
 msgid "Just looking?"
 msgstr ""
 
-#: includes/class-admin.php:714
+#: includes/class-admin.php:712
 msgid "See every layout on your own site with sample videos. Only people who can edit the site see them."
 msgstr ""
 
-#: includes/class-admin.php:716
+#: includes/class-admin.php:714
 msgid "Try it with sample videos"
 msgstr ""
 
-#: includes/class-admin.php:720
+#: includes/class-admin.php:718
 msgid "No video platform yet?"
 msgstr ""
 
-#: includes/class-admin.php:721
+#: includes/class-admin.php:720
 msgid "You can build series by hand from any video links (Faith Stream > Build a series), or talk to us about hosting your videos and Sunday stream."
 msgstr ""
 
-#: includes/class-admin.php:725
+#: includes/class-admin.php:722
+msgid "Talk to us about hosting your videos and Sunday stream on Faith Stream."
+msgstr ""
+
+#: includes/class-admin.php:729
 msgid "Talk to us"
 msgstr ""
 
-#: includes/class-admin.php:736
+#: includes/class-admin.php:740
 #: includes/class-renderer.php:1175
 msgid "Back"
 msgstr ""
 
-#: includes/class-admin.php:739
+#: includes/class-admin.php:743
 #: includes/class-renderer.php:1193
 msgid "Cancel"
 msgstr ""
 
-#: includes/class-admin.php:756
+#: includes/class-admin.php:760
 msgid "Your church's TV website"
 msgstr ""
 
-#: includes/class-admin.php:759
-#: includes/class-admin.php:786
+#: includes/class-admin.php:763
+#: includes/class-admin.php:790
 msgid "Find my church"
 msgstr ""
 
-#: includes/class-admin.php:761
+#: includes/class-admin.php:765
 msgid "The address people use to watch your church online. We look it up with Gideo and fill in the rest."
 msgstr ""
 
-#: includes/class-admin.php:764
+#: includes/class-admin.php:768
 msgid "I have a Gideo account ID instead"
 msgstr ""
 
-#: includes/class-admin.php:767
+#: includes/class-admin.php:771
 msgid "Use this ID"
 msgstr ""
 
-#: includes/class-admin.php:772
+#: includes/class-admin.php:776
 msgid "Your playlist links, or your channel link"
 msgstr ""
 
-#: includes/class-admin.php:774
+#: includes/class-admin.php:778
 msgid "One per line. Each playlist becomes a series; a channel link adds \"Latest videos\"."
 msgstr ""
 
-#: includes/class-admin.php:777
+#: includes/class-admin.php:781
 msgid "I have a YouTube API key (optional)"
 msgstr ""
 
-#: includes/class-admin.php:778
+#: includes/class-admin.php:782
 msgid "Without one, each playlist shows its newest 15 videos."
 msgstr ""
 
-#: includes/class-admin.php:780
+#: includes/class-admin.php:784
 msgid "Find my videos"
 msgstr ""
 
-#: includes/class-admin.php:783
+#: includes/class-admin.php:787
 msgid "Your Faith Stream address"
 msgstr ""
 
-#: includes/class-admin.php:788
+#: includes/class-admin.php:792
 msgid "The address people use to watch, as it appears in the browser. We work out the rest."
 msgstr ""
 
-#: includes/class-admin.php:791
+#: includes/class-admin.php:795
 msgid "I have a church ID"
 msgstr ""
 
-#: includes/class-admin.php:794
+#: includes/class-admin.php:798
 msgid "Only needed with the main Faith Stream address. Faith Stream shows it under Settings."
 msgstr ""
 
-#: includes/class-admin.php:811
+#: includes/class-admin.php:815
 msgid "Found it"
 msgstr ""
 
 #. translators: 1: number of rows, 2: some row names
-#: includes/class-admin.php:816
+#: includes/class-admin.php:820
 #, php-format
 msgid "%1$d row on your channel: %2$s"
 msgid_plural "%1$d rows on your channel: %2$s"
@@ -562,202 +567,202 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: color like #C40D3C
-#: includes/class-admin.php:833
+#: includes/class-admin.php:837
 #, php-format
 msgid "Use our church color (%s) and our light or dark look"
 msgstr ""
 
-#: includes/class-admin.php:837
+#: includes/class-admin.php:841
 msgid "Yes, this is my church"
 msgstr ""
 
 #. translators: %s: church name
-#: includes/class-admin.php:858
+#: includes/class-admin.php:862
 #, php-format
 msgid "You are connected to %s."
 msgstr ""
 
 #. translators: %s: category name
-#: includes/class-admin.php:863
+#: includes/class-admin.php:867
 #, php-format
 msgid "%s is ready to go on your site."
 msgstr ""
 
-#: includes/class-admin.php:868
+#: includes/class-admin.php:872
 msgid "The fastest way: a ready-made Watch page"
 msgstr ""
 
-#: includes/class-admin.php:869
+#: includes/class-admin.php:873
 msgid "Sunday live, the newest messages, your series and a sermon search, on one page. You look it over, then press Publish."
 msgstr ""
 
-#: includes/class-admin.php:875
+#: includes/class-admin.php:879
 msgid "With Elementor"
 msgstr ""
 
-#: includes/class-admin.php:877
+#: includes/class-admin.php:881
 msgid "Edit a page with Elementor."
 msgstr ""
 
-#: includes/class-admin.php:878
+#: includes/class-admin.php:882
 msgid "Search the widgets for \"Faith TV\" and drag it in."
 msgstr ""
 
 #. translators: %s: category name
-#: includes/class-admin.php:882
+#: includes/class-admin.php:886
 #, php-format
 msgid "Pick %s. Done."
 msgstr ""
 
-#: includes/class-admin.php:888
+#: includes/class-admin.php:892
 msgid "With the block editor"
 msgstr ""
 
-#: includes/class-admin.php:890
+#: includes/class-admin.php:894
 msgid "Edit a page and press + to add a block."
 msgstr ""
 
-#: includes/class-admin.php:891
+#: includes/class-admin.php:895
 msgid "Search \"Faith TV\" (or \"Sunday Live\", \"Sermon Library\")."
 msgstr ""
 
 #. translators: %s: category name
-#: includes/class-admin.php:895
+#: includes/class-admin.php:899
 #, php-format
 msgid "Pick %s in the sidebar."
 msgstr ""
 
-#: includes/class-admin.php:901
+#: includes/class-admin.php:905
 msgid "Anywhere else"
 msgstr ""
 
-#: includes/class-admin.php:902
+#: includes/class-admin.php:906
 msgid "Paste this shortcode into a page or post:"
 msgstr ""
 
-#: includes/class-admin.php:907
+#: includes/class-admin.php:911
 msgid "See all your videos"
 msgstr ""
 
-#: includes/class-admin.php:908
+#: includes/class-admin.php:912
 msgid "Set your church color"
 msgstr ""
 
-#: includes/class-admin.php:909
+#: includes/class-admin.php:913
 msgid "Set up Sunday live"
 msgstr ""
 
-#: includes/class-admin.php:919
+#: includes/class-admin.php:923
 msgid "Pick the category to put on your site first. You can add more anywhere later."
 msgstr ""
 
-#: includes/class-admin.php:932
+#: includes/class-admin.php:936
 msgid "Finish"
 msgstr ""
 
-#: includes/class-admin.php:941
+#: includes/class-admin.php:945
 msgid "Your videos"
 msgstr ""
 
-#: includes/class-admin.php:942
+#: includes/class-admin.php:946
 msgid "Everything on your channel. Put any of these on a page with the Elementor widget or block \"Faith TV Series\", or copy its shortcode."
 msgstr ""
 
-#: includes/class-admin.php:944
+#: includes/class-admin.php:948
 #: includes/class-renderer.php:958
 msgid "Search"
 msgstr ""
 
-#: includes/class-admin.php:944
+#: includes/class-admin.php:948
 msgid "Search categories"
 msgstr ""
 
-#: includes/class-admin.php:955
-#: includes/class-admin.php:1429
+#: includes/class-admin.php:961
+#: includes/class-admin.php:1435
 msgid "Newest messages (automatic)"
 msgstr ""
 
-#: includes/class-admin.php:955
+#: includes/class-admin.php:961
 msgid "Always the latest messages from the whole channel."
 msgstr ""
 
-#: includes/class-admin.php:956
+#: includes/class-admin.php:962
 msgid "What we feature (automatic)"
 msgstr ""
 
-#: includes/class-admin.php:956
+#: includes/class-admin.php:962
 msgid "Whatever you mark as featured on your Faith Stream home page."
 msgstr ""
 
-#: includes/class-admin.php:956
+#: includes/class-admin.php:962
 msgid "Your channel's first row."
 msgstr ""
 
-#: includes/class-admin.php:969
-#: includes/class-admin.php:989
+#: includes/class-admin.php:975
+#: includes/class-admin.php:995
 msgid "Copy shortcode"
 msgstr ""
 
-#: includes/class-admin.php:983
+#: includes/class-admin.php:989
 msgid "Copy this series' shortcode"
 msgstr ""
 
-#: includes/class-admin.php:990
+#: includes/class-admin.php:996
 msgid "Get embed code"
 msgstr ""
 
-#: includes/class-admin.php:992
+#: includes/class-admin.php:998
 msgid "Open on your channel"
 msgstr ""
 
-#: includes/class-admin.php:998
+#: includes/class-admin.php:1004
 msgid "Tip: click a series name to copy its own shortcode. Shortcode options: layout=\"showcase|coverflow|list|row|grid|library\", mobile_layout=\"auto|same|list|coverflow|row\", title=\"...\", eyebrow=\"...\", limit=\"6\", play=\"faithtv\", theme=\"light\", video=\"<video id>\" (one video), from=\"2026-03-01\" until=\"2026-04-06\" otherwise=\"<category>\" (show only between dates), next=\"off\" or next_label=\"...\" next_url=\"...\" (the button after watching). Also [faith_tv_live] for Sunday live and [faith_tv_library] for the sermon library."
 msgstr ""
 
-#: includes/class-admin.php:1008
+#: includes/class-admin.php:1014
 msgid "Crimson"
 msgstr ""
 
-#: includes/class-admin.php:1009
+#: includes/class-admin.php:1015
 msgid "Navy"
 msgstr ""
 
-#: includes/class-admin.php:1010
+#: includes/class-admin.php:1016
 msgid "Purple"
 msgstr ""
 
-#: includes/class-admin.php:1011
+#: includes/class-admin.php:1017
 msgid "Teal"
 msgstr ""
 
-#: includes/class-admin.php:1012
+#: includes/class-admin.php:1018
 msgid "Green"
 msgstr ""
 
-#: includes/class-admin.php:1013
+#: includes/class-admin.php:1019
 msgid "Black"
 msgstr ""
 
-#: includes/class-admin.php:1016
-#: includes/class-admin.php:1407
-#: includes/class-admin.php:1775
+#: includes/class-admin.php:1022
+#: includes/class-admin.php:1413
+#: includes/class-admin.php:1728
 #: includes/class-elementor-widget.php:107
 #: assets/blocks.js:34
 msgid "Showcase"
 msgstr ""
 
-#: includes/class-admin.php:1017
-#: includes/class-admin.php:1408
-#: includes/class-admin.php:1776
+#: includes/class-admin.php:1023
+#: includes/class-admin.php:1414
+#: includes/class-admin.php:1729
 #: includes/class-elementor-widget.php:86
 #: assets/blocks.js:35
 msgid "3D carousel"
 msgstr ""
 
-#: includes/class-admin.php:1018
-#: includes/class-admin.php:1025
-#: includes/class-admin.php:1406
-#: includes/class-admin.php:1777
+#: includes/class-admin.php:1024
+#: includes/class-admin.php:1031
+#: includes/class-admin.php:1412
+#: includes/class-admin.php:1730
 #: includes/class-elementor-widget.php:87
 #: includes/class-elementor-widget.php:104
 #: assets/blocks.js:36
@@ -765,458 +770,458 @@ msgstr ""
 msgid "Featured + list"
 msgstr ""
 
-#: includes/class-admin.php:1019
-#: includes/class-admin.php:1027
-#: includes/class-admin.php:1778
+#: includes/class-admin.php:1025
+#: includes/class-admin.php:1033
+#: includes/class-admin.php:1731
 msgid "Row"
 msgstr ""
 
-#: includes/class-admin.php:1020
-#: includes/class-admin.php:1405
-#: includes/class-admin.php:1779
+#: includes/class-admin.php:1026
+#: includes/class-admin.php:1411
+#: includes/class-admin.php:1732
 #: includes/class-elementor-widget.php:89
 #: assets/blocks.js:38
 msgid "Grid"
 msgstr ""
 
-#: includes/class-admin.php:1023
-#: includes/class-admin.php:1773
+#: includes/class-admin.php:1029
+#: includes/class-admin.php:1726
 #: assets/blocks.js:88
 msgid "Automatic"
 msgstr ""
 
-#: includes/class-admin.php:1024
+#: includes/class-admin.php:1030
 #: assets/blocks.js:88
 msgid "Same as computers"
 msgstr ""
 
-#: includes/class-admin.php:1026
+#: includes/class-admin.php:1032
 msgid "Swipe"
 msgstr ""
 
-#: includes/class-admin.php:1035
+#: includes/class-admin.php:1041
 msgid "Defaults for every video section on your site. Each section can still pick its own layout."
 msgstr ""
 
-#: includes/class-admin.php:1040
+#: includes/class-admin.php:1046
 msgid "Church color"
 msgstr ""
 
-#: includes/class-admin.php:1045
-#: includes/class-admin.php:1047
+#: includes/class-admin.php:1051
+#: includes/class-admin.php:1053
 msgid "Your own color"
 msgstr ""
 
-#: includes/class-admin.php:1050
+#: includes/class-admin.php:1056
 msgid "Buttons, badges and the stripe behind the artwork."
 msgstr ""
 
-#: includes/class-admin.php:1053
+#: includes/class-admin.php:1059
 msgid "Style"
 msgstr ""
 
-#: includes/class-admin.php:1054
+#: includes/class-admin.php:1060
 msgid "Bold"
 msgstr ""
 
-#: includes/class-admin.php:1054
+#: includes/class-admin.php:1060
 msgid "Soft"
 msgstr ""
 
-#: includes/class-admin.php:1054
+#: includes/class-admin.php:1060
 msgid "Minimal"
 msgstr ""
 
-#: includes/class-admin.php:1055
+#: includes/class-admin.php:1061
 msgid "Bold: square corners and heavy capitals. Soft: rounded corners, normal letters. Minimal: quiet and light."
 msgstr ""
 
-#: includes/class-admin.php:1058
+#: includes/class-admin.php:1064
 #: includes/class-elementor-widget.php:213
-#: includes/class-elementor-widget.php:444
-#: includes/class-elementor-widget.php:534
+#: includes/class-elementor-widget.php:445
+#: includes/class-elementor-widget.php:536
 #: assets/blocks.js:89
 #: assets/blocks.js:123
 #: assets/blocks.js:148
 msgid "Background"
 msgstr ""
 
-#: includes/class-admin.php:1059
-#: includes/class-admin.php:1460
+#: includes/class-admin.php:1065
+#: includes/class-admin.php:1466
 msgid "Dark"
 msgstr ""
 
-#: includes/class-admin.php:1059
-#: includes/class-admin.php:1460
+#: includes/class-admin.php:1065
+#: includes/class-admin.php:1466
 msgid "Light"
 msgstr ""
 
-#: includes/class-admin.php:1062
+#: includes/class-admin.php:1068
 msgid "Font"
 msgstr ""
 
-#: includes/class-admin.php:1063
-#: includes/class-admin.php:1729
+#: includes/class-admin.php:1069
+#: includes/class-admin.php:1682
 msgid "Built-in"
 msgstr ""
 
-#: includes/class-admin.php:1063
+#: includes/class-admin.php:1069
 msgid "Same as my website"
 msgstr ""
 
-#: includes/class-admin.php:1072
+#: includes/class-admin.php:1078
 msgid "Automatic: the newest series big, the rest as a list."
 msgstr ""
 
-#: includes/class-admin.php:1075
+#: includes/class-admin.php:1081
 msgid "Label over each series"
 msgstr ""
 
-#: includes/class-admin.php:1076
+#: includes/class-admin.php:1082
 msgid "The category's name"
 msgstr ""
 
-#: includes/class-admin.php:1077
+#: includes/class-admin.php:1083
 msgid "Leave empty to use each category's name."
 msgstr ""
 
-#: includes/class-admin.php:1080
+#: includes/class-admin.php:1086
 msgid "Badge on the newest"
 msgstr ""
 
-#: includes/class-admin.php:1082
+#: includes/class-admin.php:1088
 msgid "Leave empty for no badge."
 msgstr ""
 
 #. translators: %s: brand name
-#: includes/class-admin.php:1089
+#: includes/class-admin.php:1095
 #, php-format
 msgid "Show \"Powered by %s\" under the player"
 msgstr ""
 
-#: includes/class-admin.php:1093
+#: includes/class-admin.php:1099
 msgid "Included with your church's plan. Plans that remove it are on Faith Stream."
 msgstr ""
 
-#: includes/class-admin.php:1097
-#: includes/class-admin.php:1481
+#: includes/class-admin.php:1103
+#: includes/class-admin.php:1487
 msgid "Text sizes and colors"
 msgstr ""
 
-#: includes/class-admin.php:1099
+#: includes/class-admin.php:1105
 msgid "For every section on the site. Leave a box empty for the built-in look. Each Elementor widget can still change its own under Style."
 msgstr ""
 
-#: includes/class-admin.php:1104
-#: includes/class-admin.php:1113
-#: includes/class-admin.php:1486
+#: includes/class-admin.php:1110
+#: includes/class-admin.php:1119
+#: includes/class-admin.php:1492
 msgid "Preview"
 msgstr ""
 
-#: includes/class-admin.php:1105
+#: includes/class-admin.php:1111
 msgid "Preview with"
 msgstr ""
 
-#: includes/class-admin.php:1110
+#: includes/class-admin.php:1116
 msgid "Computer"
 msgstr ""
 
-#: includes/class-admin.php:1110
+#: includes/class-admin.php:1116
 msgid "Phone"
 msgstr ""
 
-#: includes/class-admin.php:1115
+#: includes/class-admin.php:1121
 msgid "The real section with your real videos, before you save. Nothing changes on the site until you press Save."
 msgstr ""
 
-#: includes/class-admin.php:1134
+#: includes/class-admin.php:1140
 msgid "Newest messages"
 msgstr ""
 
-#: includes/class-admin.php:1169
+#: includes/class-admin.php:1175
 msgid "What happens while and after someone watches."
 msgstr ""
 
-#: includes/class-admin.php:1172
+#: includes/class-admin.php:1178
 msgid "A next step after watching"
 msgstr ""
 
-#: includes/class-admin.php:1173
+#: includes/class-admin.php:1179
 msgid "Up to three buttons under the player and when a message ends: Plan a visit, I'm new, Prayer, Give, or any link. Each link carries which message led there (utm_source=faith-tv, utm_content=<video>), so your forms and follow-up can see it."
 msgstr ""
 
-#: includes/class-admin.php:1175
-#: includes/class-admin.php:1706
+#: includes/class-admin.php:1181
+#: includes/class-admin.php:1659
 #: includes/class-elementor-widget.php:279
 msgid "Heading"
 msgstr ""
 
-#: includes/class-admin.php:1176
+#: includes/class-admin.php:1182
 #: includes/class-renderer.php:1041
 #: includes/class-renderer.php:1167
 msgid "Take a next step"
 msgstr ""
 
-#: includes/class-admin.php:1179
-#: includes/class-admin.php:1212
+#: includes/class-admin.php:1185
+#: includes/class-admin.php:1218
 msgid "Button"
 msgstr ""
 
-#: includes/class-admin.php:1179
-#: includes/class-admin.php:1212
+#: includes/class-admin.php:1185
+#: includes/class-admin.php:1218
 msgid "Goes to"
 msgstr ""
 
-#: includes/class-admin.php:1182
+#: includes/class-admin.php:1188
 msgid "Plan a visit"
 msgstr ""
 
-#: includes/class-admin.php:1182
+#: includes/class-admin.php:1188
 msgid "Prayer request"
 msgstr ""
 
-#: includes/class-admin.php:1182
+#: includes/class-admin.php:1188
 msgid "Give"
 msgstr ""
 
-#: includes/class-admin.php:1186
-#: includes/class-admin.php:1224
+#: includes/class-admin.php:1192
+#: includes/class-admin.php:1230
 msgid "Button words"
 msgstr ""
 
-#: includes/class-admin.php:1187
-#: includes/class-admin.php:1225
+#: includes/class-admin.php:1193
+#: includes/class-admin.php:1231
 msgid "Link"
 msgstr ""
 
-#: includes/class-admin.php:1193
+#: includes/class-admin.php:1199
 msgid "A button for one series"
 msgstr ""
 
-#: includes/class-admin.php:1194
+#: includes/class-admin.php:1200
 msgid "Shown first, only with that series. For example \"Sign up for the marriage retreat\" after the marriage series."
 msgstr ""
 
-#: includes/class-admin.php:1218
+#: includes/class-admin.php:1224
 msgid "- Pick a series -"
 msgstr ""
 
-#: includes/class-admin.php:1231
+#: includes/class-admin.php:1237
 msgid "While watching"
 msgstr ""
 
-#: includes/class-admin.php:1232
+#: includes/class-admin.php:1238
 msgid "Play the next episode after a short countdown, and suggest more at the end"
 msgstr ""
 
-#: includes/class-admin.php:1233
+#: includes/class-admin.php:1239
 msgid "Pick up where people left off (remembered on their own device, nothing is sent anywhere)"
 msgstr ""
 
-#: includes/class-admin.php:1234
+#: includes/class-admin.php:1240
 msgid "Show a Share button for each message"
 msgstr ""
 
-#: includes/class-admin.php:1236
+#: includes/class-admin.php:1242
 msgid "Counting plays"
 msgstr ""
 
-#: includes/class-admin.php:1237
+#: includes/class-admin.php:1243
 msgid "Count plays for the WordPress dashboard (no names, no addresses)"
 msgstr ""
 
-#: includes/class-admin.php:1239
+#: includes/class-admin.php:1245
 msgid "Also count them in Faith Stream's reports and Faith Central's \"who is watching\""
 msgstr ""
 
-#: includes/class-admin.php:1239
+#: includes/class-admin.php:1245
 msgid "Viewers stay anonymous. Faith Stream stores only a daily-scrambled form of the visitor's internet address."
 msgstr ""
 
-#: includes/class-admin.php:1241
+#: includes/class-admin.php:1247
 msgid "Email last week's numbers to the site admin every Monday"
 msgstr ""
 
-#: includes/class-admin.php:1243
+#: includes/class-admin.php:1249
 msgid "Follow-up"
 msgstr ""
 
-#: includes/class-admin.php:1244
+#: includes/class-admin.php:1250
 msgid "Show \"Remind me\" on the Sunday Live section"
 msgstr ""
 
-#: includes/class-admin.php:1244
+#: includes/class-admin.php:1250
 msgid "Visitors leave an email or mobile number; it goes straight to your follow-up system below. Texting needs their agreement, which the form asks for."
 msgstr ""
 
-#: includes/class-admin.php:1246
+#: includes/class-admin.php:1252
 msgid "Send sign-ups to (webhook address)"
 msgstr ""
 
-#: includes/class-admin.php:1248
+#: includes/class-admin.php:1254
 msgid "For example a GoHighLevel \"Inbound webhook\" workflow trigger, Zapier or Make."
 msgstr ""
 
-#: includes/class-admin.php:1251
+#: includes/class-admin.php:1257
 msgid "Texting agreement wording"
 msgstr ""
 
-#: includes/class-admin.php:1255
+#: includes/class-admin.php:1261
 msgid "When a new video appears, tell (webhook address, optional)"
 msgstr ""
 
-#: includes/class-admin.php:1257
+#: includes/class-admin.php:1263
 msgid "Sends the new video's title, picture and link, so a workflow can text or email \"New series: ...\"."
 msgstr ""
 
 #. translators: %d: number of sign-ups
-#: includes/class-admin.php:1263
+#: includes/class-admin.php:1269
 #, php-format
 msgid "%d sign-up could not be delivered yet; it is retried every hour for a day."
 msgid_plural "%d sign-ups could not be delivered yet; they are retried every hour for a day."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-admin.php:1278
+#: includes/class-admin.php:1284
 #: includes/class-blocks.php:174
 msgid "Sunday"
 msgstr ""
 
-#: includes/class-admin.php:1278
+#: includes/class-admin.php:1284
 msgid "Monday"
 msgstr ""
 
-#: includes/class-admin.php:1278
+#: includes/class-admin.php:1284
 msgid "Tuesday"
 msgstr ""
 
-#: includes/class-admin.php:1278
+#: includes/class-admin.php:1284
 msgid "Wednesday"
 msgstr ""
 
-#: includes/class-admin.php:1278
+#: includes/class-admin.php:1284
 msgid "Thursday"
 msgstr ""
 
-#: includes/class-admin.php:1278
+#: includes/class-admin.php:1284
 msgid "Friday"
 msgstr ""
 
-#: includes/class-admin.php:1278
+#: includes/class-admin.php:1284
 msgid "Saturday"
 msgstr ""
 
-#: includes/class-admin.php:1287
+#: includes/class-admin.php:1293
 msgid "The Sunday Live section counts down to the next service, switches to the live stream when it starts, and shows the replay afterward. Nobody has to edit the page on Sunday morning."
 msgstr ""
 
-#: includes/class-admin.php:1289
+#: includes/class-admin.php:1295
 msgid "Right now:"
 msgstr ""
 
-#: includes/class-admin.php:1292
+#: includes/class-admin.php:1298
 msgid "live."
 msgstr ""
 
 #. translators: %s: day and time
-#: includes/class-admin.php:1295
+#: includes/class-admin.php:1301
 #, php-format
 msgid "next service %s."
 msgstr ""
 
-#: includes/class-admin.php:1297
+#: includes/class-admin.php:1303
 msgid "no service times yet."
 msgstr ""
 
 #. translators: %s: video title
-#: includes/class-admin.php:1301
+#: includes/class-admin.php:1307
 #, php-format
 msgid "The replay shown: %s."
 msgstr ""
 
-#: includes/class-admin.php:1307
+#: includes/class-admin.php:1313
 msgid "Service times"
 msgstr ""
 
-#: includes/class-admin.php:1313
+#: includes/class-admin.php:1319
 msgid "Day"
 msgstr ""
 
-#: includes/class-admin.php:1314
+#: includes/class-admin.php:1320
 msgid "- Day -"
 msgstr ""
 
-#: includes/class-admin.php:1320
+#: includes/class-admin.php:1326
 msgid "Time"
 msgstr ""
 
-#: includes/class-admin.php:1326
+#: includes/class-admin.php:1332
 msgid "A service lasts about"
 msgstr ""
 
 #. translators: %s: time zone
-#: includes/class-admin.php:1332
+#: includes/class-admin.php:1338
 #, php-format
 msgid "Times are in your site's time zone (%s, under Settings > General)."
 msgstr ""
 
-#: includes/class-admin.php:1338
+#: includes/class-admin.php:1344
 msgid "Which Faith Stream channel"
 msgstr ""
 
-#: includes/class-admin.php:1340
+#: includes/class-admin.php:1346
 msgid "Whichever channel is live"
 msgstr ""
 
-#: includes/class-admin.php:1345
+#: includes/class-admin.php:1351
 msgid "Faith Stream tells the site when the stream starts, and the replay appears when the recording is ready."
 msgstr ""
 
-#: includes/class-admin.php:1347
+#: includes/class-admin.php:1353
 msgid "Your live stream link"
 msgstr ""
 
-#: includes/class-admin.php:1349
+#: includes/class-admin.php:1355
 msgid "A YouTube live link (youtube.com/channel/UC.../live works every week), a Vimeo event, or the embed address from Boxcast, Resi, Church Online or similar. It shows during service times."
 msgstr ""
 
-#: includes/class-admin.php:1353
+#: includes/class-admin.php:1359
 msgid "Count people watching online"
 msgstr ""
 
-#: includes/class-admin.php:1354
+#: includes/class-admin.php:1360
 msgid "Let people watching the live service on the website be counted present"
 msgstr ""
 
-#: includes/class-admin.php:1354
+#: includes/class-admin.php:1360
 msgid "They sign in once with their church account (or email), and after the minutes set in Faith Stream they are checked in on Faith Connections, like on the Faith Stream app. Needs Faith Connections turned on in Faith Stream, a live channel that counts for attendance, and this website added in Faith Stream: Settings > Website & media."
 msgstr ""
 
-#: includes/class-admin.php:1357
+#: includes/class-admin.php:1363
 msgid "A \"We're live\" bar on every page"
 msgstr ""
 
-#: includes/class-admin.php:1358
+#: includes/class-admin.php:1364
 msgid "Show a slim bar at the top of every page while the service is live"
 msgstr ""
 
-#: includes/class-admin.php:1360
+#: includes/class-admin.php:1366
 msgid "The bar takes people to"
 msgstr ""
 
-#: includes/class-admin.php:1362
+#: includes/class-admin.php:1368
 msgid "Empty: your Watch page, or the stream opens right where they are."
 msgstr ""
 
-#: includes/class-admin.php:1367
+#: includes/class-admin.php:1373
 msgid "Put it on a page"
 msgstr ""
 
-#: includes/class-admin.php:1368
+#: includes/class-admin.php:1374
 msgid "Elementor: the \"Sunday Live\" widget. Block editor: the \"Sunday Live\" block. Anywhere else:"
 msgstr ""
 
-#: includes/class-admin.php:1404
+#: includes/class-admin.php:1410
 #: includes/class-elementor-widget.php:88
 #: includes/class-elementor-widget.php:106
 #: assets/blocks.js:37
@@ -1224,149 +1229,149 @@ msgstr ""
 msgid "Sliding row"
 msgstr ""
 
-#: includes/class-admin.php:1418
+#: includes/class-admin.php:1424
 msgid "Embed on another website"
 msgstr ""
 
-#: includes/class-admin.php:1419
+#: includes/class-admin.php:1425
 msgid "Put a video section on any website that accepts HTML: Faith Central, a landing page, a partner church's site. It stays up to date by itself. Pick what to show, then copy the code."
 msgstr ""
 
-#: includes/class-admin.php:1423
+#: includes/class-admin.php:1429
 msgid "Kind"
 msgstr ""
 
-#: includes/class-admin.php:1424
+#: includes/class-admin.php:1430
 msgid "A category"
 msgstr ""
 
-#: includes/class-admin.php:1424
+#: includes/class-admin.php:1430
 msgid "One video"
 msgstr ""
 
-#: includes/class-admin.php:1424
-#: includes/class-admin.php:1629
-#: includes/class-admin.php:1780
+#: includes/class-admin.php:1430
+#: includes/class-admin.php:1636
+#: includes/class-admin.php:1733
 msgid "Sermon library"
 msgstr ""
 
-#: includes/class-admin.php:1427
+#: includes/class-admin.php:1433
 #: assets/blocks.js:81
 msgid "What to show"
 msgstr ""
 
 #. translators: %s: row name
-#: includes/class-admin.php:1436
+#: includes/class-admin.php:1442
 #, php-format
 msgid "All of %s"
 msgstr ""
 
-#: includes/class-admin.php:1450
+#: includes/class-admin.php:1456
 msgid "Video ID"
 msgstr ""
 
-#: includes/class-admin.php:1452
+#: includes/class-admin.php:1458
 msgid "The last part of the video's address on your channel."
 msgstr ""
 
-#: includes/class-admin.php:1455
+#: includes/class-admin.php:1461
 #: includes/class-elementor-widget.php:81
 #: assets/blocks.js:87
 msgid "Layout"
 msgstr ""
 
-#: includes/class-admin.php:1459
+#: includes/class-admin.php:1465
 #: includes/class-elementor-widget.php:261
 msgid "Colors"
 msgstr ""
 
-#: includes/class-admin.php:1461
+#: includes/class-admin.php:1467
 msgid "See-through background (uses the other website's background)"
 msgstr ""
 
-#: includes/class-admin.php:1464
+#: includes/class-admin.php:1470
 #: includes/class-elementor-widget.php:163
-#: includes/class-elementor-widget.php:422
-#: includes/class-elementor-widget.php:512
+#: includes/class-elementor-widget.php:423
+#: includes/class-elementor-widget.php:514
 #: assets/blocks.js:90
 #: assets/blocks.js:120
 #: assets/blocks.js:146
 msgid "Heading (optional)"
 msgstr ""
 
-#: includes/class-admin.php:1465
+#: includes/class-admin.php:1471
 #: includes/class-elementor-widget.php:165
 msgid "Our series"
 msgstr ""
 
-#: includes/class-admin.php:1468
+#: includes/class-admin.php:1474
 #: assets/blocks.js:91
 #: assets/blocks.js:121
 #: assets/blocks.js:147
 msgid "Small line above it (optional)"
 msgstr ""
 
-#: includes/class-admin.php:1469
+#: includes/class-admin.php:1475
 #: includes/class-elementor-widget.php:156
 msgid "New every week"
 msgstr ""
 
-#: includes/class-admin.php:1472
+#: includes/class-admin.php:1478
 #: includes/class-elementor-widget.php:143
 msgid "How many to show"
 msgstr ""
 
-#: includes/class-admin.php:1474
+#: includes/class-admin.php:1480
 msgid "0 shows all of them."
 msgstr ""
 
-#: includes/class-admin.php:1477
+#: includes/class-admin.php:1483
 #: includes/class-elementor-widget.php:130
 msgid "When someone clicks"
 msgstr ""
 
-#: includes/class-admin.php:1478
+#: includes/class-admin.php:1484
 msgid "Play inside the embed"
 msgstr ""
 
-#: includes/class-admin.php:1478
+#: includes/class-admin.php:1484
 msgid "Open your channel"
 msgstr ""
 
-#: includes/class-admin.php:1486
+#: includes/class-admin.php:1492
 msgid "Open in a new tab"
 msgstr ""
 
-#: includes/class-admin.php:1487
+#: includes/class-admin.php:1493
 msgid "Embed preview"
 msgstr ""
 
-#: includes/class-admin.php:1489
+#: includes/class-admin.php:1495
 msgid "Embed code"
 msgstr ""
 
-#: includes/class-admin.php:1491
+#: includes/class-admin.php:1497
 msgid "Copy embed code"
 msgstr ""
 
-#: includes/class-admin.php:1492
+#: includes/class-admin.php:1498
 msgid "Paste it where the other website lets you add HTML or an \"embed\" block. The second line lets the frame grow to fit; if a site only allows the first line, it still works at a fixed height."
 msgstr ""
 
-#: includes/class-admin.php:1515
+#: includes/class-admin.php:1521
 msgid "Whether the video sections on your site are working, and where they are."
 msgstr ""
 
-#: includes/class-admin.php:1518
+#: includes/class-admin.php:1524
 msgid "Not answering"
 msgstr ""
 
-#: includes/class-admin.php:1519
+#: includes/class-admin.php:1525
 msgid "since the last good check of your channel"
 msgstr ""
 
 #. translators: %d: sections with a problem
-#: includes/class-admin.php:1527
+#: includes/class-admin.php:1533
 #, php-format
 msgid "video sections, %d needs attention"
 msgid_plural "video sections, %d need attention"
@@ -1374,12 +1379,12 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: sections with a problem
-#: includes/class-admin.php:1527
+#: includes/class-admin.php:1533
 msgid "video sections on your site, all working"
 msgstr ""
 
 #. translators: %d: failed plays
-#: includes/class-admin.php:1536
+#: includes/class-admin.php:1542
 #, php-format
 msgid "plays this week, %d failed to start"
 msgid_plural "plays this week, %d failed to start"
@@ -1387,243 +1392,201 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: failed plays
-#: includes/class-admin.php:1536
+#: includes/class-admin.php:1542
 msgid "plays this week"
 msgstr ""
 
-#: includes/class-admin.php:1544
+#: includes/class-admin.php:1550
 msgid "Where it's used"
 msgstr ""
 
-#: includes/class-admin.php:1546
+#: includes/class-admin.php:1552
 msgid "Check all pages now"
 msgstr ""
 
-#: includes/class-admin.php:1551
+#: includes/class-admin.php:1557
 msgid "No page has a video section yet."
 msgstr ""
 
-#: includes/class-admin.php:1554
+#: includes/class-admin.php:1560
 msgid "Page"
 msgstr ""
 
-#: includes/class-admin.php:1554
+#: includes/class-admin.php:1560
 msgid "Section"
 msgstr ""
 
-#: includes/class-admin.php:1554
+#: includes/class-admin.php:1560
 msgid "Shows"
 msgstr ""
 
-#: includes/class-admin.php:1554
+#: includes/class-admin.php:1560
 msgid "Status"
 msgstr ""
 
-#: includes/class-admin.php:1558
+#: includes/class-admin.php:1564
 msgid "(no title)"
 msgstr ""
 
-#: includes/class-admin.php:1560
+#: includes/class-admin.php:1567
 msgid "Edit"
 msgstr ""
 
 #. translators: 1: start date, 2: end date, 3: what shows otherwise
-#: includes/class-admin.php:1570
+#: includes/class-admin.php:1577
 #, php-format
 msgid "Dated: %1$s to %2$s; otherwise %3$s"
 msgstr ""
 
 #. translators: 1: start date, 2: end date, 3: what shows otherwise
-#: includes/class-admin.php:1570
+#: includes/class-admin.php:1577
 msgid "nothing"
 msgstr ""
 
-#: includes/class-admin.php:1575
+#: includes/class-admin.php:1582
 msgid "Working"
 msgstr ""
 
 #. translators: %s: how long ago
-#: includes/class-admin.php:1583
+#: includes/class-admin.php:1590
 #, php-format
 msgid "Checked %s ago. Pages are checked every hour in the background."
 msgstr ""
 
-#: includes/class-admin.php:1591
+#: includes/class-admin.php:1598
 msgid "Emails and caches"
 msgstr ""
 
-#: includes/class-admin.php:1594
+#: includes/class-admin.php:1601
 msgid "Email the site admin if videos stop showing (at most once a day)"
 msgstr ""
 
 #. translators: 1: how long ago, 2: cache names
-#: includes/class-admin.php:1601
+#: includes/class-admin.php:1608
 #, php-format
 msgid "Page caches last cleared %1$s ago (%2$s). This happens by itself when your channel changes."
 msgstr ""
 
 #. translators: 1: how long ago, 2: cache names
-#: includes/class-admin.php:1601
+#: includes/class-admin.php:1608
 msgid "no cache plugin found"
 msgstr ""
 
-#: includes/class-admin.php:1603
+#: includes/class-admin.php:1610
 msgid "Page caches are cleared by themselves when your channel changes."
 msgstr ""
 
-#: includes/class-admin.php:1607
+#: includes/class-admin.php:1614
 msgid "Clear page caches now"
 msgstr ""
 
-#: includes/class-admin.php:1610
+#: includes/class-admin.php:1617
 msgid "For support"
 msgstr ""
 
-#: includes/class-admin.php:1611
+#: includes/class-admin.php:1618
 msgid "Everything support needs, in one paste. It has no passwords or visitor details."
 msgstr ""
 
-#: includes/class-admin.php:1613
+#: includes/class-admin.php:1620
 msgid "Copy diagnostics"
 msgstr ""
 
-#: includes/class-admin.php:1614
+#: includes/class-admin.php:1621
 msgid "WordPress Site Health"
 msgstr ""
 
-#: includes/class-admin.php:1622
-#: includes/class-manual.php:341
+#: includes/class-admin.php:1629
+#: includes/class-manual.php:376
 msgid "Shortcode"
 msgstr ""
 
-#: includes/class-admin.php:1623
+#: includes/class-admin.php:1630
 msgid "Block"
 msgstr ""
 
-#: includes/class-admin.php:1624
+#: includes/class-admin.php:1631
 msgid "Elementor"
 msgstr ""
 
-#: includes/class-admin.php:1646
-msgid "New versions come from FaithStream and install like any WordPress plugin update. Each one is checked against FaithStream's signature before it installs."
-msgstr ""
-
-#: includes/class-admin.php:1648
-msgid "Installed"
-msgstr ""
-
-#: includes/class-admin.php:1650
-msgid "Newest"
-msgstr ""
-
 #: includes/class-admin.php:1660
-msgid "Ready to install"
-msgstr ""
-
-#: includes/class-admin.php:1662
-msgid "Rolling out; your site gets it soon"
-msgstr ""
-
-#: includes/class-admin.php:1664
-msgid "You're up to date"
-msgstr ""
-
-#: includes/class-admin.php:1671
-msgid "Go to Plugins to update"
-msgstr ""
-
-#: includes/class-admin.php:1673
-msgid "Check for updates now"
-msgstr ""
-
-#: includes/class-admin.php:1679
-msgid "Install updates automatically"
-msgstr ""
-
-#. translators: %s: version number
-#: includes/class-admin.php:1687
-#, php-format
-msgid "What's new in %s"
-msgstr ""
-
-#: includes/class-admin.php:1707
 #: includes/class-elementor-widget.php:280
 msgid "Small line above the heading"
 msgstr ""
 
-#: includes/class-admin.php:1708
+#: includes/class-admin.php:1661
 #: includes/class-elementor-widget.php:281
 msgid "Big series title"
 msgstr ""
 
-#: includes/class-admin.php:1709
+#: includes/class-admin.php:1662
 #: includes/class-elementor-widget.php:282
 msgid "Series names on cards"
 msgstr ""
 
-#: includes/class-admin.php:1710
+#: includes/class-admin.php:1663
 #: includes/class-elementor-widget.php:283
 msgid "Descriptions"
 msgstr ""
 
-#: includes/class-admin.php:1711
+#: includes/class-admin.php:1664
 #: includes/class-elementor-widget.php:284
 msgid "Episode counts and labels"
 msgstr ""
 
-#: includes/class-admin.php:1715
+#: includes/class-admin.php:1668
 msgid "Words"
 msgstr ""
 
-#: includes/class-admin.php:1715
+#: includes/class-admin.php:1668
 msgid "Size"
 msgstr ""
 
-#: includes/class-admin.php:1715
+#: includes/class-admin.php:1668
 #: includes/class-elementor-widget.php:297
 msgid "Color"
 msgstr ""
 
-#: includes/class-admin.php:1726
+#: includes/class-admin.php:1679
 msgid "size"
 msgstr ""
 
-#: includes/class-admin.php:1728
+#: includes/class-admin.php:1681
 msgid "color picker"
 msgstr ""
 
-#: includes/class-admin.php:1729
+#: includes/class-admin.php:1682
 msgid "color"
 msgstr ""
 
-#: includes/class-admin.php:1749
+#: includes/class-admin.php:1702
 msgid "Refresh from your channel"
 msgstr ""
 
-#: includes/class-admin.php:1757
+#: includes/class-admin.php:1710
 #: includes/class-renderer.php:1226
 msgid "Powered by"
 msgstr ""
 
-#: includes/class-admin.php:1757
+#: includes/class-admin.php:1710
 msgid "Help"
 msgstr ""
 
-#: includes/class-admin.php:1763
+#: includes/class-admin.php:1716
 msgid "Gideo channel"
 msgstr ""
 
-#: includes/class-admin.php:1768
-#: includes/class-manual.php:120
+#: includes/class-admin.php:1721
+#: includes/class-manual.php:152
 msgid "Series you built"
 msgstr ""
 
-#: includes/class-admin.php:1774
+#: includes/class-admin.php:1727
 msgid "Same"
 msgstr ""
 
 #. translators: %d: number of series
-#: includes/class-admin.php:1788
+#: includes/class-admin.php:1741
 #, php-format
 msgid "%d series inside"
 msgid_plural "%d series inside"
@@ -1631,7 +1594,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: number of videos
-#: includes/class-admin.php:1791
+#: includes/class-admin.php:1744
 #, php-format
 msgid "%d video"
 msgid_plural "%d videos"
@@ -1646,7 +1609,7 @@ msgid "Watch live"
 msgstr ""
 
 #: includes/class-blocks.php:176
-#: includes/class-catalog.php:567
+#: includes/class-catalog.php:576
 msgid "Latest messages"
 msgstr ""
 
@@ -1659,52 +1622,52 @@ msgstr ""
 msgid "Watch"
 msgstr ""
 
-#: includes/class-cache.php:74
+#: includes/class-cache.php:81
 msgid "Your video platform is not answering right now."
 msgstr ""
 
-#: includes/class-catalog.php:98
+#: includes/class-catalog.php:99
 msgid "No church is connected yet. Go to Faith Stream > Church in the WordPress admin."
 msgstr ""
 
-#: includes/class-catalog.php:125
+#: includes/class-catalog.php:126
 #: includes/class-youtube-client.php:93
 msgid "That is not a category on your channel."
 msgstr ""
 
-#: includes/class-catalog.php:193
+#: includes/class-catalog.php:195
 #: includes/class-health.php:244
 #: includes/class-renderer.php:210
 msgid "This category has nothing published yet."
 msgstr ""
 
-#: includes/class-catalog.php:341
-#: includes/class-manual.php:161
+#: includes/class-catalog.php:350
+#: includes/class-manual.php:193
 #: includes/class-youtube-client.php:262
 msgid "That is not a video on your channel."
 msgstr ""
 
-#: includes/class-catalog.php:492
+#: includes/class-catalog.php:501
 #: includes/class-faithstream-client.php:91
 #: includes/class-rest.php:119
 msgid "This video is not ready to play yet."
 msgstr ""
 
-#: includes/class-catalog.php:564
+#: includes/class-catalog.php:573
 msgid "Pick a category."
 msgstr ""
 
-#: includes/class-catalog.php:568
+#: includes/class-catalog.php:577
 msgid "Featured"
 msgstr ""
 
-#: includes/class-catalog.php:577
-#: includes/class-manual.php:139
+#: includes/class-catalog.php:586
+#: includes/class-manual.php:171
 msgid "That series was deleted."
 msgstr ""
 
 #. translators: %s: category name typed by the site editor
-#: includes/class-catalog.php:607
+#: includes/class-catalog.php:616
 #, php-format
 msgid "No category on your channel is named \"%s\"."
 msgstr ""
@@ -1790,7 +1753,7 @@ msgstr ""
 #: includes/class-faithstream-client.php:412
 #: includes/class-gideo-client.php:183
 #: includes/class-gideo-client.php:222
-#: includes/class-manual.php:166
+#: includes/class-manual.php:198
 #: includes/class-youtube-client.php:150
 #: includes/class-youtube-client.php:437
 msgid "That is no longer on your channel."
@@ -1889,8 +1852,8 @@ msgid "Badge text"
 msgstr ""
 
 #: includes/class-elementor-widget.php:195
-#: includes/class-elementor-widget.php:447
-#: includes/class-elementor-widget.php:537
+#: includes/class-elementor-widget.php:448
+#: includes/class-elementor-widget.php:539
 #: assets/blocks.js:43
 #: assets/blocks.js:87
 #: assets/blocks.js:88
@@ -1902,15 +1865,15 @@ msgid "Show descriptions on cards"
 msgstr ""
 
 #: includes/class-elementor-widget.php:217
-#: includes/class-elementor-widget.php:448
-#: includes/class-elementor-widget.php:538
+#: includes/class-elementor-widget.php:449
+#: includes/class-elementor-widget.php:540
 #: assets/blocks.js:44
 msgid "Dark section (light text)"
 msgstr ""
 
 #: includes/class-elementor-widget.php:218
-#: includes/class-elementor-widget.php:449
-#: includes/class-elementor-widget.php:539
+#: includes/class-elementor-widget.php:450
+#: includes/class-elementor-widget.php:541
 #: assets/blocks.js:45
 msgid "Light section (dark text)"
 msgstr ""
@@ -1952,55 +1915,55 @@ msgstr ""
 msgid "Size and font"
 msgstr ""
 
-#: includes/class-elementor-widget.php:358
+#: includes/class-elementor-widget.php:359
 msgid "- Pick a category -"
 msgstr ""
 
-#: includes/class-elementor-widget.php:359
+#: includes/class-elementor-widget.php:360
 #: includes/class-rest.php:298
 msgid "Automatic: newest messages"
 msgstr ""
 
-#: includes/class-elementor-widget.php:360
+#: includes/class-elementor-widget.php:361
 msgid "Automatic: what we feature on our channel"
 msgstr ""
 
-#: includes/class-elementor-widget.php:375
+#: includes/class-elementor-widget.php:376
 msgid "Other (paste an ID)"
 msgstr ""
 
-#: includes/class-elementor-widget.php:390
-#: includes/class-elementor-widget.php:418
+#: includes/class-elementor-widget.php:391
+#: includes/class-elementor-widget.php:419
 #: assets/blocks.js:110
 #: assets/blocks.js:119
 msgid "Sunday Live"
 msgstr ""
 
-#: includes/class-elementor-widget.php:429
-#: includes/class-elementor-widget.php:519
+#: includes/class-elementor-widget.php:430
+#: includes/class-elementor-widget.php:521
 msgid "Small line above the heading (optional)"
 msgstr ""
 
-#: includes/class-elementor-widget.php:436
+#: includes/class-elementor-widget.php:437
 msgid "Channel (optional)"
 msgstr ""
 
-#: includes/class-elementor-widget.php:438
+#: includes/class-elementor-widget.php:439
 msgid "For a campus page: that campus's channel ID. Empty = whichever is live. Service times and a live link for other platforms are under Faith Stream > Church > Sunday live."
 msgstr ""
 
-#: includes/class-elementor-widget.php:480
-#: includes/class-elementor-widget.php:508
+#: includes/class-elementor-widget.php:482
+#: includes/class-elementor-widget.php:510
 #: assets/blocks.js:134
 #: assets/blocks.js:144
 msgid "Sermon Library"
 msgstr ""
 
-#: includes/class-elementor-widget.php:526
+#: includes/class-elementor-widget.php:528
 msgid "Only messages in (optional)"
 msgstr ""
 
-#: includes/class-elementor-widget.php:528
+#: includes/class-elementor-widget.php:530
 msgid "A category ID from Faith Stream > Videos. Empty = every message."
 msgstr ""
 
@@ -2225,41 +2188,41 @@ msgstr ""
 msgid "Sunday service"
 msgstr ""
 
-#: includes/class-manual.php:42
+#: includes/class-manual.php:50
 msgid "Series you build"
 msgstr ""
 
-#: includes/class-manual.php:45
+#: includes/class-manual.php:53
 msgid "Edit series"
 msgstr ""
 
 #. translators: %d: episode number
-#: includes/class-manual.php:210
+#: includes/class-manual.php:242
 #: includes/class-renderer.php:1186
 #, php-format
 msgid "Episode %d"
 msgstr ""
 
-#: includes/class-manual.php:245
-#: includes/class-manual.php:340
+#: includes/class-manual.php:277
+#: includes/class-manual.php:375
 #: includes/class-renderer.php:1176
 msgid "Episodes"
 msgstr ""
 
-#: includes/class-manual.php:253
+#: includes/class-manual.php:285
 msgid "One video per line, in the order they should play. Paste a YouTube or Vimeo link, a link from any site WordPress can embed, or a direct .m3u8 stream address. To name an episode yourself, add \" | \" and the name after the link."
 msgstr ""
 
-#: includes/class-manual.php:258
+#: includes/class-manual.php:290
 msgid "stream"
 msgstr ""
 
-#: includes/class-manual.php:262
+#: includes/class-manual.php:294
 msgid "The picture: set a Featured image, or the first episode's picture is used. The description comes from the text above."
 msgstr ""
 
 #. translators: %s: church name
-#: includes/class-podcast.php:170
+#: includes/class-podcast.php:200
 #, php-format
 msgid "Messages from %s."
 msgstr ""
@@ -2299,7 +2262,7 @@ msgstr ""
 #: includes/class-renderer.php:560
 #: includes/class-renderer.php:669
 #: includes/class-renderer.php:1219
-#: includes/class-watch.php:172
+#: includes/class-watch.php:194
 msgid "Watch now"
 msgstr ""
 
@@ -2326,7 +2289,7 @@ msgstr ""
 #. translators: %s: video title
 #: includes/class-renderer.php:706
 #: includes/class-renderer.php:1188
-#: includes/class-watch.php:158
+#: includes/class-watch.php:180
 #, php-format
 msgid "Watch %s"
 msgstr ""
@@ -2511,7 +2474,7 @@ msgid "Watch again"
 msgstr ""
 
 #: includes/class-renderer.php:1196
-#: includes/class-watch.php:174
+#: includes/class-watch.php:196
 msgid "Share"
 msgstr ""
 
@@ -2756,42 +2719,42 @@ msgstr ""
 msgid "Not found on this channel."
 msgstr ""
 
-#: includes/class-stats.php:176
+#: includes/class-stats.php:209
 msgid "Faith Stream: videos this week"
 msgstr ""
 
-#: includes/class-stats.php:185
+#: includes/class-stats.php:218
 msgid "plays"
 msgstr ""
 
 #. translators: %s: percent change, like +12%
-#: includes/class-stats.php:191
+#: includes/class-stats.php:224
 #, php-format
 msgid "(%s vs. the week before)"
 msgstr ""
 
-#: includes/class-stats.php:196
+#: includes/class-stats.php:229
 msgid "watched to the end"
 msgstr ""
 
-#: includes/class-stats.php:198
+#: includes/class-stats.php:231
 msgid "joined live"
 msgstr ""
 
-#: includes/class-stats.php:202
+#: includes/class-stats.php:235
 msgid "Most watched"
 msgstr ""
 
-#: includes/class-stats.php:210
+#: includes/class-stats.php:243
 msgid "Where people watched"
 msgstr ""
 
-#: includes/class-stats.php:218
+#: includes/class-stats.php:251
 msgid "No plays on the website yet this week. Plays are counted without collecting anything about the people watching."
 msgstr ""
 
 #. translators: %d: number of failed plays
-#: includes/class-stats.php:224
+#: includes/class-stats.php:257
 #, php-format
 msgid "%d play could not start. See Faith Stream > Health."
 msgid_plural "%d plays could not start. See Faith Stream > Health."
@@ -2799,13 +2762,13 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: site name
-#: includes/class-stats.php:240
+#: includes/class-stats.php:273
 #, php-format
 msgid "%s: your videos last week"
 msgstr ""
 
 #. translators: 1: plays, 2: watched to the end
-#: includes/class-stats.php:242
+#: includes/class-stats.php:275
 #, php-format
 msgid ""
 "Plays on the website: %1$s\n"
@@ -2814,77 +2777,119 @@ msgid ""
 msgstr ""
 
 #. translators: %s: number of people
-#: includes/class-stats.php:245
+#: includes/class-stats.php:278
 #, php-format
 msgid ""
 "Joined the live service: %s\n"
 ""
 msgstr ""
 
-#: includes/class-stats.php:248
+#: includes/class-stats.php:281
 msgid "Most watched:"
 msgstr ""
 
 #. translators: %d: HTTP status code
-#: includes/class-updater.php:72
+#: includes/class-updater.php:73
 msgid "No signed release found yet."
 msgstr ""
 
 #. translators: %d: HTTP status code
-#: includes/class-updater.php:72
+#: includes/class-updater.php:73
 #, php-format
 msgid "The update server answered with status %d."
 msgstr ""
 
-#: includes/class-updater.php:90
+#: includes/class-updater.php:91
 msgid "The update information could not be read."
 msgstr ""
 
-#: includes/class-updater.php:95
+#: includes/class-updater.php:96
 msgid "This server cannot check update signatures."
 msgstr ""
 
-#: includes/class-updater.php:103
+#: includes/class-updater.php:104
 msgid "The update's signature did not match. It was not offered."
 msgstr ""
 
-#: includes/class-updater.php:107
+#: includes/class-updater.php:108
 msgid "The update information is incomplete."
 msgstr ""
 
-#: includes/class-updater.php:160
+#: includes/class-updater.php:161
 msgid "No notes for this release."
 msgstr ""
 
-#: includes/class-updater.php:174
+#: includes/class-updater.php:175
 msgid "Puts your church's videos live on your website: series, Sunday live, a searchable sermon library and a page for every message."
 msgstr ""
 
-#: includes/class-updater.php:196
+#: includes/class-updater.php:197
 msgid "This update could not be checked against its signature, so it was not installed. Try again later."
 msgstr ""
 
-#: includes/class-updater.php:207
+#: includes/class-updater.php:208
 msgid "The downloaded update did not match its signature, so it was not installed."
 msgstr ""
 
-#: includes/class-updater.php:219
+#: includes/class-updater.php:220
 msgid "Check for updates"
 msgstr ""
 
+#: includes/class-updater.php:255
+msgid "New versions come from FaithStream and install like any WordPress plugin update. Each one is checked against FaithStream's signature before it installs."
+msgstr ""
+
+#: includes/class-updater.php:257
+msgid "Installed"
+msgstr ""
+
+#: includes/class-updater.php:259
+msgid "Newest"
+msgstr ""
+
+#: includes/class-updater.php:269
+msgid "Ready to install"
+msgstr ""
+
+#: includes/class-updater.php:271
+msgid "Rolling out; your site gets it soon"
+msgstr ""
+
+#: includes/class-updater.php:273
+msgid "You're up to date"
+msgstr ""
+
+#: includes/class-updater.php:280
+msgid "Go to Plugins to update"
+msgstr ""
+
+#: includes/class-updater.php:282
+msgid "Check for updates now"
+msgstr ""
+
+#: includes/class-updater.php:288
+msgid "Install updates automatically"
+msgstr ""
+
+#. translators: %s: version number
+#: includes/class-updater.php:296
+#, php-format
+msgid "What's new in %s"
+msgstr ""
+
 #. translators: %s: series name
-#: includes/class-watch.php:191
+#: includes/class-watch.php:213
 #, php-format
 msgid "More from %s"
 msgstr ""
 
 #. translators: %s: series name
-#: includes/class-watch.php:191
+#: includes/class-watch.php:213
 msgid "More messages"
 msgstr ""
 
 #. translators: 1: video title, 2: church name
-#: includes/class-watch.php:206
+#: includes/class-watch.php:229
 #, php-format
 msgid "Watch %1$s from %2$s."
 msgstr ""

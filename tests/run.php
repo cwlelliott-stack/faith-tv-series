@@ -100,6 +100,12 @@ if ( isset( $args ) && is_array( $args ) && isset( $args[0] ) ) {
 $ftvs_strict = '' !== (string) getenv( 'FTVS_STRICT' ) && '0' !== (string) getenv( 'FTVS_STRICT' );
 $ftvs_ci     = '' !== (string) getenv( 'GITHUB_ACTIONS' );
 
+// YouTube and series built by hand are switched off on real sites for now; their code is still tested.
+add_filter( 'ftvs_extra_sources', '__return_true' );
+if ( ! post_type_exists( FTVS_Manual::TYPE ) ) {
+	FTVS_Manual::register();
+}
+
 $ftvs_files = glob( __DIR__ . '/test-*.php' );
 sort( $ftvs_files );
 $ftvs_suite = array(); // file => test function names
