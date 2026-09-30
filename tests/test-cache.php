@@ -48,6 +48,7 @@ function ftvs_t_cache_setup( $tag = 'a' ) {
 	FTVS_Test_Fetcher::reset();
 	ftvs_t_gideo();
 	update_option( 'ftvs_cleared_at', 0 );
+	update_option( 'ftvs_expired_at', 0 );
 	update_option( FTVS_Cache::QUEUE, array(), false );
 	return 'ut_' . $tag . '_' . substr( md5( uniqid( '', true ) ), 0, 10);
 }
@@ -56,9 +57,17 @@ function ftvs_t_cache_transient_name( $key ) {
 	return ftvs_t_private( 'FTVS_Cache', 'transient', array( ftvs_t_cache_hash( $key ) ) );
 }
 
-/** Pretends the fresh copy expired (WP-Cron and time are not involved: the transient is just gone). */
-function ftvs_t_cache_expire( $key ) {
+/**
+ * Pretends the fresh copy expired: the quick copy is gone and the saved one is older than the lifetime (tests use
+ * 300 s), so it is only a stand-in (WP-Cron and time are not involved).
+ */
+function ftvs_t_cache_expire( $key, $age = 301 ) {
 	delete_transient( ftvs_t_cache_transient_name( $key ) );
+	$saved = get_option( ftvs_t_cache_backup_option( $key ) );
+	if ( is_array( $saved ) && isset( $saved['t'] ) && $saved['t'] > time() - $age ) {
+		$saved['t'] = time() - $age;
+		update_option( ftvs_t_cache_backup_option( $key ), $saved, false );
+	}
 }
 
 function ftvs_t_cache_backup_option( $key ) {
@@ -546,4 +555,21 @@ function test_cache_answers_that_are_not_lists_are_never_held_back() {
 	FTVS_Test_Fetcher::answers( 'a', array( 'https://stream.test/a.m3u8', '' ) );
 	FTVS_Cache::refresh( $key, 300, ftvs_t_cache_job( 'a' ) );
 	assert_same( '', FTVS_Cache::refresh( $key, 300, ftvs_t_cache_job( 'a' ) ) );
+}
+
+function test_cache_a_fresh_saved_copy_stands_in_when_a_memory_cache_drops_the_quick_one() {
+	$key = ftvs_t_cache_setup();
+	FTVS_Test_Fetcher::answers( 'a', array( array( 'v' => 1 ), array( 'v' => 2 ) ) );
+	FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) );
+	delete_transient( ftvs_t_cache_transient_name( $key ) ); // Memcached couldn't keep it (over 1 MB)
+	assert_same( array( 'v' => 1 ), FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) ) );
+	assert_same( 1, FTVS_Test_Fetcher::count( 'a' ), 'still fresh: not fetched again' );
+	$queue = get_option( FTVS_Cache::QUEUE );
+	assert_false( isset( $queue[ $key ] ), 'and nothing queued' );
+
+	FTVS_Cache::expire(); // a ping: even a young saved copy counts as stale now
+	delete_transient( ftvs_t_cache_transient_name( $key ) );
+	assert_same( array( 'v' => 1 ), FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) ), 'shown while...' );
+	$queue = get_option( FTVS_Cache::QUEUE );
+	assert_true( isset( $queue[ $key ] ), '...the new one is fetched in the background' );
 }

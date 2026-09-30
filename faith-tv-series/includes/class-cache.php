@@ -43,6 +43,11 @@ class FTVS_Cache {
 			return is_array( $hit ) && isset( $hit['__error'] ) ? new WP_Error( isset( $hit['__code'] ) ? $hit['__code'] : 'ftvs_upstream', $hit['__error'] ) : $hit;
 		}
 		$backup = self::backup( $hash );
+		// The saved copy is still fresh itself: the quick copy was only dropped by a memory cache (Memcached holds
+		// nothing over 1 MB, and a big sermon library is more). Use it; don't fetch everything again.
+		if ( null !== $backup && time() - $backup['t'] < $ttl && $backup['t'] > max( (int) get_option( 'ftvs_cleared_at', 0 ), (int) get_option( 'ftvs_expired_at', 0 ) ) ) {
+			return $backup['d'];
+		}
 		if ( null !== $backup && self::can_serve_stale( $backup, $ttl ) ) {
 			// Stale-while-revalidate: this visitor gets the saved copy; a fresh one comes in the background.
 			set_transient( self::transient( $hash ), $backup['d'], min( $ttl, MINUTE_IN_SECONDS ) );
@@ -163,6 +168,7 @@ class FTVS_Cache {
 	 */
 	public static function expire() {
 		update_option( 'ftvs_cache_gen', (int) get_option( 'ftvs_cache_gen', 1 ) + 1, true );
+		update_option( 'ftvs_expired_at', time(), true ); // saved copies from before now are stale too
 		delete_transient( self::down_key() );
 	}
 
