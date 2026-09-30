@@ -140,10 +140,10 @@
 		of: function (id) {
 			return this.all()[id] || null;
 		},
-		save: function (id, t, d, series, done) {
+		save: function (id, t, d, series, done, title) {
 			if (!CONFIG.resume || !id) return;
 			var all = this.all();
-			all[id] = { t: Math.round(t), d: Math.round(d || 0), at: Date.now(), s: series || '', done: !!done };
+			all[id] = { t: Math.round(t), d: Math.round(d || 0), at: Date.now(), s: series || '', done: !!done, n: String(title || '').slice(0, 120) };
 			var keys = Object.keys(all);
 			if (keys.length > 200) {
 				keys.sort(function (a, b) { return all[a].at - all[b].at; });
@@ -928,6 +928,45 @@
 		}
 		initWarmup(root);
 		markProgress(root);
+		continueLine(root);
+	}
+
+	/* "Continue watching": the message someone left partway, from a series in this section. */
+	function continueLine(root) {
+		if (!CONFIG.resume || root.getAttribute('data-play') !== 'site' || !HAS_DIALOG) return;
+		var all = Progress.all();
+		var cards = {};
+		Array.prototype.forEach.call(root.querySelectorAll('.ftvs__card[data-item]'), function (card) {
+			var item = readItem(card);
+			if (item) cards[item.id] = { card: card, item: item };
+		});
+		var best = null;
+		Object.keys(all).forEach(function (id) {
+			var p = all[id];
+			if (p.done || p.t < 60 || !p.n || Date.now() - p.at > 45 * 86400000) return;
+			var home = cards[id] || cards[p.s];
+			if (home && (!best || p.at > best.p.at)) best = { id: id, p: p, home: home };
+		});
+		if (!best) return;
+		var left = best.p.d ? Math.max(1, Math.round((best.p.d - best.p.t) / 60)) : 0;
+		var go = el('button', { type: 'button', 'class': 'ftvs-continue__go' }, [
+			el('span', { 'class': 'ftvs-continue__label', text: str('continueWatching', 'Continue watching') }),
+			el('span', { 'class': 'ftvs-continue__title', text: best.p.n }),
+			left ? el('span', { 'class': 'ftvs-continue__left', text: str('minLeft', '%d min left').replace('%d', left) }) : null
+		]);
+		var bar = el('span', { 'class': 'ftvs-prog', 'aria-hidden': 'true' }, [el('i')]);
+		if (best.p.d) bar.firstChild.style.width = Math.min(100, Math.round((100 * best.p.t) / best.p.d)) + '%';
+		var line = el('div', { 'class': 'ftvs-continue' }, [go, bar]);
+		go.addEventListener('click', function () {
+			var h = best.home;
+			var kind = h.card.getAttribute('data-kind');
+			if (kind === 'video') Player.open(root, 'video', h.item, h.card.href);
+			else Player.open(root, 'category', h.item, h.card.href, { video: best.id });
+		});
+		// Inside the section's own box, above everything (under its heading when it has one).
+		var head = root.querySelector('.ftvs__head');
+		if (head && head.parentNode === root) head.parentNode.insertBefore(line, head.nextSibling);
+		else root.insertBefore(line, root.firstChild);
 	}
 
 	function pauseAll(on) {
@@ -2259,7 +2298,7 @@
 			var entry = entryOf();
 			if (!ep || !entry || entry.kind === 'live' || !video || !(video.currentTime > 0)) return;
 			var series = entry.kind === 'category' ? entry.item.id : ep.parent || '';
-			Progress.save(ep.id, done ? 0 : video.currentTime, isFinite(video.duration) ? video.duration : ep.length, series, done || (video.duration && video.currentTime / video.duration > 0.95));
+			Progress.save(ep.id, done ? 0 : video.currentTime, isFinite(video.duration) ? video.duration : ep.length, series, done || (video.duration && video.currentTime / video.duration > 0.95), ep.title);
 		}
 
 		function onEnded() {

@@ -1243,6 +1243,9 @@ class FTVS_Renderer {
 				'checkThemIn'   => __( 'Check them in', 'faith-tv-series' ),
 				'familyDone'    => __( 'Thank you! They\'re checked in too.', 'faith-tv-series' ),
 				'noFamily'      => __( 'No one else is in your household on file.', 'faith-tv-series' ),
+				'continueWatching' => __( 'Continue watching', 'faith-tv-series' ),
+				/* translators: %d: minutes */
+				'minLeft'          => __( '%d min left', 'faith-tv-series' ),
 				'listen'       => __( 'Listen', 'faith-tv-series' ),
 				'watchVideo'   => __( 'Watch the video', 'faith-tv-series' ),
 				'transcript'   => __( 'Transcript', 'faith-tv-series' ),

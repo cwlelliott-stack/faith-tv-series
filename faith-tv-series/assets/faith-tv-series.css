@@ -2896,6 +2896,68 @@ body > .ftvs-toast {
 	opacity: 0.6;
 }
 
+/* ---------- Continue watching ---------- */
+
+.ftvs-continue {
+	position: relative;
+	margin: 0 0 16px;
+	overflow: hidden;
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.ftvs--light .ftvs-continue {
+	background: rgba(0, 0, 0, 0.05);
+}
+
+.ftvs-continue__go {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 12px;
+	width: 100%;
+	padding: 12px 16px 14px;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.ftvs-continue__go:hover .ftvs-continue__title,
+.ftvs-continue__go:focus-visible .ftvs-continue__title {
+	text-decoration: underline;
+}
+
+.ftvs-continue__go:focus-visible {
+	outline: 2px solid var(--ftvs-accent-text);
+	outline-offset: -2px;
+}
+
+.ftvs-continue__label {
+	color: var(--ftvs-accent-text);
+	font-family: var(--ftvs-font);
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+}
+
+.ftvs-continue__title {
+	font-family: var(--ftvs-font);
+	font-weight: 800;
+}
+
+.ftvs-continue__left {
+	color: var(--ftvs-muted);
+	font-size: 14px;
+}
+
+.ftvs-show .ftvs-continue,
+.ftvs-continue:has(+ .ftvs-show) {
+	margin-bottom: 0;
+}
+
 /* Right-to-left pages: arrows point the other way (play buttons don't). */
 [dir="rtl"] .ftvs__arrow svg,
 [dir="rtl"] .ftvs-list__row > svg,
