@@ -17,6 +17,11 @@ what="${1:-all}"
 failed=0
 
 lint_php() {
+	if ! $PHP -r 'echo 1;' > /dev/null 2>&1; then
+		echo "FAIL no PHP to check with ($PHP). Install PHP, or: PHP=\"docker exec -i ftvs3-wp php\" bash tests/lint.sh php"
+		failed=1
+		return
+	fi
 	echo "PHP $($PHP -r 'echo PHP_VERSION;')"
 	local count=0 file out status
 	while IFS= read -r -d '' file; do
