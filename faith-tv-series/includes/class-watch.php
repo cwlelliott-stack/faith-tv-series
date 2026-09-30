@@ -182,7 +182,7 @@ class FTVS_Watch {
 		</div>
 		<?php
 		if ( '' !== $video['parent'] ) {
-			echo FTVS_Renderer::render( // phpcs:ignore WordPress.Security.EscapeOutput -- escaped by the renderer.
+			$more = FTVS_Renderer::render(
 				array(
 					'category'      => $video['parent'],
 					'layout'        => 'row',
@@ -192,6 +192,7 @@ class FTVS_Watch {
 					'badge'         => '',
 				)
 			);
+			echo $more; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- FTVS_Renderer escapes every value it prints.
 		}
 		return trim( ob_get_clean() );
 	}

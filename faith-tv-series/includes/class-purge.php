@@ -42,7 +42,7 @@ class FTVS_Purge {
 			},
 			'LiteSpeed'      => function () {
 				if ( defined( 'LSCWP_V' ) || has_action( 'litespeed_purge_all' ) ) {
-					do_action( 'litespeed_purge_all' );
+					do_action( 'litespeed_purge_all' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- that cache plugin's own purge hook.
 					return true;
 				}
 			},
@@ -86,13 +86,13 @@ class FTVS_Purge {
 			},
 			'Cloudflare'     => function () {
 				if ( has_action( 'cloudflare_purge_everything' ) ) {
-					do_action( 'cloudflare_purge_everything' );
+					do_action( 'cloudflare_purge_everything' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- that cache plugin's own purge hook.
 					return true;
 				}
 			},
 			'Breeze'         => function () {
 				if ( has_action( 'breeze_clear_all_cache' ) ) {
-					do_action( 'breeze_clear_all_cache' );
+					do_action( 'breeze_clear_all_cache' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- that cache plugin's own purge hook.
 					return true;
 				}
 			},

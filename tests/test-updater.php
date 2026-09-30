@@ -108,7 +108,7 @@ function test_updater_verify_fills_in_optional_fields() {
 	assert_not_error( $release );
 	assert_same( '', $release['notes'] );
 	assert_same( '', $release['published'] );
-	assert_same( '6.0', $release['requires'] );
+	assert_same( '6.1', $release['requires'] );
 	assert_same( '7.4', $release['requires_php'] );
 	assert_same( get_bloginfo( 'version' ), $release['tested'] );
 	assert_false( $release['held'], 'no rollout given: everyone' );

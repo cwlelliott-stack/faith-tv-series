@@ -92,13 +92,15 @@ def manifest(key, version, sha256, notes, rollout):
     """latest.json: the release details as a string, and the Ed25519 signature of exactly that string."""
     readme = read(README)
     tested = re.search(r'Tested up to:\s+([0-9.]+)', readme)
+    requires = re.search(r'Requires at least:\s+([0-9.]+)', readme)
+    requires_php = re.search(r'Requires PHP:\s+([0-9.]+)', readme)
     payload = json.dumps(
         {
             'version': version,
             'package': f'https://github.com/{REPO}/releases/download/v{version}/faith-tv-series.zip',
             'sha256': sha256,
-            'requires': '6.0',
-            'requires_php': '7.4',
+            'requires': requires.group(1) if requires else '6.1',
+            'requires_php': requires_php.group(1) if requires_php else '7.4',
             'tested': tested.group(1) if tested else '',
             'notes': notes,
             'published': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),

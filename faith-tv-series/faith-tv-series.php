@@ -3,7 +3,7 @@
  * Plugin Name:       Faith TV Series
  * Description:       By FaithStream. Puts your church's videos live on your website: series, Sunday live, a searchable sermon library and a page for every message, from Faith Stream, a Gideo TV channel or YouTube.
  * Version:           1.2.1
- * Requires at least: 6.0
+ * Requires at least: 6.1
  * Requires PHP:      7.4
  * Author:            FaithStream
  * Author URI:        https://faithstream.video

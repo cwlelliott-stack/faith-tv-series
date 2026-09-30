@@ -351,7 +351,7 @@ class FTVS_Health {
 			rest_url( 'faith-tv/v1/ping' ),
 			array(
 				'timeout'   => 10,
-				'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
+				'sslverify' => apply_filters( 'https_local_ssl_verify', false ), // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress core's own filter, read as core reads it.
 				'headers'   => array( 'Cache-Control' => 'no-cache' ),
 				'cookies'   => array(),
 			)

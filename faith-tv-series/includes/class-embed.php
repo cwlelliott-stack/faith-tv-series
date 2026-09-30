@@ -58,7 +58,7 @@ class FTVS_Embed {
 		$kind  = isset( $args['kind'] ) ? $args['kind'] : 'category';
 		$start = in_array( $kind, array( 'video', 'live', 'library' ), true ) ? $kind : ( isset( $args['layout'] ) ? $args['layout'] : '' );
 		return '<iframe src="' . esc_url( self::url( $args ) ) . '" title="' . esc_attr( $title ) . '" data-ftvs-embed loading="lazy" allow="autoplay; fullscreen; picture-in-picture; web-share; clipboard-write" allowfullscreen style="width:100%;height:' . (int) self::start_height( $start ) . 'px;border:0;display:block"></iframe>' . "\n"
-			. '<script src="' . esc_url( FTVS_URL . 'assets/embed.js' ) . '" async></script>';
+			. '<script src="' . esc_url( FTVS_URL . 'assets/embed.js' ) . '" async></script>'; // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- embed code the church copies onto other websites, never printed here.
 	}
 
 	/** A sensible height before the page tells the frame its real size. */

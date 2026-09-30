@@ -31,7 +31,7 @@ class FTVS_Admin {
 		// WordPress refuses unknown pages before admin_init runs; this fires just before that refusal.
 		add_action( 'admin_page_access_denied', array( __CLASS__, 'redirect_old_page' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
-		foreach ( array( 'refresh', 'lookup', 'connect', 'autoupdate', 'demo', 'watch_page', 'secret', 'purge', 'recheck' ) as $action ) {
+		foreach ( array( 'refresh', 'lookup', 'connect', 'demo', 'watch_page', 'secret', 'purge', 'recheck' ) as $action ) {
 			add_action( 'admin_post_ftvs_' . $action, array( __CLASS__, 'do_' . $action ) );
 		}
 		add_action( 'wp_ajax_ftvs_preview_url', array( __CLASS__, 'ajax_preview_url' ) );
@@ -158,7 +158,7 @@ class FTVS_Admin {
 	/** Step 2 of connecting: find the church, keep it aside until the admin confirms. */
 	public static function do_lookup() {
 		self::guard( 'ftvs_lookup' );
-		$post   = wp_unslash( $_POST );
+		$post   = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- checked in guard() above.
 		$source = isset( $post['source'] ) && in_array( $post['source'], array( 'faithstream', 'youtube' ), true ) ? $post['source'] : 'gideo';
 		$field  = function ( $key ) use ( $post ) {
 			return isset( $post[ $key ] ) ? sanitize_text_field( $post[ $key ] ) : '';
@@ -266,17 +266,6 @@ class FTVS_Admin {
 		FTVS_Health::where_used( true );
 		FTVS_Health::check_used( true );
 		wp_safe_redirect( self::url( 'faith-stream-health', array( 'ftvs_rechecked' => 1 ) ) );
-		exit;
-	}
-
-	/** Same switch as "Enable auto-updates" on the Plugins page. */
-	public static function do_autoupdate() {
-		self::guard( 'ftvs_autoupdate', 'update_plugins' );
-		$file = plugin_basename( FTVS_FILE );
-		$list = (array) get_site_option( 'auto_update_plugins', array() );
-		$list = ! empty( $_POST['enable'] ) ? array_values( array_unique( array_merge( $list, array( $file ) ) ) ) : array_values( array_diff( $list, array( $file ) ) );
-		update_site_option( 'auto_update_plugins', $list );
-		wp_safe_redirect( self::url( 'faith-stream-updates' ) );
 		exit;
 	}
 
@@ -1635,63 +1624,9 @@ class FTVS_Admin {
 	/* ---------- Updates ---------- */
 
 	private static function updates() {
-		if ( ! class_exists( 'FTVS_Updater' ) ) {
-			return;
+		if ( class_exists( 'FTVS_Updater' ) ) {
+			FTVS_Updater::tab(); // the direct edition only
 		}
-		$release = FTVS_Updater::latest();
-		$auto    = in_array( plugin_basename( FTVS_FILE ), (array) get_site_option( 'auto_update_plugins', array() ), true );
-		$newer   = ! is_wp_error( $release ) && version_compare( $release['version'], FTVS_VERSION, '>' );
-		?>
-		<div class="ftvs-card ftvs-pad ftvs-narrow">
-			<h2 class="ftvs-h2"><?php esc_html_e( 'Updates', 'faith-tv-series' ); ?></h2>
-			<p class="ftvs-lead"><?php esc_html_e( 'New versions come from FaithStream and install like any WordPress plugin update. Each one is checked against FaithStream\'s signature before it installs.', 'faith-tv-series' ); ?></p>
-			<dl class="ftvs-dl">
-				<dt><?php esc_html_e( 'Installed', 'faith-tv-series' ); ?></dt>
-				<dd><strong><?php echo esc_html( FTVS_VERSION ); ?></strong></dd>
-				<dt><?php esc_html_e( 'Newest', 'faith-tv-series' ); ?></dt>
-				<dd>
-					<?php if ( is_wp_error( $release ) ) : ?>
-						<?php echo esc_html( $release->get_error_message() ); ?>
-					<?php else : ?>
-						<strong><?php echo esc_html( $release['version'] ); ?></strong>
-						<?php if ( $release['published'] ) : ?>
-							<span class="ftvs-muted">(<?php echo esc_html( mysql2date( get_option( 'date_format' ), $release['published'] ) ); ?>)</span>
-						<?php endif; ?>
-						<?php if ( $newer ) : ?>
-							<span class="ftvs-chip is-new"><?php esc_html_e( 'Ready to install', 'faith-tv-series' ); ?></span>
-						<?php elseif ( ! empty( $release['held'] ) ) : ?>
-							<span class="ftvs-chip"><?php esc_html_e( 'Rolling out; your site gets it soon', 'faith-tv-series' ); ?></span>
-						<?php else : ?>
-							<span class="ftvs-chip is-ok"><?php esc_html_e( 'You\'re up to date', 'faith-tv-series' ); ?></span>
-						<?php endif; ?>
-					<?php endif; ?>
-				</dd>
-			</dl>
-			<div class="ftvs-inline" style="margin:20px 0">
-				<?php if ( $newer ) : ?>
-					<a class="button button-primary ftvs-btn-primary" href="<?php echo esc_url( admin_url( 'plugins.php?plugin_status=upgrade' ) ); ?>"><?php esc_html_e( 'Go to Plugins to update', 'faith-tv-series' ); ?></a>
-				<?php endif; ?>
-				<a class="button ftvs-btn-secondary" href="<?php echo esc_url( FTVS_Updater::check_url() ); ?>"><?php esc_html_e( 'Check for updates now', 'faith-tv-series' ); ?></a>
-				<?php if ( current_user_can( 'update_plugins' ) && function_exists( 'wp_is_auto_update_enabled_for_type' ) && wp_is_auto_update_enabled_for_type( 'plugin' ) ) : ?>
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ftvs-inline-form">
-						<input type="hidden" name="action" value="ftvs_autoupdate">
-						<input type="hidden" name="enable" value="<?php echo $auto ? '0' : '1'; ?>">
-						<?php wp_nonce_field( 'ftvs_autoupdate' ); ?>
-						<button class="ftvs-switch ftvs-switch--button" aria-pressed="<?php echo $auto ? 'true' : 'false'; ?>"><span class="ftvs-switch__track"></span><span><?php esc_html_e( 'Install updates automatically', 'faith-tv-series' ); ?></span></button>
-					</form>
-				<?php endif; ?>
-			</div>
-			<?php if ( ! is_wp_error( $release ) && '' !== trim( $release['notes'] ) ) : ?>
-				<h3 class="ftvs-h3">
-					<?php
-					/* translators: %s: version number */
-					printf( esc_html__( 'What\'s new in %s', 'faith-tv-series' ), esc_html( $release['version'] ) );
-					?>
-				</h3>
-				<div class="ftvs-notes"><?php echo wp_kses_post( wpautop( esc_html( $release['notes'] ) ) ); ?></div>
-			<?php endif; ?>
-		</div>
-		<?php
 	}
 
 	/* ---------- Bits ---------- */

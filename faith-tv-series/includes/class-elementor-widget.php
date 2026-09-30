@@ -317,7 +317,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 		if ( 'custom' === $category ) {
 			$category = isset( $s['category_id'] ) ? trim( $s['category_id'] ) : '';
 		}
-		echo FTVS_Renderer::render( // phpcs:ignore WordPress.Security.EscapeOutput -- the renderer escapes everything.
+		$html = FTVS_Renderer::render(
 			array(
 				'category'     => $category,
 				'video'         => isset( $s['video'] ) ? trim( (string) $s['video'] ) : '',
@@ -337,6 +337,7 @@ class FTVS_Elementor_Widget extends \Elementor\Widget_Base {
 				'autoplay'     => isset( $s['autoplay'] ) ? $s['autoplay'] : 7,
 			)
 		);
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- FTVS_Renderer escapes every value it prints.
 	}
 
 	/** null = the site default; '' = no badge. */
@@ -456,7 +457,7 @@ class FTVS_Elementor_Live_Widget extends \Elementor\Widget_Base {
 
 	protected function render() {
 		$s = $this->get_settings_for_display();
-		echo FTVS_Renderer::live( // phpcs:ignore WordPress.Security.EscapeOutput -- the renderer escapes everything.
+		$html = FTVS_Renderer::live(
 			array(
 				'title'     => isset( $s['title'] ) ? $s['title'] : '',
 				'eyebrow'   => isset( $s['eyebrow'] ) ? $s['eyebrow'] : '',
@@ -464,6 +465,7 @@ class FTVS_Elementor_Live_Widget extends \Elementor\Widget_Base {
 				'theme'     => isset( $s['theme'] ) && 'default' !== $s['theme'] ? $s['theme'] : null,
 			)
 		);
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- FTVS_Renderer escapes every value it prints.
 	}
 }
 
@@ -546,7 +548,7 @@ class FTVS_Elementor_Library_Widget extends \Elementor\Widget_Base {
 
 	protected function render() {
 		$s = $this->get_settings_for_display();
-		echo FTVS_Renderer::library( // phpcs:ignore WordPress.Security.EscapeOutput -- the renderer escapes everything.
+		$html = FTVS_Renderer::library(
 			array(
 				'title'     => isset( $s['title'] ) ? $s['title'] : '',
 				'eyebrow'   => isset( $s['eyebrow'] ) ? $s['eyebrow'] : '',
@@ -554,5 +556,6 @@ class FTVS_Elementor_Library_Widget extends \Elementor\Widget_Base {
 				'theme'     => isset( $s['theme'] ) && 'default' !== $s['theme'] ? $s['theme'] : null,
 			)
 		);
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- FTVS_Renderer escapes every value it prints.
 	}
 }
