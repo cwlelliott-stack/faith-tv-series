@@ -139,7 +139,11 @@ class FTVS_Rest {
 		if ( self::hidden() ) {
 			return self::unknown();
 		}
-		$q    = trim( sanitize_text_field( (string) $request['q'] ) );
+		$q = self::query( $request['q'] );
+		// Searching asks the platform each time, so it shares the search route's limit.
+		if ( '' !== $q && self::limited( 'search', 30, MINUTE_IN_SECONDS ) ) {
+			return new WP_Error( 'ftvs_slow_down', __( 'Too many searches. Try again in a minute.', 'faith-tv-series' ), array( 'status' => 429 ) );
+		}
 		$list = '' !== $q ? FTVS_Catalog::search( $q ) : FTVS_Catalog::library();
 		if ( is_wp_error( $list ) ) {
 			return self::upstream( $list );
@@ -202,7 +206,7 @@ class FTVS_Rest {
 		if ( self::hidden() ) {
 			return self::unknown();
 		}
-		$q = trim( sanitize_text_field( (string) $request['q'] ) );
+		$q = self::query( $request['q'] );
 		if ( strlen( $q ) < 2 ) {
 			return self::cacheable( array( 'videos' => array() ) );
 		}
@@ -230,10 +234,17 @@ class FTVS_Rest {
 		}
 		$body = json_decode( $request->get_body(), true );
 		$body = is_array( $body ) ? $body : $request->get_params();
+		$id = isset( $body['id'] ) && is_string( $body['id'] ) ? $body['id'] : '';
+		// The title the dashboard and the weekly email show: the channel's own when it is known here, so a
+		// visitor can't choose what the admin reads.
+		$title = FTVS_Catalog::cached_title( $id );
+		if ( '' === $title && isset( $body['t'] ) && is_string( $body['t'] ) ) {
+			$title = $body['t'];
+		}
 		FTVS_Stats::record(
-			isset( $body['e'] ) ? (string) $body['e'] : '',
-			isset( $body['id'] ) ? (string) $body['id'] : '',
-			isset( $body['t'] ) ? (string) $body['t'] : '',
+			isset( $body['e'] ) && is_string( $body['e'] ) ? $body['e'] : '',
+			$id,
+			$title,
 			isset( $body['p'] ) ? (string) $body['p'] : '',
 			! empty( $body['embed'] )
 		);
@@ -260,12 +271,16 @@ class FTVS_Rest {
 		if ( ! is_array( $data ) || empty( $data['ts'] ) || abs( time() - (int) $data['ts'] ) > 600 ) {
 			return new WP_Error( 'ftvs_stale', 'Stale or unreadable ping', array( 'status' => 400 ) );
 		}
-		if ( get_transient( 'ftvs_refresh_seen' ) === md5( $body ) ) {
+		// Pings seen in the last ten minutes (the window a ping is accepted in): a replayed one does nothing.
+		$seen = get_transient( 'ftvs_refresh_seen' );
+		$seen = is_array( $seen ) ? $seen : array();
+		if ( in_array( md5( $body ), $seen, true ) ) {
 			return rest_ensure_response( array( 'ok' => true, 'repeat' => true ) );
 		}
-		set_transient( 'ftvs_refresh_seen', md5( $body ), 10 * MINUTE_IN_SECONDS );
+		$seen[] = md5( $body );
+		set_transient( 'ftvs_refresh_seen', array_slice( $seen, -50 ), 10 * MINUTE_IN_SECONDS );
 		update_option( 'ftvs_last_ping', array( 't' => time(), 'event' => isset( $data['event'] ) ? preg_replace( '/[^a-z0-9._-]/', '', strtolower( (string) $data['event'] ) ) : '' ), false );
-		FTVS_Cache::clear();
+		FTVS_Cache::expire(); // visitors keep the saved copies while the new ones load in the background
 		FTVS_Health::warm_soon();
 		FTVS_Purge::soon();
 		return rest_ensure_response( array( 'ok' => true ) );
@@ -339,9 +354,29 @@ class FTVS_Rest {
 		return $ids;
 	}
 
+	/** Search words: plain text, at most 100 characters. */
+	private static function query( $raw ) {
+		$q = is_string( $raw ) ? trim( sanitize_text_field( $raw ) ) : '';
+		return function_exists( 'mb_substr' ) ? mb_substr( $q, 0, 100 ) : substr( $q, 0, 100 );
+	}
+
 	/** A small per-visitor limit (visitor = a hash of the address, kept a few minutes). */
 	public static function limited( $bucket, $max, $window ) {
-		$ip  = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+		/**
+		 * The visitor's address for the limits. Behind a proxy or CDN that doesn't pass the real address on,
+		 * return it from the header your host sets (for example CF-Connecting-IP).
+		 *
+		 * @param string $ip REMOTE_ADDR.
+		 */
+		$ip = (string) apply_filters( 'ftvs_client_ip', $ip );
+		// IPv6: one household usually holds a whole /64, so a visitor can't dodge the limit by changing address.
+		if ( false !== strpos( $ip, ':' ) && function_exists( 'inet_pton' ) ) {
+			$packed = @inet_pton( $ip ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			if ( false !== $packed && 16 === strlen( $packed ) ) {
+				$ip = bin2hex( substr( $packed, 0, 8 ) ) . '/64';
+			}
+		}
 		$key = 'ftvs_rl_' . md5( $bucket . '|' . $ip . '|' . wp_salt( 'nonce' ) );
 		$n   = (int) get_transient( $key );
 		if ( $n >= $max ) {

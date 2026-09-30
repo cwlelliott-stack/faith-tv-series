@@ -28,6 +28,7 @@ class FTVS_Watch {
 		add_filter( 'the_content', array( __CLASS__, 'content' ), 99999 );
 		add_filter( 'document_title_parts', array( __CLASS__, 'document_title' ), 99 );
 		add_filter( 'the_title', array( __CLASS__, 'page_title' ), 99, 2 );
+		add_filter( 'request', array( __CLASS__, 'real_child_pages' ) );
 		add_action( 'wp_head', array( __CLASS__, 'head' ), 1 );
 		add_action( 'post_updated', array( __CLASS__, 'maybe_flush' ), 10, 1 );
 		add_action( 'init', array( __CLASS__, 'sitemap' ), 30 );
@@ -68,7 +69,7 @@ class FTVS_Watch {
 		$ver = md5( $page . '|' . $uri );
 		if ( get_option( 'ftvs_rewrite_ver' ) !== $ver ) {
 			update_option( 'ftvs_rewrite_ver', $ver, true );
-			flush_rewrite_rules( false );
+			delete_option( 'rewrite_rules' ); // rebuilt when this request is parsed, with every plugin's rules
 		}
 	}
 
@@ -78,10 +79,19 @@ class FTVS_Watch {
 		}
 	}
 
+	/** A real page under the Watch page (watch/live/, say) is that page, not a message called "live". */
+	public static function real_child_pages( $vars ) {
+		if ( empty( $vars[ self::VAR ] ) || empty( $vars['page_id'] ) ) {
+			return $vars;
+		}
+		$path = get_page_uri( (int) $vars['page_id'] ) . '/' . $vars[ self::VAR ];
+		return get_page_by_path( $path ) ? array( 'pagename' => $path ) : $vars;
+	}
+
 	/** The requested video; unknown ones are a plain 404. */
 	public static function template_redirect() {
 		$id = get_query_var( self::VAR );
-		if ( '' === $id || ! is_page( self::page_id() ) ) {
+		if ( '' === $id || ! self::page_id() || ! is_page( self::page_id() ) ) {
 			return;
 		}
 		$id    = sanitize_text_field( $id );
@@ -117,7 +127,7 @@ class FTVS_Watch {
 			return $title;
 		}
 		self::$titled = true;
-		return self::$video['title'];
+		return esc_html( self::$video['title'] ); // themes print the_title() as HTML
 	}
 
 	public static function document_title( $parts ) {
@@ -240,6 +250,11 @@ class FTVS_Watch {
 		return defined( 'WPSEO_VERSION' ) || class_exists( 'RankMath' ) || defined( 'AIOSEO_VERSION' ) || defined( 'SEOPRESS_VERSION' );
 	}
 
+	/** The message's own address wherever WordPress (or a plugin that asks it) builds the canonical link. */
+	public static function canonical( $url, $post = null ) {
+		return null !== self::$video ? self::url( self::$video['id'] ) : $url;
+	}
+
 	/** SEO plugins describe the Watch page itself; point them at the message instead. */
 	private static function quiet_seo_plugins() {
 		$v     = self::$video;
@@ -255,14 +270,50 @@ class FTVS_Watch {
 		$image = function () use ( $v ) {
 			return '' !== $v['poster'] ? $v['poster'] : $v['image'];
 		};
-		foreach ( array( 'wpseo_title', 'wpseo_opengraph_title', 'wpseo_twitter_title', 'rank_math/frontend/title', 'rank_math/opengraph/facebook/og_title' ) as $hook ) {
+		add_filter( 'get_canonical_url', array( __CLASS__, 'canonical' ), 99, 2 );
+		foreach ( array( 'wpseo_title', 'wpseo_opengraph_title', 'wpseo_twitter_title', 'rank_math/frontend/title', 'rank_math/opengraph/facebook/og_title', 'aioseo_title', 'seopress_titles_title' ) as $hook ) {
 			add_filter( $hook, $title, 99 );
 		}
-		foreach ( array( 'wpseo_metadesc', 'wpseo_opengraph_desc', 'rank_math/frontend/description', 'rank_math/opengraph/facebook/og_description' ) as $hook ) {
+		foreach ( array( 'wpseo_metadesc', 'wpseo_opengraph_desc', 'rank_math/frontend/description', 'rank_math/opengraph/facebook/og_description', 'aioseo_description', 'seopress_titles_desc' ) as $hook ) {
 			add_filter( $hook, $desc, 99 );
 		}
-		foreach ( array( 'wpseo_canonical', 'wpseo_opengraph_url', 'rank_math/frontend/canonical', 'rank_math/opengraph/facebook/og_url' ) as $hook ) {
+		foreach ( array( 'wpseo_canonical', 'wpseo_opengraph_url', 'rank_math/frontend/canonical', 'rank_math/opengraph/facebook/og_url', 'aioseo_canonical_url' ) as $hook ) {
 			add_filter( $hook, $url, 99 );
+		}
+		// SEOPress hands over the whole <link> tag.
+		add_filter(
+			'seopress_titles_canonical',
+			function () use ( $url ) {
+				return '<link rel="canonical" href="' . esc_url( $url() ) . '" />';
+			},
+			99
+		);
+		// All in One SEO's social tags come as one list.
+		foreach ( array( 'aioseo_facebook_tags', 'aioseo_twitter_tags' ) as $hook ) {
+			add_filter(
+				$hook,
+				function ( $tags ) use ( $title, $desc, $url, $image ) {
+					if ( ! is_array( $tags ) ) {
+						return $tags;
+					}
+					$set = array(
+						'og:title'            => $title(),
+						'og:description'      => $desc(),
+						'og:url'              => $url(),
+						'og:image'            => $image(),
+						'twitter:title'       => $title(),
+						'twitter:description' => $desc(),
+						'twitter:image'       => $image(),
+					);
+					foreach ( $set as $k => $v ) {
+						if ( array_key_exists( $k, $tags ) && '' !== (string) $v ) {
+							$tags[ $k ] = $v;
+						}
+					}
+					return $tags;
+				},
+				99
+			);
 		}
 		foreach ( array( 'wpseo_opengraph_image', 'wpseo_twitter_image', 'rank_math/opengraph/facebook/image', 'rank_math/opengraph/twitter/image' ) as $hook ) {
 			add_filter( $hook, $image, 99 );

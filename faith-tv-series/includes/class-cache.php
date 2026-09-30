@@ -104,15 +104,18 @@ class FTVS_Cache {
 		}
 
 		set_transient( self::transient( $hash ), $data, $ttl );
-		update_option(
-			'ftvs_bk_' . $hash,
-			array(
-				'__ftvs' => 2,
-				't'      => time(),
-				'd'      => $data,
-			),
-			false
-		);
+		// Search answers get no outage copy: every different search would leave a row behind forever.
+		if ( 0 !== strpos( $key, 's_' ) ) {
+			update_option(
+				'ftvs_bk_' . $hash,
+				array(
+					'__ftvs' => 2,
+					't'      => time(),
+					'd'      => $data,
+				),
+				false
+			);
+		}
 		self::note_ok();
 		if ( null === $backup || md5( serialize( $backup['d'] ) ) !== md5( serialize( $data ) ) ) { // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
 			do_action( 'ftvs_cache_changed', $key, $data, null === $backup ? null : $backup['d'] );
@@ -130,6 +133,15 @@ class FTVS_Cache {
 	 * Makes every section fetch fresh answers (backups stay as the outage fallback).
 	 * Bumping a generation number works with any object cache, not just the options table.
 	 */
+	/**
+	 * Everything counts as stale, but visitors keep getting the saved copies while fresh ones are fetched in the
+	 * background (a ping from Faith Stream, an update of the plugin). clear() is for "Refresh from your channel".
+	 */
+	public static function expire() {
+		update_option( 'ftvs_cache_gen', (int) get_option( 'ftvs_cache_gen', 1 ) + 1, true );
+		delete_transient( self::down_key() );
+	}
+
 	public static function clear() {
 		update_option( 'ftvs_cache_gen', (int) get_option( 'ftvs_cache_gen', 1 ) + 1, true );
 		update_option( 'ftvs_cleared_at', time(), true );
@@ -203,8 +215,9 @@ class FTVS_Cache {
 		if ( $backup['t'] <= (int) get_option( 'ftvs_cleared_at', 0 ) ) {
 			return false; // saved before "Refresh from your channel": fetch now
 		}
-		// Only while the copy is fairly recent; after that (e.g. WP-Cron not running) fetch inline.
-		return time() - $backup['t'] < max( 3 * $ttl, 30 * MINUTE_IN_SECONDS );
+		// Only while the copy is fairly recent; after that (e.g. WP-Cron not running) fetch inline. Quick-changing
+		// answers (the live status) are never more than three lifetimes old.
+		return time() - $backup['t'] < ( $ttl < MINUTE_IN_SECONDS ? 3 * $ttl : max( 3 * $ttl, 30 * MINUTE_IN_SECONDS ) );
 	}
 
 	private static function queue( $key, $ttl, $job ) {

@@ -304,7 +304,7 @@ function test_embed_code_is_an_iframe_plus_the_helper_script() {
 	);
 	assert_matches( '/^<iframe src="[^"]+" title="[^"]*" data-ftvs-embed loading="lazy"/', $code );
 	assert_contains( 'title="Kids &quot;Rock&quot; &amp; more"', $code, 'the title is escaped' );
-	assert_contains( 'allow="autoplay; fullscreen; picture-in-picture; web-share"', $code );
+	assert_contains( 'allow="autoplay; fullscreen; picture-in-picture; web-share; clipboard-write"', $code );
 	assert_contains( 'allowfullscreen', $code );
 	assert_contains( 'height:' . FTVS_Embed::start_height( 'row' ) . 'px', $code );
 	assert_contains( '<script src="' . FTVS_URL . 'assets/embed.js" async></script>', $code );

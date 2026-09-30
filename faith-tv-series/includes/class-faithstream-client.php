@@ -199,7 +199,7 @@ class FTVS_FaithStream_Client {
 		for ( $page_no = 1; $page_no <= 10; $page_no++ ) {
 			$page = self::get( '/api/public/categories/' . rawurlencode( $slug ) . '?per_page=200&page=' . $page_no . '&thumb_width=' . self::THUMB, null, null, true );
 			if ( is_wp_error( $page ) ) {
-				return 1 === $page_no ? $page : $all;
+				return $page; // a partial list is never saved as the whole list
 			}
 			if ( 1 === $page_no && ! empty( $page['has_own_videos'] ) ) {
 				foreach ( isset( $page['children'] ) ? (array) $page['children'] : array() as $child ) {
@@ -219,9 +219,13 @@ class FTVS_FaithStream_Client {
 		if ( $depth < 1 ) {
 			foreach ( array_slice( $kids, 0, 40 ) as $kid ) {
 				$more = self::fetch_all_under( $kid, $depth + 1 );
-				if ( ! is_wp_error( $more ) ) {
-					$all = array_merge( $all, $more );
+				if ( is_wp_error( $more ) ) {
+					if ( 'ftvs_gone' === $more->get_error_code() ) {
+						continue; // removed just now
+					}
+					return $more;
 				}
+				$all = array_merge( $all, $more );
 			}
 		}
 		return $all;
@@ -338,7 +342,7 @@ class FTVS_FaithStream_Client {
 		if ( empty( $parts['host'] ) ) {
 			return new WP_Error( 'ftvs_lookup', __( 'Type your Faith Stream address, for example stream.yourchurch.com.', 'faith-tv-series' ) );
 		}
-		$base = untrailingslashit( esc_url_raw( ( isset( $parts['scheme'] ) ? $parts['scheme'] : 'https' ) . '://' . $parts['host'] . ( isset( $parts['port'] ) ? ':' . $parts['port'] : '' ) ) );
+		$base = FTVS_Settings::secure_url( untrailingslashit( esc_url_raw( ( isset( $parts['scheme'] ) ? $parts['scheme'] : 'https' ) . '://' . $parts['host'] . ( isset( $parts['port'] ) ? ':' . $parts['port'] : '' ) ) ) );
 		if ( '' !== $tenant && ! self::is_id( $tenant ) ) {
 			return new WP_Error( 'ftvs_lookup', __( 'That church ID does not look right.', 'faith-tv-series' ) );
 		}

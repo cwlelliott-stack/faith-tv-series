@@ -715,3 +715,29 @@ function test_catalog_new_videos_are_not_announced_for_sample_videos() {
 	do_action( 'ftvs_new_videos', array( array( 'id' => 'x', 'title' => 'x', 'speaker' => '', 'image' => '', 'added' => '', 'parent' => '' ) ) );
 	assert_count( 0, ftvs_t_requests(), 'sample videos never go to the church\'s follow-up system' );
 }
+
+function test_catalog_changed_never_announces_a_video_seen_here_before() {
+	ftvs_t_faithstream();
+	$new = array();
+	ftvs_t_add_filter(
+		'ftvs_new_videos',
+		function ( $videos ) use ( &$new ) {
+			$new[] = wp_list_pluck( $videos, 'id' );
+		}
+	);
+	// All six were listed once (say the library), then one answer came back short.
+	ftvs_t_private( 'FTVS_Catalog', 'learn', array( '', array( 'categories' => array(), 'videos' => ftvs_t_videos( 'seen', 1, 6 ) ) ) );
+	FTVS_Catalog::on_changed( 'c_series', array( 'categories' => array(), 'videos' => ftvs_t_videos( 'seen', 1, 7 ) ), array( 'categories' => array(), 'videos' => ftvs_t_videos( 'seen', 1, 2 ) ) );
+	assert_same( array( array( 'seen-7' ) ), $new, 'only the video never seen before is new' );
+}
+
+function test_catalog_gone_clears_page_caches_only_for_something_known() {
+	ftvs_t_faithstream();
+	wp_clear_scheduled_hook( FTVS_Purge::CRON );
+	FTVS_Catalog::on_gone( 'c_never-listed-here' );
+	assert_false( wp_next_scheduled( FTVS_Purge::CRON ), 'a page that points at an old category must not purge every hour' );
+	ftvs_t_private( 'FTVS_Catalog', 'learn', array( 'was-listed', array( 'categories' => array(), 'videos' => array() ) ) );
+	FTVS_Catalog::on_gone( 'c_was-listed' );
+	assert_true( (bool) wp_next_scheduled( FTVS_Purge::CRON ) );
+	wp_clear_scheduled_hook( FTVS_Purge::CRON );
+}

@@ -57,7 +57,7 @@ class FTVS_Embed {
 		$title = '' !== trim( (string) ( isset( $args['title'] ) ? $args['title'] : '' ) ) ? $args['title'] : __( 'Videos', 'faith-tv-series' );
 		$kind  = isset( $args['kind'] ) ? $args['kind'] : 'category';
 		$start = in_array( $kind, array( 'video', 'live', 'library' ), true ) ? $kind : ( isset( $args['layout'] ) ? $args['layout'] : '' );
-		return '<iframe src="' . esc_url( self::url( $args ) ) . '" title="' . esc_attr( $title ) . '" data-ftvs-embed loading="lazy" allow="autoplay; fullscreen; picture-in-picture; web-share" allowfullscreen style="width:100%;height:' . (int) self::start_height( $start ) . 'px;border:0;display:block"></iframe>' . "\n"
+		return '<iframe src="' . esc_url( self::url( $args ) ) . '" title="' . esc_attr( $title ) . '" data-ftvs-embed loading="lazy" allow="autoplay; fullscreen; picture-in-picture; web-share; clipboard-write" allowfullscreen style="width:100%;height:' . (int) self::start_height( $start ) . 'px;border:0;display:block"></iframe>' . "\n"
 			. '<script src="' . esc_url( FTVS_URL . 'assets/embed.js' ) . '" async></script>';
 	}
 

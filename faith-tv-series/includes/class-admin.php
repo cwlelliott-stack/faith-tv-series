@@ -27,6 +27,7 @@ class FTVS_Admin {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+		add_action( 'admin_init', array( __CLASS__, 'privacy_text' ) );
 		// WordPress refuses unknown pages before admin_init runs; this fires just before that refusal.
 		add_action( 'admin_page_access_denied', array( __CLASS__, 'redirect_old_page' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
@@ -64,7 +65,7 @@ class FTVS_Admin {
 	}
 
 	private static function tab_names() {
-		return array(
+		$tabs = array(
 			'faith-stream'         => __( 'Church', 'faith-tv-series' ),
 			'faith-stream-videos'  => __( 'Videos', 'faith-tv-series' ),
 			'faith-stream-look'    => __( 'Look & feel', 'faith-tv-series' ),
@@ -74,6 +75,24 @@ class FTVS_Admin {
 			'faith-stream-health'  => __( 'Health', 'faith-tv-series' ),
 			'faith-stream-updates' => __( 'Updates', 'faith-tv-series' ),
 		);
+		if ( ! FTVS_Settings::direct_edition() ) {
+			unset( $tabs['faith-stream-updates'] ); // WordPress.org updates that edition
+		}
+		return $tabs;
+	}
+
+	/** Suggested wording for the site's privacy policy (Settings > Privacy > Policy guide). */
+	public static function privacy_text() {
+		if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
+			return;
+		}
+		$lines = array(
+			__( 'Our videos are shown from our video platform (Faith Stream, Gideo, YouTube or Vimeo) and its delivery network. When you watch, your browser loads the video and its pictures from there, which, like any website, sees your internet address.', 'faith-tv-series' ),
+			__( 'If we count plays in Faith Stream, your browser also tells Faith Stream when a video starts, how long it plays and whether it finishes, with the address of the page (not your name). Faith Stream keeps only a scrambled form of your internet address that changes every day.', 'faith-tv-series' ),
+			__( 'If you choose "Count me present" while watching our live service, the email or first name and password of your church account (or the email and name you type) go to Faith Stream, which checks you in to our attendance. Your browser keeps a sign-in code until you press "Not you?".', 'faith-tv-series' ),
+			__( 'If you ask to be reminded, the email address or mobile number you type (and your agreement to receive texts) goes to our follow-up system. "Continue watching" and your volume are remembered only in your own browser.', 'faith-tv-series' ),
+		);
+		wp_add_privacy_policy_content( __( 'Faith TV Series', 'faith-tv-series' ), '<p>' . implode( '</p><p>', array_map( 'esc_html', $lines ) ) . '</p>' );
 	}
 
 	public static function register_settings() {
@@ -1008,7 +1027,7 @@ class FTVS_Admin {
 			'row'       => __( 'Row', 'faith-tv-series' ),
 		);
 		$custom   = ! isset( $colors[ strtoupper( $s['accent'] ) ] );
-		$locked   = ! FTVS_Settings::feature( 'hide_powered_by' );
+		$locked   = FTVS_Settings::direct_edition() && ! FTVS_Settings::feature( 'hide_powered_by' );
 		$brand    = self::brand();
 		$preview  = self::preview_categories( $tree );
 		?>

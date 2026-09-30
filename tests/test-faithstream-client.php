@@ -826,3 +826,42 @@ function test_fs_lookup_colors_and_features_are_sanitized() {
 	);
 	assert_same( null, $found['features'], 'no list: the plan is unknown, which means everything is allowed' );
 }
+
+function test_fs_fetch_all_under_a_series_that_fails_fails_the_whole_answer() {
+	ftvs_t_faithstream();
+	$top = ftvs_t_fs_category_page(
+		'top2',
+		ftvs_t_fs_videos( 'own', 1, 2 ),
+		2,
+		array(
+			'children' => array(
+				array( 'slug' => 'kid-ok', 'name' => 'OK' ),
+				array( 'slug' => 'kid-down', 'name' => 'Down' ),
+				array( 'slug' => 'kid-gone', 'name' => 'Gone' ),
+			),
+		)
+	);
+	ftvs_t_route( 'categories/top2?', ftvs_t_json( $top ) );
+	ftvs_t_route( 'categories/kid-ok?', ftvs_t_json( ftvs_t_fs_category_page( 'kid-ok', ftvs_t_fs_videos( 'k', 1, 2 ), 2 ) ) );
+	ftvs_t_route( 'categories/kid-down?', ftvs_t_text( 'oops', 500 ) );
+	ftvs_t_route( 'categories/kid-gone?', ftvs_t_text( 'gone', 404 ) );
+	assert_true( is_wp_error( FTVS_FaithStream_Client::fetch_all_under( 'top2' ) ), 'a short list would make the missing videos look new next time' );
+
+	$top = ftvs_t_fs_category_page(
+		'top3',
+		ftvs_t_fs_videos( 'own3', 1, 2 ),
+		2,
+		array(
+			'children' => array(
+				array( 'slug' => 'kid-ok3', 'name' => 'OK' ),
+				array( 'slug' => 'kid-gone3', 'name' => 'Gone' ),
+			),
+		)
+	);
+	ftvs_t_route( 'categories/top3?', ftvs_t_json( $top ) );
+	ftvs_t_route( 'categories/kid-ok3?', ftvs_t_json( ftvs_t_fs_category_page( 'kid-ok3', ftvs_t_fs_videos( 'k3', 1, 2 ), 2 ) ) );
+	ftvs_t_route( 'categories/kid-gone3?', ftvs_t_text( 'gone', 404 ) );
+	$all = FTVS_FaithStream_Client::fetch_all_under( 'top3' );
+	assert_not_error( $all );
+	assert_count( 4, $all, 'a series removed just now is skipped' );
+}

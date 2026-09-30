@@ -262,6 +262,9 @@ class FTVS_Catalog {
 						break 2;
 					}
 					$data = call_user_func( array( $client, 'get_children' ), $id );
+					if ( is_wp_error( $data ) && 'ftvs_gone' !== $data->get_error_code() ) {
+						return $data; // the saved library is kept instead of a partial one
+					}
 					if ( ! is_wp_error( $data ) ) {
 						foreach ( $data['videos'] as $video ) {
 							$video['parent'] = '' !== $video['parent'] ? $video['parent'] : $id;
@@ -293,9 +296,10 @@ class FTVS_Catalog {
 			return $library;
 		}
 		$found = array();
-		$words = preg_split( '/\s+/', strtolower( $q ) );
+		$lower = function_exists( 'mb_strtolower' ) ? 'mb_strtolower' : 'strtolower'; // accented capitals too
+		$words = preg_split( '/\s+/', $lower( $q ) );
 		foreach ( $library as $video ) {
-			$hay = strtolower( $video['title'] . ' ' . $video['description'] . ' ' . $video['speaker'] . ' ' . $video['scripture'] . ' ' . implode( ' ', $video['tags'] ) . ' ' . ( isset( $video['series'] ) ? $video['series'] : '' ) );
+			$hay = $lower( $video['title'] . ' ' . $video['description'] . ' ' . $video['speaker'] . ' ' . $video['scripture'] . ' ' . implode( ' ', $video['tags'] ) . ' ' . ( isset( $video['series'] ) ? $video['series'] : '' ) );
 			$hit = true;
 			foreach ( $words as $word ) {
 				if ( '' !== $word && false === strpos( $hay, $word ) ) {
@@ -340,6 +344,19 @@ class FTVS_Catalog {
 	}
 
 	/** A video's details from the library (for pages that need its title without playing it). */
+	/** A video's title from what is already cached here (never asks the platform), or ''. */
+	public static function cached_title( $id ) {
+		$library = '' === (string) $id ? null : FTVS_Cache::peek( 'library' );
+		if ( is_array( $library ) ) {
+			foreach ( $library as $video ) {
+				if ( isset( $video['id'], $video['title'] ) && $video['id'] === $id ) {
+					return (string) $video['title'];
+				}
+			}
+		}
+		return '';
+	}
+
 	public static function find_video( $id ) {
 		$library = self::library();
 		if ( is_wp_error( $library ) ) {
@@ -406,8 +423,8 @@ class FTVS_Catalog {
 			if ( isset( $known[ $m[1] ] ) ) {
 				unset( $known[ $m[1] ] );
 				update_option( self::known_key(), $known, false );
+				FTVS_Purge::soon();
 			}
-			FTVS_Purge::soon();
 		}
 	}
 
@@ -421,9 +438,10 @@ class FTVS_Catalog {
 		}
 		FTVS_Purge::soon();
 		$before = self::video_ids( $old );
+		$seen   = self::known();
 		$added  = array();
 		foreach ( self::videos_in( $data ) as $video ) {
-			if ( ! isset( $before[ $video['id'] ] ) ) {
+			if ( ! isset( $before[ $video['id'] ] ) && ! isset( $seen[ $video['id'] ] ) ) {
 				$added[ $video['id'] ] = $video;
 			}
 		}

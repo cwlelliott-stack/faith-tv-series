@@ -24,7 +24,8 @@
 			// The player opened: bring the frame into view.
 			var r = frame.getBoundingClientRect();
 			if (r.top < 0 || r.top > window.innerHeight * 0.4) {
-				frame.scrollIntoView({ block: 'start', behavior: 'smooth' });
+				var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+				frame.scrollIntoView({ block: 'start', behavior: still ? 'auto' : 'smooth' });
 			}
 		}
 	});

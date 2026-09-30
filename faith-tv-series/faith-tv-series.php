@@ -91,6 +91,10 @@ register_deactivation_hook(
 		foreach ( array( FTVS_Cache::CRON, FTVS_Purge::CRON, FTVS_Purge::AT, FTVS_Health::WARM, FTVS_Health::WARM_NOW, FTVS_Stats::WEEKLY, FTVS_Followup::CRON ) as $hook ) {
 			wp_unschedule_hook( $hook );
 		}
-		flush_rewrite_rules( false );
+		// Our /watch/ and podcast rules are still registered in this request, so a flush would keep them: let
+		// WordPress rebuild the rules on the next page load instead, and add ours again after a reactivation.
+		delete_option( 'rewrite_rules' );
+		delete_option( 'ftvs_rewrite_ver' );
+		delete_option( 'ftvs_feed_ver' );
 	}
 );

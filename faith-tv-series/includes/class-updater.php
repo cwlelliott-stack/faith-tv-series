@@ -183,8 +183,17 @@ class FTVS_Updater {
 			return $reply;
 		}
 		$release = self::latest();
+		// Ours by its address too, not only when the signed manifest could be read: a release of ours is never
+		// installed unchecked (for example while GitHub serves a broken or missing latest.json).
+		$ours = 0 === strpos( $package, 'https://github.com/' . self::REPO . '/' ) || ( ! is_wp_error( $release ) && $package === $release['package'] );
+		if ( ! $ours ) {
+			return $reply;
+		}
 		if ( is_wp_error( $release ) || $package !== $release['package'] ) {
-			return $reply; // not ours
+			$release = self::latest( true ); // the saved answer may be old: ask once more
+		}
+		if ( is_wp_error( $release ) || $package !== $release['package'] ) {
+			return new WP_Error( 'ftvs_update', __( 'This update could not be checked against its signature, so it was not installed. Try again later.', 'faith-tv-series' ) );
 		}
 		if ( ! function_exists( 'download_url' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';

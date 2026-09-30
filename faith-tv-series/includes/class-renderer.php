@@ -19,6 +19,12 @@ class FTVS_Renderer {
 	// A 1x1 transparent picture: what the hidden (other device's) layout downloads instead of its hero.
 	const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
+	/** The site's "New" badge; the untouched default is shown in the site's language. */
+	public static function site_badge() {
+		$badge = trim( (string) FTVS_Settings::get( 'badge' ) );
+		return 'New' === $badge ? __( 'New', 'faith-tv-series' ) : $badge;
+	}
+
 	public static function register() {
 		wp_register_style( 'faith-tv-series', FTVS_URL . 'assets/faith-tv-series.css', array(), FTVS_VERSION );
 		// Right-to-left languages get a mirrored copy (made with rtlcss; see README).
@@ -220,7 +226,7 @@ class FTVS_Renderer {
 		$ctx = array(
 			'play'  => $play,
 			'label' => $label,
-			'badge' => null === $atts['badge'] ? trim( (string) FTVS_Settings::get( 'badge' ) ) : trim( (string) $atts['badge'] ),
+			'badge' => null === $atts['badge'] ? self::site_badge() : trim( (string) $atts['badge'] ),
 			'descs' => $descs,
 			'more'  => FTVS_Catalog::category_link( $found['id'] ),
 			'kinds' => $data['categories'] ? 'category' : 'video',
@@ -1170,6 +1176,7 @@ class FTVS_Renderer {
 				'episodes'    => __( 'Episodes', 'faith-tv-series' ),
 				'loading'     => __( 'Loading...', 'faith-tv-series' ),
 				'failed'      => __( 'This video could not be loaded right now.', 'faith-tv-series' ),
+				'libraryFailed' => __( 'The messages could not be loaded right now.', 'faith-tv-series' ),
 				'retrying'    => __( 'Reconnecting...', 'faith-tv-series' ),
 				/* translators: %s: the church's video website, e.g. tv.faithtabernacle.com */
 				'watchOnTv'   => FTVS_Catalog::channel_host() ? sprintf( __( 'Watch on %s', 'faith-tv-series' ), FTVS_Catalog::channel_host() ) : __( 'Watch on our channel', 'faith-tv-series' ),

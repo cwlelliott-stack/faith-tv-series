@@ -501,3 +501,28 @@ function test_purge_runs_once_and_then_tells_hosts() {
 	$last = get_option( 'ftvs_last_purge' );
 	assert_true( is_array( $last ) && $last['t'] >= time() - 5, 'Health shows when it last happened' );
 }
+
+function test_cache_expire_keeps_serving_the_saved_copy_while_the_new_one_loads() {
+	$key = ftvs_t_cache_setup();
+	FTVS_Test_Fetcher::answers( 'a', array( array( 'v' => 'before' ), array( 'v' => 'after' ) ) );
+	assert_same( array( 'v' => 'before' ), FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) ) );
+	FTVS_Cache::expire(); // Faith Stream pinged
+	assert_same( array( 'v' => 'before' ), FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) ), 'the visitor doesn\'t wait' );
+	$queue = get_option( FTVS_Cache::QUEUE );
+	assert_true( isset( $queue[ $key ] ), 'the new answer is fetched in the background' );
+}
+
+function test_cache_quick_answers_are_never_served_long_stale() {
+	$key = ftvs_t_cache_setup();
+	update_option( ftvs_t_cache_backup_option( $key ), array( '__ftvs' => 2, 't' => time() - 100, 'd' => array( 'status' => 'idle' ) ), false );
+	FTVS_Test_Fetcher::answers( 'a', array( array( 'status' => 'live' ) ) );
+	assert_same( array( 'status' => 'live' ), FTVS_Cache::remember( $key, 20, ftvs_t_cache_job( 'a' ) ), 'a 20-second answer is at most a minute old' );
+}
+
+function test_cache_search_answers_leave_no_outage_copy() {
+	ftvs_t_cache_setup();
+	$key = 's_' . md5( uniqid( '', true ) );
+	FTVS_Test_Fetcher::answers( 'a', array( array( 'v' => 'found' ) ) );
+	assert_same( array( 'v' => 'found' ), FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) ) );
+	assert_same( null, FTVS_Cache::peek( $key ), 'every different search would otherwise leave a row behind' );
+}

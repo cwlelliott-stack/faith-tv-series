@@ -487,3 +487,13 @@ function test_updater_plugin_header_points_wordpress_at_github() {
 	$data = get_file_data( FTVS_FILE, array( 'update_uri' => 'Update URI' ) );
 	assert_same( 'https://github.com/' . FTVS_Updater::REPO, $data['update_uri'], 'WordPress asks update_plugins_github.com, which this class answers' );
 }
+
+function test_updater_download_refuses_our_package_when_the_signed_manifest_cannot_be_read() {
+	ftvs_t_trusted_key();
+	$package = 'https://github.com/cwlelliott-stack/faith-tv-series/releases/download/v9.9.9/faith-tv-series.zip';
+	ftvs_t_serve_manifest( 'not json at all' );
+	ftvs_t_serve_package( $package, 'an unchecked zip' );
+	delete_site_transient( FTVS_Updater::CACHE );
+	$err = FTVS_Updater::download( false, $package, null );
+	assert_wp_error( $err, 'ftvs_update', 'our release is never installed unchecked' );
+}

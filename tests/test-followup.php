@@ -285,3 +285,10 @@ function test_followup_remind_does_not_cut_a_title_in_the_middle_of_a_letter() {
 	$title = ftvs_t_sent()[0]['video_title'];
 	assert_true( '' !== $title && 0 === strpos( $original, $title ), 'the title sent is the start of the real title, not a title with a damaged last letter' );
 }
+
+function test_followup_remind_ignores_fields_that_are_not_text() {
+	ftvs_t_followup_on();
+	ftvs_t_route( FTVS_T_HOOK, ftvs_t_json( array( 'ok' => true ) ) );
+	$result = FTVS_Followup::remind( array( 'email' => array( 'a@example.org' ), 'page' => array( 'x' ), 'phone' => 5551234567 ) );
+	assert_wp_error( $result, 'ftvs_contact', 'no text contact given: asked for one, instead of a PHP error' );
+}

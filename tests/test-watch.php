@@ -384,3 +384,19 @@ function test_sitemap_is_empty_without_a_watch_page_or_a_church() {
 	assert_same( array(), ftvs_t_sitemap()->get_url_list( 1 ), 'no church connected' );
 	assert_same( 1, ftvs_t_sitemap()->get_max_num_pages(), 'at least one (empty) page' );
 }
+
+function test_watch_page_title_is_plain_text() {
+	$page = ftvs_t_page();
+	ftvs_t_settings( array( 'watch_page_id' => $page->ID ) );
+	ftvs_t_watch_static( 'video', ftvs_t_watch_video( array( 'title' => 'Grace <img src=x onerror=alert(1)>' ) ), null );
+	ftvs_t_watch_static( 'titled', false, false );
+	global $wp_query;
+	$was = $wp_query->in_the_loop;
+	ftvs_t_cleanup(
+		function () use ( $was ) {
+			$GLOBALS['wp_query']->in_the_loop = $was;
+		}
+	);
+	$wp_query->in_the_loop = true;
+	assert_same( 'Grace &lt;img src=x onerror=alert(1)&gt;', FTVS_Watch::page_title( 'Watch', $page->ID ), 'themes print the title as HTML' );
+}

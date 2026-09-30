@@ -155,16 +155,29 @@ class FTVS_Blocks {
 				$series = $row['id'];
 			}
 		}
-		$blocks  = '';
+		// serialize_block() writes the attributes the way the editor reads them back (quotes and apostrophes in
+		// translated headings included).
+		$block    = function ( $name, $attrs ) {
+			return serialize_block(
+				array(
+					'blockName'    => $name,
+					'attrs'        => $attrs,
+					'innerBlocks'  => array(),
+					'innerHTML'    => '',
+					'innerContent' => array(),
+				)
+			);
+		};
+		$blocks   = '';
 		$has_live = FTVS_Catalog::has_live() || '' !== (string) FTVS_Settings::get( 'live_url' ) || FTVS_Settings::get( 'services' );
 		if ( $has_live ) {
-			$blocks .= '<!-- wp:faith-tv/live {"align":"wide","eyebrow":"' . esc_attr__( 'Sunday', 'faith-tv-series' ) . '","title":"' . esc_attr__( 'Watch live', 'faith-tv-series' ) . '"} /-->' . "\n\n";
+			$blocks .= $block( 'faith-tv/live', array( 'align' => 'wide', 'eyebrow' => __( 'Sunday', 'faith-tv-series' ), 'title' => __( 'Watch live', 'faith-tv-series' ) ) ) . "\n\n";
 		}
-		$blocks .= '<!-- wp:faith-tv/series {"align":"wide","category":"@newest","layout":"row","mobileLayout":"row","title":"' . esc_attr__( 'Latest messages', 'faith-tv-series' ) . '"} /-->' . "\n\n";
+		$blocks .= $block( 'faith-tv/series', array( 'align' => 'wide', 'category' => '@newest', 'layout' => 'row', 'mobileLayout' => 'row', 'title' => __( 'Latest messages', 'faith-tv-series' ) ) ) . "\n\n";
 		if ( '' !== $series ) {
-			$blocks .= '<!-- wp:faith-tv/series {"align":"wide","category":"' . esc_attr( $series ) . '","title":"' . esc_attr__( 'Series', 'faith-tv-series' ) . '"} /-->' . "\n\n";
+			$blocks .= $block( 'faith-tv/series', array( 'align' => 'wide', 'category' => (string) $series, 'title' => __( 'Series', 'faith-tv-series' ) ) ) . "\n\n";
 		}
-		$blocks .= '<!-- wp:faith-tv/library {"align":"wide","title":"' . esc_attr__( 'Find a message', 'faith-tv-series' ) . '"} /-->';
+		$blocks .= $block( 'faith-tv/library', array( 'align' => 'wide', 'title' => __( 'Find a message', 'faith-tv-series' ) ) );
 		$slug    = get_page_by_path( 'watch' ) ? 'watch-online' : 'watch';
 		$id      = wp_insert_post(
 			array(

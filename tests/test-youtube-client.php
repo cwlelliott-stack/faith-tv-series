@@ -204,7 +204,12 @@ function test_youtube_uploads_from_the_public_feed() {
 function test_youtube_feed_errors() {
 	ftvs_t_settings( array( 'source' => 'youtube' ) );
 	ftvs_t_route( 'playlist_id=' . FTVS_T_PL1, ftvs_t_text( 'gone', 404 ) );
-	assert_wp_error( FTVS_YouTube_Client::fetch_playlist( FTVS_T_PL1 ), 'ftvs_gone', 'a playlist that was deleted' );
+	$miss = 'ftvs_yt404_' . md5( add_query_arg( array( 'playlist_id' => FTVS_T_PL1 ), FTVS_YouTube_Client::FEED ) );
+	delete_transient( $miss );
+	assert_wp_error( FTVS_YouTube_Client::fetch_playlist( FTVS_T_PL1 ), 'ftvs_http', 'a 404 from the feed can be a YouTube hiccup: the saved videos stay' );
+	set_transient( $miss, time() - DAY_IN_SECONDS - 5, 3 * DAY_IN_SECONDS );
+	assert_wp_error( FTVS_YouTube_Client::fetch_playlist( FTVS_T_PL1 ), 'ftvs_gone', 'still 404 a day later: the playlist was deleted' );
+	delete_transient( $miss );
 	ftvs_t_route( 'playlist_id=' . FTVS_T_PL2, ftvs_t_text( 'oops', 500 ) );
 	assert_wp_error( FTVS_YouTube_Client::fetch_playlist( FTVS_T_PL2 ), 'ftvs_http' );
 	ftvs_t_route( 'playlist_id=PLzzzzzzzzzzzzzzzzzz', ftvs_t_text( '<feed><title>broken', 200 ) );

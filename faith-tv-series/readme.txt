@@ -91,25 +91,40 @@ faithtv:progress (25/50/75), faithtv:complete, faithtv:nextstep, faithtv:share, 
 
 == External services ==
 
-The plugin talks to the video platform the church connects, to show that church's videos:
+The plugin talks to the video platform the church connects, to show that church's videos. Nothing is
+sent anywhere until a church is connected (or "Try it with sample videos" is chosen).
 
-* Faith Stream (the church's own Faith Stream address): the public catalog, the live status,
-  and, from visitors' browsers when "Also count them in Faith Stream's reports" is on,
-  anonymous play counts (start, watch time, finished; Faith Stream keeps only a daily-scrambled
-  form of the visitor's internet address). Faith Stream can also send the site a signed
-  "something changed" ping.
+* Faith Stream (the church's own Faith Stream address, for example stream.yourchurch.com)
+  - From the site: the public catalog (series, videos, search), the live status, and the church's
+    name, logo and colors. Faith Stream can also send the site a signed "something changed" ping.
+  - From visitors' browsers, when "Also count them in Faith Stream's reports" is on: play reports
+    (start, watch time, finished, the page's address without its query). Faith Stream keeps only a
+    daily-scrambled form of the visitor's internet address.
+  - From visitors' browsers, only when a visitor chooses "Count me present" during a live service:
+    their church-account email or first name and password, or the email and name they type, go to
+    Faith Stream, which checks them in on the church's Faith Connections. The browser keeps a sign-in
+    token until they press "Not you?".
+  - Terms: https://faithstream.video/terms  Privacy: https://faithstream.video/privacy
 * Gideo (ott.gideo.video and cdn.gideo.video): the church's public TV catalog and streams.
+  Privacy: https://gideo.video/privacy
+* Mux (image.mux.com, stream.mux.com) delivers Faith Stream pictures and video; the sample videos
+  come from test-streams.mux.dev. Terms: https://www.mux.com/terms  Privacy: https://www.mux.com/privacy
 * YouTube (www.youtube.com feeds, www.googleapis.com with the church's own optional API key,
   i.ytimg.com pictures, and www.youtube-nocookie.com for playing).
-* Vimeo or any site a hand-built series links to (through WordPress's oEmbed), only when the
-  series is saved.
-* Mux (image.mux.com, stream.mux.com) delivers Faith Stream pictures and video.
-* "Remind me" sign-ups and "new video" notices go to the webhook addresses the church enters.
-* Updates (the direct edition): the plugin reads a signed latest.json from
+  Terms: https://www.youtube.com/t/terms  Privacy: https://policies.google.com/privacy
+* Vimeo, or any site a hand-built series or the Sunday live link points to (Boxcast, Resi, Church
+  Online...): the video plays in that site's own player, and the site is asked (through WordPress's
+  oEmbed) about a hand-built series' links when it is saved. Vimeo terms: https://vimeo.com/terms
+  Privacy: https://vimeo.com/privacy
+* "Remind me" sign-ups (email or mobile number, and the texting consent that was shown) and "new
+  video" notices go to the webhook addresses the church enters (its own follow-up system).
+* Updates (the direct edition only): the plugin reads a signed latest.json from
   github.com/cwlelliott-stack/faith-tv-series releases. The wordpress.org edition leaves this out.
+  Terms: https://docs.github.com/site-policy/github-terms/github-terms-of-service
+  Privacy: https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement
 
-Requests to these services include the site's address in the user agent. Nothing is sent
-anywhere until a church is connected.
+Requests from the site include the site's address in the user agent. Suggested text for the
+site's privacy policy is under Settings > Privacy.
 
 == Frequently Asked Questions ==
 
@@ -134,8 +149,15 @@ and shortcodes for everything else.
 
 = Does it collect anything about visitors? =
 
-Play counts are totals per day, per video and per page, with no names or addresses. "Continue
-watching" and the volume are remembered in the visitor's own browser only.
+The site's own play counts are totals per day, per video and per page, with no names or addresses.
+"Continue watching" and the volume are remembered in the visitor's own browser only. Faith Stream
+churches can also send anonymous play reports to Faith Stream (a switch), and visitors who choose
+"Count me present" during a live service sign in with Faith Stream; see External services.
+
+= Is there a credit link? =
+
+Only if you turn it on: "Powered by" under Faith Stream > Look & feel (off by default in the
+wordpress.org edition).
 
 == Screenshots ==
 
@@ -163,9 +185,9 @@ Faith Stream > Updates has "Check for updates now" and "Install updates automati
 
 == Third-party code ==
 
-assets/vendor/hls.min.js is hls.js 1.7.3 (Apache License 2.0, see hls.js-LICENSE.txt). It plays
-video streams in browsers without full built-in HLS support, and loads only when someone is
-about to press play.
+assets/vendor/hls.min.js is hls.js 1.7.3 (Apache License 2.0, see hls.js-LICENSE.txt; source:
+https://github.com/video-dev/hls.js/tree/v1.7.3). It plays video streams in browsers without full
+built-in HLS support, and loads only when someone is about to press play.
 
 == Changelog ==
 

@@ -37,6 +37,12 @@ class FTVS_Followup {
 	 */
 	public static function remind( $in ) {
 		$in = is_array( $in ) ? $in : array();
+		// Only text: an array or number where text belongs is dropped.
+		foreach ( array( 'email', 'phone', 'kind', 'video', 'title', 'page' ) as $field ) {
+			if ( isset( $in[ $field ] ) && ! is_string( $in[ $field ] ) ) {
+				unset( $in[ $field ] );
+			}
+		}
 		if ( ! FTVS_Settings::get( 'remind' ) || '' === (string) FTVS_Settings::get( 'remind_webhook' ) ) {
 			return new WP_Error( 'ftvs_off', __( 'Reminders are not turned on.', 'faith-tv-series' ), array( 'status' => 404 ) );
 		}

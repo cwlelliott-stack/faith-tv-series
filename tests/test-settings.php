@@ -648,3 +648,12 @@ function test_settings_checkin_is_on_by_default_and_a_toggle() {
 	$out = FTVS_Settings::sanitize( array( 'checkin' => '0' ) );
 	assert_same( 0, $out['checkin'] );
 }
+
+function test_settings_faith_stream_address_is_https_unless_it_is_local() {
+	assert_same( 'https://stream.example.org', FTVS_Settings::secure_url( 'http://stream.example.org' ), 'sign-ins for check-in go there' );
+	assert_same( 'https://stream.example.org', FTVS_Settings::secure_url( 'https://stream.example.org' ) );
+	assert_same( 'http://localhost:3000', FTVS_Settings::secure_url( 'http://localhost:3000' ), 'a server on this computer' );
+	assert_same( 'http://faithstream.test', FTVS_Settings::secure_url( 'http://faithstream.test' ) );
+	$saved = FTVS_Settings::sanitize( array( 'fs_url' => 'http://stream.example.org/' ) );
+	assert_same( 'https://stream.example.org', $saved['fs_url'] );
+}

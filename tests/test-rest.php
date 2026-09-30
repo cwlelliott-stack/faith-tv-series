@@ -624,3 +624,26 @@ function test_rest_admin_categories_without_a_church_still_offers_the_automatic_
 	assert_same( '@newest', $list[0]['value'] );
 	assert_same( '@featured', $list[1]['value'] );
 }
+
+function test_rest_library_search_shares_the_search_limit() {
+	ftvs_t_demo();
+	ftvs_t_admin();
+	$_SERVER['REMOTE_ADDR'] = '203.0.113.' . wp_rand( 1, 250 );
+	for ( $i = 0; $i < 30; $i++ ) {
+		ftvs_t_rest( 'GET', '/library', array( 'q' => 'hope' ) );
+	}
+	assert_same( 429, ftvs_t_rest( 'GET', '/library', array( 'q' => 'hope' ) )->get_status(), 'searching the library asks the platform too' );
+	assert_same( 200, ftvs_t_rest( 'GET', '/library' )->get_status(), 'browsing without words is not limited' );
+	unset( $_SERVER['REMOTE_ADDR'] );
+}
+
+function test_rest_limited_counts_an_ipv6_household_as_one_visitor() {
+	$bucket = 'ut' . wp_rand();
+	$_SERVER['REMOTE_ADDR'] = '2001:db8:1:2::1';
+	assert_false( FTVS_Rest::limited( $bucket, 1, 60 ) );
+	$_SERVER['REMOTE_ADDR'] = '2001:db8:1:2:ffff::9';
+	assert_true( FTVS_Rest::limited( $bucket, 1, 60 ), 'another address in the same /64' );
+	$_SERVER['REMOTE_ADDR'] = '2001:db8:1:3::1';
+	assert_false( FTVS_Rest::limited( $bucket, 1, 60 ), 'another /64 is someone else' );
+	unset( $_SERVER['REMOTE_ADDR'] );
+}

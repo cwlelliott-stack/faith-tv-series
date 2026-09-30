@@ -422,8 +422,22 @@ class FTVS_YouTube_Client {
 			return $response;
 		}
 		$code = (int) wp_remote_retrieve_response_code( $response );
+		// YouTube's feeds sometimes answer 404 for a playlist that exists. Only a 404 that lasts a day means it was
+		// removed; until then the saved videos stay on the page.
+		$miss = 'ftvs_yt404_' . md5( add_query_arg( $args, self::FEED ) );
 		if ( 404 === $code ) {
+			$first = get_transient( $miss );
+			if ( false === $first ) {
+				$first = time();
+				set_transient( $miss, $first, 3 * DAY_IN_SECONDS );
+			}
+			if ( time() - (int) $first < DAY_IN_SECONDS ) {
+				return new WP_Error( 'ftvs_http', __( 'YouTube did not list this playlist just now.', 'faith-tv-series' ) );
+			}
 			return new WP_Error( 'ftvs_gone', __( 'That is no longer on your channel.', 'faith-tv-series' ) );
+		}
+		if ( 200 === $code && false !== get_transient( $miss ) ) {
+			delete_transient( $miss );
 		}
 		if ( 200 !== $code ) {
 			/* translators: %d: HTTP status code */

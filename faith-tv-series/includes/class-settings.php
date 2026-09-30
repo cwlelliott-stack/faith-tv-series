@@ -43,7 +43,7 @@ class FTVS_Settings {
 			'font'          => 'brand',
 			'label'         => '',
 			'badge'         => 'New',
-			'powered_by'    => 1,
+			'powered_by'    => self::direct_edition() ? 1 : 0, // wordpress.org: credits are opt-in
 			// Text sizes and colors: part => { size, color }; empty means the built-in look.
 			'text'          => array(),
 			// The player.
@@ -132,6 +132,9 @@ class FTVS_Settings {
 				$out[ $key ] = untrailingslashit( esc_url_raw( trim( $input[ $key ] ) ) );
 			}
 		}
+		if ( isset( $out['fs_url'] ) ) {
+			$out['fs_url'] = self::secure_url( $out['fs_url'] );
+		}
 		if ( isset( $input['fs_tenant'] ) ) {
 			$out['fs_tenant'] = preg_replace( '/[^a-z0-9-]/', '', strtolower( $input['fs_tenant'] ) );
 		}
@@ -186,7 +189,7 @@ class FTVS_Settings {
 			}
 		}
 		// A plan that does not include removing the badge keeps it on (agencies set FTVS_WHITE_LABEL).
-		if ( ! self::feature( 'hide_powered_by', $out['features'] ) ) {
+		if ( self::direct_edition() && ! self::feature( 'hide_powered_by', $out['features'] ) ) {
 			$out['powered_by'] = 1;
 		}
 		if ( isset( $input['cache_minutes'] ) ) {
@@ -242,7 +245,7 @@ class FTVS_Settings {
 	public static function series_steps( $raw ) {
 		$out = array();
 		foreach ( (array) $raw as $key => $row ) {
-			$series = isset( $row['series'] ) ? (string) $row['series'] : ( is_string( $key ) ? $key : '' );
+			$series = isset( $row['series'] ) ? (string) $row['series'] : ( is_string( $key ) || is_int( $key ) ? (string) $key : '' );
 			$series = preg_replace( '/[^A-Za-z0-9_@-]/', '', $series );
 			$step   = self::next_steps( array( $row ) );
 			if ( '' !== $series && $step && count( $out ) < 30 ) {
@@ -336,6 +339,32 @@ class FTVS_Settings {
 		return $css;
 	}
 
+	/** The edition FaithStream hands out (it updates itself); the wordpress.org build leaves the updater out. */
+	public static function direct_edition() {
+		return class_exists( 'FTVS_Updater' );
+	}
+
+	/**
+	 * Faith Stream addresses are https: visitors' sign-in for check-in and their tokens go there. Plain http only
+	 * for a server on this computer (localhost, *.test, *.localhost) or on a site marked local or development.
+	 */
+	public static function secure_url( $url ) {
+		$url = (string) $url;
+		if ( 0 !== stripos( $url, 'http://' ) ) {
+			return $url;
+		}
+		$host  = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+		$local = in_array( $host, array( 'localhost', '127.0.0.1', '[::1]' ), true ) || preg_match( '/\.(test|localhost)$/', $host )
+			|| in_array( wp_get_environment_type(), array( 'local', 'development' ), true );
+		/**
+		 * Whether a plain-http Faith Stream address may be used.
+		 *
+		 * @param bool   $allowed Local servers and local or development sites.
+		 * @param string $host    The address's host.
+		 */
+		return apply_filters( 'ftvs_allow_http', $local, $host ) ? $url : 'https://' . substr( $url, 7 );
+	}
+
 	/**
 	 * After an update (WordPress does not run the activation hook then): answers cached by the old version may have
 	 * other shapes, so the cache starts a new generation, and page caches holding the old markup are cleared once.
@@ -346,7 +375,8 @@ class FTVS_Settings {
 			return;
 		}
 		update_option( 'ftvs_version', FTVS_VERSION, true );
-		FTVS_Cache::clear();
+		FTVS_Cache::expire();
+		delete_option( FTVS_Cache::QUEUE ); // jobs name methods of the old version
 		if ( false !== get_option( self::OPTION, false ) ) {
 			FTVS_Purge::soon();
 		}

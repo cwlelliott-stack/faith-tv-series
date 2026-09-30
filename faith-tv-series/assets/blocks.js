@@ -45,6 +45,13 @@
 		{ value: 'light', label: __('Light section (dark text)', 'faith-tv-series') }
 	];
 
+	/* Controls with the editor's current spacing and size (the old defaults are going away). */
+	function ctl(type, props) {
+		props.__nextHasNoMarginBottom = true;
+		if (type !== c.ToggleControl) props.__next40pxDefaultSize = true;
+		return el(type, props);
+	}
+
 	function set(props, key) {
 		return function (v) {
 			var o = {};
@@ -72,24 +79,24 @@
 			return el(wp.element.Fragment, null,
 				el(be.InspectorControls, null,
 					el(c.PanelBody, { title: __('What to show', 'faith-tv-series') },
-						el(c.SelectControl, { label: __('Category', 'faith-tv-series'), value: a.category, options: options, onChange: set(props, 'category') }),
-						el(c.TextControl, { label: __('Or one video (its ID)', 'faith-tv-series'), value: a.video, onChange: set(props, 'video') }),
-						el(c.RangeControl, { label: __('How many to show (0 = all)', 'faith-tv-series'), value: a.limit, min: 0, max: 50, onChange: set(props, 'limit') })
+						ctl(c.SelectControl, { label: __('Category', 'faith-tv-series'), value: a.category, options: options, onChange: set(props, 'category') }),
+						ctl(c.TextControl, { label: __('Or one video (its ID)', 'faith-tv-series'), value: a.video, onChange: set(props, 'video') }),
+						ctl(c.RangeControl, { label: __('How many to show (0 = all)', 'faith-tv-series'), value: a.limit, min: 0, max: 50, onChange: set(props, 'limit') })
 					),
 					el(c.PanelBody, { title: __('Look', 'faith-tv-series') },
-						el(c.SelectControl, { label: __('Layout', 'faith-tv-series'), value: a.layout, options: layouts(__('Site default', 'faith-tv-series')), onChange: set(props, 'layout') }),
-						el(c.SelectControl, { label: __('Phone layout', 'faith-tv-series'), value: a.mobileLayout, options: [{ value: '', label: __('Site default', 'faith-tv-series') }, { value: 'auto', label: __('Automatic', 'faith-tv-series') }, { value: 'same', label: __('Same as computers', 'faith-tv-series') }, { value: 'list', label: __('Featured + list', 'faith-tv-series') }, { value: 'row', label: __('Sliding row', 'faith-tv-series') }], onChange: set(props, 'mobileLayout') }),
-						el(c.SelectControl, { label: __('Background', 'faith-tv-series'), value: a.theme, options: THEMES, onChange: set(props, 'theme') }),
-						el(c.TextControl, { label: __('Heading (optional)', 'faith-tv-series'), value: a.title, onChange: set(props, 'title') }),
-						el(c.TextControl, { label: __('Small line above it (optional)', 'faith-tv-series'), value: a.eyebrow, onChange: set(props, 'eyebrow') }),
-						el(c.RangeControl, { label: __('Rotate every (seconds, 0 = off)', 'faith-tv-series'), value: a.autoplay, min: 0, max: 60, onChange: set(props, 'autoplay') }),
-						el(c.ToggleControl, { label: __('Open videos on your channel instead of here', 'faith-tv-series'), checked: !!a.openChannel, onChange: set(props, 'openChannel') })
+						ctl(c.SelectControl, { label: __('Layout', 'faith-tv-series'), value: a.layout, options: layouts(__('Site default', 'faith-tv-series')), onChange: set(props, 'layout') }),
+						ctl(c.SelectControl, { label: __('Phone layout', 'faith-tv-series'), value: a.mobileLayout, options: [{ value: '', label: __('Site default', 'faith-tv-series') }, { value: 'auto', label: __('Automatic', 'faith-tv-series') }, { value: 'same', label: __('Same as computers', 'faith-tv-series') }, { value: 'list', label: __('Featured + list', 'faith-tv-series') }, { value: 'row', label: __('Sliding row', 'faith-tv-series') }], onChange: set(props, 'mobileLayout') }),
+						ctl(c.SelectControl, { label: __('Background', 'faith-tv-series'), value: a.theme, options: THEMES, onChange: set(props, 'theme') }),
+						ctl(c.TextControl, { label: __('Heading (optional)', 'faith-tv-series'), value: a.title, onChange: set(props, 'title') }),
+						ctl(c.TextControl, { label: __('Small line above it (optional)', 'faith-tv-series'), value: a.eyebrow, onChange: set(props, 'eyebrow') }),
+						ctl(c.RangeControl, { label: __('Rotate every (seconds, 0 = off)', 'faith-tv-series'), value: a.autoplay, min: 0, max: 60, onChange: set(props, 'autoplay') }),
+						ctl(c.ToggleControl, { label: __('Open videos on your channel instead of here', 'faith-tv-series'), checked: !!a.openChannel, onChange: set(props, 'openChannel') })
 					),
 					el(c.PanelBody, { title: __('Schedule (optional)', 'faith-tv-series'), initialOpen: false },
 						el('p', null, __('Show this section only between these dates, like a series until Easter. Dates like 2026-04-05, in your site\'s time zone.', 'faith-tv-series')),
-						el(c.TextControl, { label: __('Show from', 'faith-tv-series'), value: a.from, placeholder: '2026-03-01', onChange: set(props, 'from') }),
-						el(c.TextControl, { label: __('Show until', 'faith-tv-series'), value: a.until, placeholder: '2026-04-06', onChange: set(props, 'until') }),
-						el(c.SelectControl, { label: __('Other times, show', 'faith-tv-series'), value: a.otherwise, options: [{ value: '', label: __('Nothing', 'faith-tv-series') }].concat(cats), onChange: set(props, 'otherwise') })
+						ctl(c.TextControl, { label: __('Show from', 'faith-tv-series'), value: a.from, placeholder: '2026-03-01', onChange: set(props, 'from') }),
+						ctl(c.TextControl, { label: __('Show until', 'faith-tv-series'), value: a.until, placeholder: '2026-04-06', onChange: set(props, 'until') }),
+						ctl(c.SelectControl, { label: __('Other times, show', 'faith-tv-series'), value: a.otherwise, options: [{ value: '', label: __('Nothing', 'faith-tv-series') }].concat(cats), onChange: set(props, 'otherwise') })
 					)
 				),
 				preview('faith-tv/series', props)
@@ -110,10 +117,10 @@
 			return el(wp.element.Fragment, null,
 				el(be.InspectorControls, null,
 					el(c.PanelBody, { title: __('Sunday Live', 'faith-tv-series') },
-						el(c.TextControl, { label: __('Heading (optional)', 'faith-tv-series'), value: a.title, onChange: set(props, 'title') }),
-						el(c.TextControl, { label: __('Small line above it (optional)', 'faith-tv-series'), value: a.eyebrow, onChange: set(props, 'eyebrow') }),
-						el(c.TextControl, { label: __('Channel (optional, for a campus)', 'faith-tv-series'), help: __('Leave empty for whichever channel is live.', 'faith-tv-series'), value: a.channel, onChange: set(props, 'channel') }),
-						el(c.SelectControl, { label: __('Background', 'faith-tv-series'), value: a.theme, options: THEMES, onChange: set(props, 'theme') })
+						ctl(c.TextControl, { label: __('Heading (optional)', 'faith-tv-series'), value: a.title, onChange: set(props, 'title') }),
+						ctl(c.TextControl, { label: __('Small line above it (optional)', 'faith-tv-series'), value: a.eyebrow, onChange: set(props, 'eyebrow') }),
+						ctl(c.TextControl, { label: __('Channel (optional, for a campus)', 'faith-tv-series'), help: __('Leave empty for whichever channel is live.', 'faith-tv-series'), value: a.channel, onChange: set(props, 'channel') }),
+						ctl(c.SelectControl, { label: __('Background', 'faith-tv-series'), value: a.theme, options: THEMES, onChange: set(props, 'theme') })
 					)
 				),
 				preview('faith-tv/live', props)
@@ -135,10 +142,10 @@
 			return el(wp.element.Fragment, null,
 				el(be.InspectorControls, null,
 					el(c.PanelBody, { title: __('Sermon Library', 'faith-tv-series') },
-						el(c.SelectControl, { label: __('Only messages in', 'faith-tv-series'), value: a.category, options: [{ value: '', label: __('Everything', 'faith-tv-series') }].concat(cats.filter(function (x) { return x.value.charAt(0) !== '@'; })), onChange: set(props, 'category') }),
-						el(c.TextControl, { label: __('Heading (optional)', 'faith-tv-series'), value: a.title, onChange: set(props, 'title') }),
-						el(c.TextControl, { label: __('Small line above it (optional)', 'faith-tv-series'), value: a.eyebrow, onChange: set(props, 'eyebrow') }),
-						el(c.SelectControl, { label: __('Background', 'faith-tv-series'), value: a.theme, options: THEMES, onChange: set(props, 'theme') })
+						ctl(c.SelectControl, { label: __('Only messages in', 'faith-tv-series'), value: a.category, options: [{ value: '', label: __('Everything', 'faith-tv-series') }].concat(cats.filter(function (x) { return x.value.charAt(0) !== '@'; })), onChange: set(props, 'category') }),
+						ctl(c.TextControl, { label: __('Heading (optional)', 'faith-tv-series'), value: a.title, onChange: set(props, 'title') }),
+						ctl(c.TextControl, { label: __('Small line above it (optional)', 'faith-tv-series'), value: a.eyebrow, onChange: set(props, 'eyebrow') }),
+						ctl(c.SelectControl, { label: __('Background', 'faith-tv-series'), value: a.theme, options: THEMES, onChange: set(props, 'theme') })
 					)
 				),
 				preview('faith-tv/library', props)

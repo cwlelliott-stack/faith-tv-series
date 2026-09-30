@@ -21,6 +21,20 @@
 		return STR[key] || fallback;
 	}
 
+	/* A link or frame address taken from the page or an answer: http(s) or same-site only, never javascript: or
+	   data: (any author's post can carry data-* attributes that look like a section). */
+	function safeUrl(url, httpsOnly) {
+		url = String(url || '').trim();
+		if (/^https:\/\//i.test(url)) return url;
+		if (httpsOnly) return '';
+		return /^(http:\/\/|\/(?!\/)|#|\?)/i.test(url) ? url : '';
+	}
+
+	/* A page's address without its query or #part (they can carry names or tracking codes). */
+	function pageAddress(url) {
+		return String(url || '').split('#')[0].split('?')[0].slice(0, 300);
+	}
+
 	function el(tag, attrs, children) {
 		var node = document.createElement(tag);
 		if (attrs) {
@@ -208,11 +222,11 @@
 			source: CONFIG.embed ? 'embed' : 'web',
 			platform: 'wordpress',
 			device: isPhone() ? 'phone' : 'desktop',
-			referrer: String(CONFIG.embed ? document.referrer : window.location.href).slice(0, 300),
+			referrer: pageAddress(CONFIG.embed ? document.referrer : window.location.href),
 			events: events
 		};
 		var headers = { 'Content-Type': 'application/json' };
-		if (who) headers['X-Viewer-Token'] = who;
+		if (who && this.kind === 'live') headers['X-Viewer-Token'] = who;
 		return fetch(url, {
 			method: 'POST',
 			credentials: 'omit',
@@ -273,12 +287,22 @@
 		window.addEventListener('resize', schedule);
 		window.addEventListener('load', schedule);
 		prev.addEventListener('click', function () {
-			track.scrollBy({ left: -dir * track.clientWidth * 0.85, behavior: smooth() });
+			scrollRow(track, -dir * track.clientWidth * 0.85, true);
 		});
 		next.addEventListener('click', function () {
-			track.scrollBy({ left: dir * track.clientWidth * 0.85, behavior: smooth() });
+			scrollRow(track, dir * track.clientWidth * 0.85, true);
 		});
 		update();
+	}
+
+	/* Element.scrollBy/scrollTo with options are missing before Safari 14: fall back to scrollLeft. */
+	function scrollRow(track, left, by) {
+		try {
+			if (by) track.scrollBy({ left: left, behavior: smooth() });
+			else track.scrollTo({ left: left, behavior: smooth() });
+		} catch (err) {
+			track.scrollLeft = by ? track.scrollLeft + left : left;
+		}
 	}
 
 	/* ---------- Showcase + coverflow: one featured item at a time, rotating on its own ---------- */
@@ -426,10 +450,10 @@
 			});
 			if (layout === 'coverflow') positionSlides();
 			if (track && changed) {
-				var li = e.card.parentNode;
-				if (li.offsetLeft < track.scrollLeft || li.offsetLeft + li.offsetWidth > track.scrollLeft + track.clientWidth) {
-					track.scrollTo({ left: Math.max(0, li.offsetLeft - 8), behavior: smooth() });
-				}
+				var box = e.card.parentNode.getBoundingClientRect();
+				var view = track.getBoundingClientRect();
+				if (box.left < view.left) scrollRow(track, box.left - view.left - 8, true);
+				else if (box.right > view.right) scrollRow(track, box.right - view.right + 8, true);
 			}
 			if (counter) counter.textContent = pad(i + 1) + ' / ' + pad(n);
 			if (focusCard) e.card.focus({ preventScroll: true });
@@ -599,7 +623,11 @@
 			var item = readItem(card);
 			var p = item ? all[item.id] : null;
 			var thumb = card.querySelector('.ftvs__thumb');
-			if (!p || !thumb || thumb.querySelector('.ftvs-prog')) return;
+			if (!thumb) return;
+			Array.prototype.forEach.call(thumb.querySelectorAll('.ftvs-prog, .ftvs-watched'), function (old) {
+				old.parentNode.removeChild(old);
+			});
+			if (!p) return;
 			if (p.done) {
 				thumb.appendChild(el('span', { 'class': 'ftvs-watched', text: str('watched', 'Watched') }));
 			} else if (p.d > 0 && p.t > 30) {
@@ -660,9 +688,11 @@
 		function load(append) {
 			var mine = ++ask;
 			root.classList.add('is-loading');
+			if (moreBtn && append) moreBtn.disabled = true;
 			getJSON('library?' + params()).then(function (data) {
 				if (mine !== ask) return;
 				root.classList.remove('is-loading');
+				if (moreBtn) moreBtn.disabled = false;
 				if (!append) list.textContent = '';
 				(data.videos || []).forEach(function (v) { list.appendChild(row(v)); });
 				var total = data.total || 0;
@@ -673,7 +703,9 @@
 			}).catch(function () {
 				if (mine !== ask) return;
 				root.classList.remove('is-loading');
-				count.textContent = str('failed', 'This video could not be loaded right now.');
+				if (moreBtn) moreBtn.disabled = false;
+				if (append) page--;
+				count.textContent = str('libraryFailed', 'The messages could not be loaded right now.');
 			});
 		}
 
@@ -699,6 +731,7 @@
 		}
 		if (moreBtn) {
 			moreBtn.addEventListener('click', function () {
+				if (moreBtn.disabled) return;
 				page++;
 				load(true);
 			});
@@ -754,19 +787,20 @@
 			var picture = live ? s.image : (replay ? (replay.poster || replay.image) : s.image);
 			if (picture && img.getAttribute('src') !== picture) img.src = picture;
 			img.hidden = !picture;
-			if (live) {
-				when.textContent = str('streaming', 'The service is streaming now.') + (s.viewers > 1 ? '  ·  ' + str('watching', '%d watching').replace('%d', s.viewers) : '');
-			} else {
-				when.textContent = s.next_label ? str('nextService', 'Next service: %s').replace('%s', s.next_label) : '';
-			}
+			var line = live
+				? str('streaming', 'The service is streaming now.') + (s.viewers > 1 ? '  ·  ' + str('watching', '%d watching').replace('%d', s.viewers) : '')
+				: (s.next_label ? str('nextService', 'Next service: %s').replace('%s', s.next_label) : '');
+			if (when.textContent !== line) when.textContent = line;
 			cta.textContent = live ? str('watchLive', 'Watch live') : str('watchReplay', 'Watch the replay');
 			plays.forEach(function (b) {
 				b.hidden = b.tagName === 'BUTTON' && b.classList.contains('ftvs-btn') ? !(live || replay) : false;
 				b.disabled = !(live || replay);
+				if (b.hasAttribute('aria-label')) b.setAttribute('aria-label', cta.textContent);
 			});
 			if (chat) {
-				chat.hidden = !(live && s.chat);
-				if (s.chat) chat.href = s.chat;
+				var chatUrl = safeUrl(s.chat);
+				chat.hidden = !(live && chatUrl);
+				if (chatUrl) chat.href = chatUrl;
 			}
 			if (remindBtn) remindBtn.hidden = !!live;
 			window.clearInterval(tick);
@@ -851,7 +885,7 @@
 				sms: form.sms.checked,
 				hp: form.hp.value,
 				kind: form.getAttribute('data-kind') || 'live',
-				page: window.location.href,
+				page: pageAddress(window.location.href),
 				video: s && s.replay ? s.replay.id : '',
 				title: s ? s.title : ''
 			}).then(function () {
@@ -869,16 +903,22 @@
 	/* The "We're live" bar at the top of every page. */
 	function initLiveBar(bar) {
 		var hideKey = 'livebar-hidden';
+		var current = null;
+		var shown = '';
 		function show(s) {
 			var live = s && s.status === 'live' && s.play;
 			var hidden = false;
 			try { hidden = window.sessionStorage.getItem('ftvs:' + hideKey) === (s && s.title); } catch (err) {}
 			if (!live || hidden) {
 				bar.hidden = true;
+				shown = '';
 				return;
 			}
+			current = s;
+			if (shown === s.title && !bar.hidden) return;
+			shown = s.title;
 			bar.textContent = '';
-			var href = bar.getAttribute('data-href');
+			var href = safeUrl(bar.getAttribute('data-href'));
 			var go = el(href ? 'a' : 'button', href ? { href: href, 'class': 'ftvs-livebar__go' } : { type: 'button', 'class': 'ftvs-livebar__go' }, [
 				el('span', { 'class': 'ftvs-livebar__dot', 'aria-hidden': 'true' }),
 				el('strong', { text: str('liveBar', 'We\'re live') }),
@@ -886,12 +926,13 @@
 				el('span', { 'class': 'ftvs-livebar__cta', text: str('watchNow', 'Watch now') })
 			]);
 			if (!href) {
-				go.addEventListener('click', function () { if (HAS_DIALOG) Player.openLive(null, s); });
+				go.addEventListener('click', function () { if (HAS_DIALOG) Player.openLive(null, current); });
 			}
 			var x = el('button', { type: 'button', 'class': 'ftvs-livebar__x', 'aria-label': str('close', 'Close'), html: ICON_CLOSE });
 			x.addEventListener('click', function () {
 				bar.hidden = true;
-				try { window.sessionStorage.setItem('ftvs:' + hideKey, s.title); } catch (err) {}
+				shown = '';
+				try { window.sessionStorage.setItem('ftvs:' + hideKey, current.title); } catch (err) {}
 			});
 			bar.appendChild(go);
 			bar.appendChild(x);
@@ -943,6 +984,8 @@
 
 	/* "Continue watching": the message someone left partway, from a series in this section. */
 	function continueLine(root) {
+		var shown = root.querySelector('.ftvs-continue');
+		if (shown) shown.parentNode.removeChild(shown);
 		if (!CONFIG.resume || root.getAttribute('data-play') !== 'site' || !HAS_DIALOG) return;
 		var all = Progress.all();
 		var cards = {};
@@ -990,14 +1033,17 @@
 	/* ---------- Share ---------- */
 
 	function copyText(text) {
-		if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
-		return new Promise(function (resolve) {
+		var old = function () {
 			var ta = el('textarea', { style: 'position:fixed;opacity:0' });
 			ta.value = text;
 			document.body.appendChild(ta);
 			ta.select();
 			try { document.execCommand('copy'); } catch (err) {}
 			ta.remove();
+		};
+		if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).catch(old);
+		return new Promise(function (resolve) {
+			old();
 			resolve();
 		});
 	}
@@ -1230,6 +1276,11 @@
 
 		function show(st, state) {
 			window.clearInterval(tick);
+			var kind = st.status === 'checked_in' ? 'done' : (st.status === 'failed' ? 'failed' : (!st.in_window && !st.checkin ? 'later' : 'progress'));
+			if (state.getAttribute('data-kind') === kind && kind !== 'progress') return;
+			state.setAttribute('data-kind', kind);
+			// The counting line changes every minute: it is not read out; the other messages are.
+			state.setAttribute('aria-live', kind === 'progress' ? 'off' : 'polite');
 			state.textContent = '';
 			if (st.status === 'checked_in') {
 				state.className = 'ftvs-ci__state is-done';
@@ -1249,13 +1300,14 @@
 			}
 			var need = Math.max(60, st.threshold_s || 600);
 			var watched = Math.min(need, st.watched_s || 0);
-			var bar = el('span', { 'class': 'ftvs-ci__bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100' }, [el('i')]);
+			var bar = el('span', { 'class': 'ftvs-ci__bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': str('countMe', 'Count me present') }, [el('i')]);
 			var words = el('p', { 'class': 'ftvs-ci__title' });
 			var draw = function () {
 				var pct = Math.round((100 * watched) / need);
 				bar.firstChild.style.width = pct + '%';
 				bar.setAttribute('aria-valuenow', String(pct));
-				words.textContent = str('watchedOf', 'Watched %1$d of %2$d min. Keep watching and you\'ll be checked in.').replace('%1$d', Math.floor(watched / 60)).replace('%2$d', Math.round(need / 60));
+				var line = str('watchedOf', 'Watched %1$d of %2$d min. Keep watching and you\'ll be checked in.').replace('%1$d', Math.floor(watched / 60)).replace('%2$d', Math.round(need / 60));
+				if (words.textContent !== line) words.textContent = line;
 			};
 			draw();
 			state.appendChild(words);
@@ -1267,6 +1319,10 @@
 					draw();
 				}
 			}, 1000);
+		}
+
+		function said(err) {
+			return err && err.message && err.message.indexOf('HTTP') !== 0 ? err.message : str('tryAgain', 'That did not go through. Please try again.');
 		}
 
 		/* "Watching with family?": check in the others in the household too. */
@@ -1306,7 +1362,7 @@
 							emit('checkin', { step: 'household', count: picked.length });
 						}).catch(function (err) {
 							send.disabled = false;
-							wrap.appendChild(el('p', { 'class': 'ftvs-ci__msg', text: err.message || str('tryAgain', 'That did not go through. Please try again.') }));
+							wrap.appendChild(el('p', { 'class': 'ftvs-ci__msg', text: said(err) }));
 						});
 					});
 					// Only themselves (or everyone already checked in): nothing to pick.
@@ -1315,7 +1371,7 @@
 					Embed.height();
 				}).catch(function (err) {
 					if (wait.parentNode) wrap.removeChild(wait);
-					wrap.appendChild(el('p', { 'class': 'ftvs-ci__msg', text: err.message || str('tryAgain', 'That did not go through. Please try again.') }));
+					wrap.appendChild(el('p', { 'class': 'ftvs-ci__msg', text: said(err) }));
 				});
 			});
 		}
@@ -1418,12 +1474,17 @@
 				play(current < 0 ? 0 : current, true);
 			});
 			// A click on the dark area around the box closes it.
+			var downOutside = false;
+			dialog.addEventListener('mousedown', function (e) { downOutside = e.target === dialog; });
 			dialog.addEventListener('click', function (e) {
-				if (e.target !== dialog) return;
+				if (e.target !== dialog || !downOutside) return;
 				var r = dialog.getBoundingClientRect();
 				if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) close();
 			});
 			dialog.addEventListener('close', function () { cleanup(false); });
+			// Escape: stop the video right away. The browser's "close" event can come a frame later, or not at all
+			// while the page isn't drawing, and the video would keep playing unseen.
+			dialog.addEventListener('cancel', function () { cleanup(false); });
 			// The viewer's volume (and mute) carry over between videos and visits.
 			var vol = Store.get('vol', null);
 			if (vol && typeof vol.v === 'number') {
@@ -1563,6 +1624,10 @@
 			stack = [{ kind: 'live', item: item, href: state.link || '', state: state }];
 			show(stack[0], {});
 			reveal();
+			if (!CONFIG.embed && !pushed && window.history && window.history.pushState) {
+				window.history.pushState({ ftvs: 1 }, '', window.location.pathname + window.location.search + window.location.hash);
+				pushed = true;
+			}
 			return true;
 		}
 
@@ -1611,6 +1676,7 @@
 
 		function show(entry, opts) {
 			opts = opts || {};
+			var refocus = isOpen && dialog.contains(document.activeElement);
 			reset();
 			var item = entry.item;
 			backBtn.hidden = stack.length < 2;
@@ -1619,8 +1685,14 @@
 			titleEl.textContent = item.title || '';
 			descEl.textContent = item.description || '';
 			descEl.hidden = !item.description;
-			tvLink.href = entry.href || '#';
-			tvLink.hidden = !entry.href;
+			var link = safeUrl(entry.href);
+			tvLink.href = link || '#';
+			tvLink.hidden = !link;
+			// The button that was pressed is gone (or hidden): keyboard focus goes to the new title.
+			if (refocus && !dialog.contains(document.activeElement)) {
+				titleEl.setAttribute('tabindex', '-1');
+				titleEl.focus({ preventScroll: true });
+			}
 			tvLink.querySelector('[data-ftvs-tv-text]').textContent = entry.kind === 'live' ? str('openChat', 'Open the chat') : str('watchOnTv', 'Watch on Faith TV');
 			var amb = item.image || item.poster || '';
 			if (amb) ambient.src = amb;
@@ -1636,8 +1708,8 @@
 				var s = entry.state;
 				liveEl.hidden = false;
 				liveEl.textContent = str('live', 'Live') + (s.viewers > 1 ? '  ·  ' + str('watching', '%d watching').replace('%d', s.viewers) : '');
-				tvLink.hidden = !s.chat;
-				if (s.chat) tvLink.href = s.chat;
+				tvLink.hidden = !safeUrl(s.chat);
+				if (!tvLink.hidden) tvLink.href = safeUrl(s.chat);
 				episodes = [item];
 				current = 0;
 				playLive(s);
@@ -1732,7 +1804,9 @@
 			into.appendChild(el('p', { 'class': 'ftvs-next__title', text: (CONFIG.next && CONFIG.next.title) || '' }));
 			var row = el('div', { 'class': 'ftvs-next__btns' });
 			list.forEach(function (s, i) {
-				var a = el('a', { 'class': 'ftvs-btn ' + (i === 0 ? 'ftvs-btn--primary' : 'ftvs-btn--light'), href: tagged(s.url, ep), target: CONFIG.embed ? '_top' : null, text: s.label });
+				var href = safeUrl(tagged(s.url, ep));
+				if (!href) return;
+				var a = el('a', { 'class': 'ftvs-btn ' + (i === 0 ? 'ftvs-btn--primary' : 'ftvs-btn--light'), href: href, target: CONFIG.embed ? '_top' : null, text: s.label });
 				a.addEventListener('click', function () { emit('nextstep', { label: s.label, url: s.url, video: ep ? ep.id : '' }); });
 				row.appendChild(a);
 			});
@@ -1800,8 +1874,20 @@
 			});
 			// Ready to go: the asked-for episode, or the first one not finished yet.
 			current = 0;
+			var found = false;
 			if (opts && opts.video) {
-				list.forEach(function (ep, i) { if (ep.id === opts.video) current = i; });
+				list.forEach(function (ep, i) {
+					if (ep.id === opts.video) {
+						current = i;
+						found = true;
+					}
+				});
+				if (!found) {
+					var alone = { kind: 'video', item: { id: opts.video, parent: '', title: '' }, href: '' };
+					stack.push(alone);
+					show(alone, { t: opts.t });
+					return;
+				}
 			}
 			setPoster(list[current].poster || list[current].image || '');
 			markCurrent();
@@ -1893,6 +1979,7 @@
 		function playLive(s) {
 			var mine = ++token;
 			stopVideo();
+			retries = 0;
 			posterBtn.hidden = true;
 			video.poster = s.image || '';
 			video.setAttribute('aria-label', s.title || '');
@@ -1924,11 +2011,21 @@
 				});
 			}
 			if (!want) return;
-			var go = function () {
+			whenReady(function () {
 				try { video.currentTime = want; } catch (err) {}
-			};
-			if (video.readyState >= 1) go();
-			else video.addEventListener('loadedmetadata', go, { once: true });
+			});
+		}
+
+		/* Once the video knows its length; skipped if something else started playing in the meantime. */
+		function whenReady(fn) {
+			var mine = token;
+			if (video.readyState >= 1) {
+				fn();
+				return;
+			}
+			video.addEventListener('loadedmetadata', function () {
+				if (mine === token) fn();
+			}, { once: true });
 		}
 
 		function chip(text, onStartOver) {
@@ -1954,6 +2051,7 @@
 
 		function attach(url) {
 			if (!url || url.indexOf('https://') !== 0) return Promise.reject(new Error('no stream'));
+			var mine = token;
 			video.hidden = false;
 			// Safari plays every stream itself. Elsewhere hls.js is used even where the browser has
 			// its own HLS, because only hls.js handles streams with a separate audio track (Mux).
@@ -1963,6 +2061,7 @@
 				return Promise.resolve();
 			}
 			return loadHls().then(function (Hls) {
+				if (mine !== token) return;
 				if (!Hls || !Hls.isSupported()) {
 					if (!native) throw new Error('HLS not supported');
 					video.src = url;
@@ -1972,6 +2071,7 @@
 				return new Promise(function (resolve, reject) {
 					var ready = false;
 					var mediaFixes = 0;
+					if (hls) hls.destroy();
 					hls = new Hls({ capLevelToPlayerSize: true, renderTextTracksNatively: true });
 					hls.on(Hls.Events.MANIFEST_PARSED, function () {
 						ready = true;
@@ -2009,6 +2109,8 @@
 						showError();
 					});
 					hls.on(Hls.Events.FRAG_LOADED, function () {
+						retries = 0;
+						mediaFixes = 0;
 						if (!errorBox.hidden && errorBox.classList.contains('is-soft')) errorBox.hidden = true;
 					});
 					hls.loadSource(url);
@@ -2041,12 +2143,12 @@
 					});
 				} else {
 					video.src = url;
-					video.addEventListener('loadedmetadata', function () {
+					whenReady(function () {
 						if (entry.kind !== 'live') {
 							try { video.currentTime = at; } catch (err) {}
 						}
 						video.play().catch(function () {});
-					}, { once: true });
+					});
 				}
 			}).catch(function () {
 				if (mine === token) showError();
@@ -2065,9 +2167,14 @@
 
 		/* YouTube, Vimeo and other players that come as an embed. */
 		function attachEmbed(src, ep) {
+			src = safeUrl(src, true);
+			if (!src) {
+				showError();
+				return Promise.resolve();
+			}
 			video.hidden = true;
 			posterBtn.hidden = true;
-			frame = el('iframe', { src: src, allow: 'autoplay; fullscreen; picture-in-picture; encrypted-media', allowfullscreen: true, title: ep ? ep.title : '', 'class': 'ftvs-dialog__frame' });
+			frame = el('iframe', { src: src, allow: 'autoplay; fullscreen; picture-in-picture; encrypted-media', allowfullscreen: true, title: ep ? ep.title : (titleEl.textContent || str('live', 'Live')), 'class': 'ftvs-dialog__frame' });
 			playerWrap.insertBefore(frame, video);
 			dialog.classList.add('is-playing');
 			frame.addEventListener('load', function () {
@@ -2123,12 +2230,10 @@
 			video.removeAttribute('src');
 			var done = function () {
 				if (mine !== token) return;
-				var go = function () {
+				whenReady(function () {
 					try { video.currentTime = at; } catch (err) {}
 					if (playing) video.play().catch(function () {});
-				};
-				if (video.readyState >= 1) go();
-				else video.addEventListener('loadedmetadata', go, { once: true });
+				});
 			};
 			if (on) {
 				attachAudio(videoInfo.audio).then(done);
@@ -2510,6 +2615,7 @@
 			isOpen = false;
 			token++;
 			stopVideo();
+			Checkin.stop();
 			window.clearTimeout(upTimer);
 			pauseAll(false);
 			document.documentElement.classList.remove('ftvs-lock');
@@ -2527,7 +2633,10 @@
 			}
 			if (Math.abs(window.scrollY - scrollBeforeOpen) > 2) window.scrollTo(0, scrollBeforeOpen);
 			Embed.height();
-			if (sectionRoot) markProgress(sectionRoot);
+			if (sectionRoot) {
+				markProgress(sectionRoot);
+				continueLine(sectionRoot);
+			}
 			emit('close', {});
 		}
 
@@ -2619,6 +2728,10 @@
 			if (a) emit('nextstep', { label: a.textContent, url: a.href });
 		});
 		openFromLink();
+		window.addEventListener('hashchange', function () {
+			var d = Player.dialog();
+			if (HASH_RE.test(window.location.hash) && !(d && d.open)) openFromLink();
+		});
 	}
 
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

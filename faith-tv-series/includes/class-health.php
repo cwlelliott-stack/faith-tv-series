@@ -58,6 +58,7 @@ class FTVS_Health {
 		FTVS_Catalog::library();
 		// Anything that went stale above was queued; fetch it now instead of on a visitor's page.
 		FTVS_Cache::run_queue();
+		FTVS_Podcast::rebuild();
 		self::check_used( true );
 		self::maybe_alert();
 		self::schedule_switches();
@@ -301,7 +302,7 @@ class FTVS_Health {
 		return $tests;
 	}
 
-	private static function result( $status, $label, $text ) {
+	private static function result( $status, $label, $text, $test = 'ftvs_connection' ) {
 		return array(
 			'label'       => $label,
 			'status'      => $status,
@@ -311,7 +312,7 @@ class FTVS_Health {
 			),
 			'description' => '<p>' . esc_html( $text ) . '</p>',
 			'actions'     => '<p><a href="' . esc_url( FTVS_Admin::url( 'faith-stream-health' ) ) . '">' . esc_html__( 'Open Faith Stream > Health', 'faith-tv-series' ) . '</a></p>',
-			'test'        => 'ftvs_connection',
+			'test'        => $test, // Site Health uses it in the panel's id: one per check
 		);
 	}
 
@@ -357,12 +358,12 @@ class FTVS_Health {
 		);
 		$code = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
 		if ( 200 === $code ) {
-			return self::result( 'good', __( 'Visitors can open and play videos', 'faith-tv-series' ), __( 'The address the player uses answers normally.', 'faith-tv-series' ) );
+			return self::result( 'good', __( 'Visitors can open and play videos', 'faith-tv-series' ), __( 'The address the player uses answers normally.', 'faith-tv-series' ), 'ftvs_rest' );
 		}
 		/* translators: %s: address */
 		$text = sprintf( __( 'The player loads each series and video from %s, and it did not answer for a logged-out visitor. A security plugin or firewall rule may be blocking it; allow that address.', 'faith-tv-series' ), rest_url( 'faith-tv/v1/' ) );
 		// A loopback request can fail on some hosts even when visitors are fine.
-		return self::result( 'recommended', __( 'The site could not check the video player\'s address', 'faith-tv-series' ), $text );
+		return self::result( 'recommended', __( 'The site could not check the video player\'s address', 'faith-tv-series' ), $text, 'ftvs_rest' );
 	}
 
 	public static function debug_information( $info ) {

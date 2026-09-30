@@ -47,6 +47,15 @@ def build(out=OUT, wporg=False):
                     text = re.sub(r'^ \* Update URI:.*\r?\n', '', text, flags=re.M)
                     z.writestr(arc, text)
                     continue
+                if wporg and rel == 'includes/class-admin.php':
+                    # No outside calls at all: the Google Fonts line goes (it only runs in the direct edition
+                    # anyway, but reviewers scan for it).
+                    text = open(path, encoding='utf-8', newline='').read()
+                    text, n = re.subn(r'[ \t]*if \( class_exists\( \'FTVS_Updater\' \) \) \{\r?\n[ \t]*wp_enqueue_style\( \'ftvs-admin-font\'.*?\r?\n[ \t]*\}\r?\n', '', text, flags=re.S)
+                    if n != 1 or 'fonts.googleapis.com' in text:
+                        sys.exit('build-zip: could not take the Google Fonts line out of class-admin.php')
+                    z.writestr(arc, text)
+                    continue
                 z.write(path, arc)
     with zipfile.ZipFile(out) as z:
         count = len(z.namelist())
