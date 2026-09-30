@@ -165,6 +165,12 @@ function test_fs_video_normaliser() {
 	assert_same( 'Pastor Sam', $video['speaker'] );
 	assert_same( 'Romans 8', $video['scripture'] );
 	assert_same( array( 'faith', '5', 'hope' ), $video['tags'], 'tags are strings, empties dropped' );
+	assert_false( isset( $video['audio'] ), 'no audio file yet' );
+
+	$with = FTVS_FaithStream_Client::video( array( 'slug' => 'x', 'audio_url' => 'https://stream.mux.com/pb1/audio.m4a' ), '' );
+	assert_same( 'https://stream.mux.com/pb1/audio.m4a', $with['audio'], 'lists carry the audio file, so the podcast needs no request per video' );
+	$plain = FTVS_FaithStream_Client::video( array( 'slug' => 'x', 'audio_url' => 'http://insecure.test/a.m4a' ), '' );
+	assert_false( isset( $plain['audio'] ), 'https only' );
 }
 
 function test_fs_video_normaliser_minimal_payload() {

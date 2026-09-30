@@ -439,7 +439,7 @@ class FTVS_FaithStream_Client {
 	public static function video( $v, $parent ) {
 		$image = empty( $v['thumbnail_url'] ) ? '' : self::absolute( $v['thumbnail_url'] );
 		$tags  = isset( $v['tags'] ) && is_array( $v['tags'] ) ? array_values( array_filter( array_map( 'strval', $v['tags'] ) ) ) : array();
-		return array(
+		$out   = array(
 			'id'          => (string) $v['slug'],
 			'parent'      => (string) $parent,
 			'title'       => trim( (string) ( isset( $v['title'] ) ? $v['title'] : '' ) ),
@@ -453,6 +453,11 @@ class FTVS_FaithStream_Client {
 			'scripture'   => isset( $v['scripture'] ) ? trim( (string) $v['scripture'] ) : '',
 			'tags'        => $tags,
 		);
+		// Lists carry the audio file once Faith Stream has made it, so the podcast feed needs no request per video.
+		if ( ! empty( $v['audio_url'] ) && 0 === strpos( (string) $v['audio_url'], 'https://' ) ) {
+			$out['audio'] = esc_url_raw( (string) $v['audio_url'] );
+		}
+		return $out;
 	}
 
 	/** @internal A live channel: { id, title, status, image, hls, viewers, scheduled, started, chat, replay } */
