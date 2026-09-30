@@ -25,6 +25,37 @@ class FTVS_Stats {
 		}
 	}
 
+	/** The database lock's name: one per site (and database), at most 64 characters. */
+	public static function lock_name() {
+		global $wpdb;
+		return 'ftvs_stats_' . substr( md5( DB_NAME . '|' . $wpdb->prefix ), 0, 16 );
+	}
+
+	/**
+	 * Plays that arrive at the same moment (Sunday at 10:30) each read, change and save the same counts, and all
+	 * but one would be lost. They take turns instead: a MySQL named lock, held for a few milliseconds. Where the
+	 * database has none, or it doesn't come within 3 seconds, the count goes ahead as before.
+	 *
+	 * @return string The lock's name, or '' when it wasn't taken.
+	 */
+	private static function lock() {
+		global $wpdb;
+		$name = self::lock_name();
+		$got  = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 3)', $name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a lock, not data: nothing to cache.
+		if ( '1' !== (string) $got ) {
+			return '';
+		}
+		wp_cache_delete( self::OPTION, 'options' ); // read what the previous play saved, not an older copy
+		return $name;
+	}
+
+	private static function unlock( $name ) {
+		global $wpdb;
+		if ( '' !== $name ) {
+			$wpdb->query( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- releasing the lock above.
+		}
+	}
+
 	private static function data() {
 		$d = get_option( self::OPTION, array() );
 		return wp_parse_args(
@@ -52,6 +83,7 @@ class FTVS_Stats {
 			return;
 		}
 		$path = self::path( $path );
+		$lock = self::lock();
 		$d    = self::data();
 		$day  = wp_date( 'Y-m-d' );
 		$row  = isset( $d['days'][ $day ] ) ? $d['days'][ $day ] : array( 'p' => 0, 'c' => 0, 'e' => 0, 'l' => 0, 'em' => 0, 'v' => array(), 'pg' => array() );
@@ -97,6 +129,7 @@ class FTVS_Stats {
 			$d['days'] = array_slice( $d['days'], -self::KEEP, null, true );
 		}
 		update_option( self::OPTION, $d, false );
+		self::unlock( $lock );
 	}
 
 	/** The first $n letters (not bytes, so accented letters stay whole). */

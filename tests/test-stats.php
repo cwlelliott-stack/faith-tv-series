@@ -350,3 +350,13 @@ function test_stats_dashboard_widget_only_for_admins_of_a_connected_church() {
 	FTVS_Stats::dashboard();
 	assert_false( ftvs_t_has_dashboard_box(), 'not before a church is connected' );
 }
+
+function test_stats_record_takes_turns_and_lets_go() {
+	global $wpdb;
+	ftvs_t_stats_setup();
+	$name = FTVS_Stats::lock_name();
+	assert_true( strlen( $name ) <= 64, 'MySQL lock names are at most 64 characters' );
+	ftvs_t_record( 'play', 'demo-hope-rising-1', 'T' );
+	assert_same( '1', (string) $wpdb->get_var( $wpdb->prepare( 'SELECT IS_FREE_LOCK(%s)', $name ) ), 'the lock is released after each play' );
+	assert_same( 1, $GLOBALS['ftvs_t_stats']['days'][ wp_date( 'Y-m-d' ) ]['p'], 'and the play was counted' );
+}
