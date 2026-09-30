@@ -137,6 +137,18 @@ and shortcodes for everything else.
 Play counts are totals per day, per video and per page, with no names or addresses. "Continue
 watching" and the volume are remembered in the visitor's own browser only.
 
+== Screenshots ==
+
+1. Showcase: the newest series big, the others in a strip. Visitors watch right on the page.
+2. The player: episodes, the church's next-step buttons, share, and a transcript when there are captions.
+3. Sunday Live: the countdown to the next service, the live stream, then the replay.
+4. Sermon Library: every message, newest first, with search and filters.
+5. On phones: the newest series big and the rest as a list; the player slides up from the bottom.
+6. Look & feel: church color, style and layouts, with a live preview of the real section.
+7. Health: every page with a video section, and whether each one works.
+8. Sunday live settings: service times, the live link for other platforms, and the "We're live" bar.
+9. Connect a church: Faith Stream, a Gideo TV channel, YouTube, series built by hand, or sample videos.
+
 == Installation ==
 
 1. WordPress admin > Plugins > Add New Plugin > Upload Plugin, choose faith-tv-series.zip, Install Now, Activate.

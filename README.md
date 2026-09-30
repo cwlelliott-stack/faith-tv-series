@@ -25,6 +25,10 @@ Sites update themselves after that (see below). `python build-zip.py --wporg` ma
 wordpress.org edition (`faith-tv-series-wporg.zip`): no self-updater, no `Update URI` header, no
 calls to Google Fonts.
 
+`.wordpress-org/` holds the directory listing's banner, icon and screenshots (made from the
+sample videos, not a real church). They go in the SVN `assets/` folder when the plugin is listed;
+the screenshot captions are in readme.txt.
+
 ## Releasing an update
 
 ```bash

@@ -1270,7 +1270,7 @@ class FTVS_Renderer {
 	/** Sample videos: a note to the editor (visitors never see sample sections). */
 	private static function demo_note() {
 		if ( FTVS_Catalog::is_demo() ) {
-			echo '<div class="ftvs-notice" style="padding:10px 14px;border-left:4px solid #084073;background:#fff;color:#222;font:14px/1.4 sans-serif;margin:0 0 12px">'
+			echo '<div class="ftvs-demo-note" style="padding:10px 14px;border-left:4px solid #084073;background:#fff;color:#222;font:14px/1.4 sans-serif;margin:0 0 12px">'
 				. '<strong>' . esc_html__( 'Sample videos.', 'faith-tv-series' ) . '</strong> '
 				. esc_html__( 'Only people who can edit the site see this section. Connect your church under Faith Stream > Church to show your own videos.', 'faith-tv-series' )
 				. '</div>';

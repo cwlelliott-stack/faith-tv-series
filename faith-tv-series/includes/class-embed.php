@@ -167,7 +167,11 @@ class FTVS_Embed {
 		header_remove( 'X-Frame-Options' );
 		header( 'Content-Type: text/html; charset=' . get_bloginfo( 'charset' ) );
 		header( 'Content-Security-Policy: frame-ancestors *' );
-		header( 'Cache-Control: ' . ( $signed && '1' !== $value( 'preview' ) ? 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' : 'public, max-age=120' ) );
+		if ( '1' === $value( 'preview' ) || is_user_logged_in() ) {
+			header( 'Cache-Control: private, no-store' ); // an admin's preview, or what an editor sees
+		} else {
+			header( 'Cache-Control: ' . ( $signed ? 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' : 'public, max-age=120' ) );
+		}
 		header( 'X-Robots-Tag: noindex' );
 
 		$bg   = $clear ? 'transparent' : ( 'light' === $theme ? '#ffffff' : '#222222' );
