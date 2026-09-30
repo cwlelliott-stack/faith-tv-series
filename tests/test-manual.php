@@ -340,3 +340,17 @@ function test_manual_the_edit_box_shows_what_was_typed_and_what_was_found() {
 	assert_contains( 'Second episode', $html );
 	assert_contains( 'vimeo.com', $html );
 }
+
+function test_manual_series_are_the_whole_library_when_no_platform_is_connected() {
+	ftvs_t_settings( array( 'source' => '' ) );
+	$id = ftvs_t_series();
+	$library = FTVS_Catalog::library();
+	assert_not_error( $library, 'the sermon library, search and message pages work with hand-built series alone' );
+	assert_count( 2, $library );
+	assert_same( 'A test series', $library[0]['series'] );
+	assert_not_error( FTVS_Catalog::newest() );
+	$featured = FTVS_Catalog::featured();
+	assert_not_error( $featured );
+	assert_same( '_ms' . $id, $featured['categories'][0]['id'] );
+	assert_count( 0, ftvs_t_requests(), 'nothing is asked of any platform' );
+}

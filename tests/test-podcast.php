@@ -121,7 +121,7 @@ function test_podcast_episodes_only_look_at_a_limited_number_of_videos_without_a
 	ftvs_t_route( 'categories/big?', ftvs_t_json( ftvs_t_fs_category_page( 'big', ftvs_t_fs_videos( 'b', 1, 100 ), 100 ) ) );
 	ftvs_t_route( '/api/public/videos/', ftvs_t_json( array( 'video' => array( 'slug' => 'x', 'title' => 'x' ) ) ) );
 	assert_same( array(), FTVS_Podcast::episodes( 5 ) );
-	assert_count( 25, ftvs_t_requests( '/api/public/videos/' ), 'max + 20 detail requests, then it gives up: a big library without audio must not make a visitor wait for hundreds of requests' );
+	assert_count( 10, ftvs_t_requests( '/api/public/videos/' ), 'no audio on the ten newest: the channel makes no audio, so it stops there instead of asking about hundreds of videos' );
 }
 
 /* ---------------------------------------------------------------- the feed */

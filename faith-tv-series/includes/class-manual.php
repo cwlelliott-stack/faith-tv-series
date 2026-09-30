@@ -22,6 +22,10 @@ class FTVS_Manual {
 		add_action( 'init', array( __CLASS__, 'register' ) );
 		add_action( 'add_meta_boxes_' . self::TYPE, array( __CLASS__, 'meta_box' ) );
 		add_action( 'save_post_' . self::TYPE, array( __CLASS__, 'save' ), 10, 2 );
+		// The list is read once per request; a series saved, trashed or deleted since is read again.
+		add_action( 'save_post_' . self::TYPE, array( __CLASS__, 'forget_posts' ), 1 );
+		add_action( 'trashed_post', array( __CLASS__, 'forget_posts' ) );
+		add_action( 'deleted_post', array( __CLASS__, 'forget_posts' ) );
 		add_filter( 'manage_' . self::TYPE . '_posts_columns', array( __CLASS__, 'columns' ) );
 		add_action( 'manage_' . self::TYPE . '_posts_custom_column', array( __CLASS__, 'column' ), 10, 2 );
 		// Keep the Faith Stream menu open while building a series.
@@ -84,10 +88,16 @@ class FTVS_Manual {
 	}
 
 	/** Published series, in the order set on their edit screens. */
+	/** @var WP_Post[]|null The published series, read once per request. */
+	private static $posts = null;
+
+	public static function forget_posts() {
+		self::$posts = null;
+	}
+
 	private static function posts() {
-		static $cache = null;
-		if ( null === $cache ) {
-			$cache = get_posts(
+		if ( null === self::$posts ) {
+			self::$posts = get_posts(
 				array(
 					'post_type'      => self::TYPE,
 					'post_status'    => 'publish',
@@ -97,7 +107,7 @@ class FTVS_Manual {
 				)
 			);
 		}
-		return $cache;
+		return self::$posts;
 	}
 
 	private static function post_of( $id ) {

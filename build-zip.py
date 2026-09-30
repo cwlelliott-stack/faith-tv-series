@@ -47,6 +47,19 @@ def build(out=OUT, wporg=False):
                     text = re.sub(r'^ \* Update URI:.*\r?\n', '', text, flags=re.M)
                     z.writestr(arc, text)
                     continue
+                if wporg and rel == 'readme.txt':
+                    # The wordpress.org edition installs from the directory and is updated by WordPress.org.
+                    text = open(path, encoding='utf-8', newline='').read()
+                    text, n1 = re.subn(
+                        r'1\. WordPress admin > Plugins > Add New Plugin > Upload Plugin, choose faith-tv-series\.zip, Install Now, Activate\.',
+                        '1. WordPress admin > Plugins > Add New Plugin, search for "Faith TV Series", Install Now, Activate.',
+                        text,
+                    )
+                    text, n2 = re.subn(r'== Updates ==\r?\n.*?\r?\n\r?\n(?=== )', '', text, count=1, flags=re.S)
+                    if n1 != 1 or n2 != 1:
+                        sys.exit('build-zip: the readme\'s Installation or Updates section changed; update build-zip.py')
+                    z.writestr(arc, text)
+                    continue
                 if wporg and rel == 'includes/class-admin.php':
                     # No outside calls at all: the Google Fonts line goes (it only runs in the direct edition
                     # anyway, but reviewers scan for it).

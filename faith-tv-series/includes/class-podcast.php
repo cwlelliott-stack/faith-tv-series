@@ -81,7 +81,8 @@ class FTVS_Podcast {
 		$out   = array();
 		$tries = 0;
 		foreach ( $library as $video ) {
-			if ( count( $out ) >= $max || $tries >= $max + 20 ) {
+			// No audio on the ten newest messages: the channel doesn't make audio (yet), so stop asking.
+			if ( count( $out ) >= $max || $tries >= $max + 20 || ( ! $out && $tries >= 10 ) ) {
 				break;
 			}
 			$audio = isset( $video['audio'] ) ? (string) $video['audio'] : '';

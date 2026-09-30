@@ -1556,8 +1556,9 @@ class FTVS_Admin {
 						<?php foreach ( $status['rows'] as $row ) : ?>
 							<tr>
 								<td><a href="<?php echo esc_url( $row['url'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( '' !== $row['title'] ? $row['title'] : __( '(no title)', 'faith-tv-series' ) ); ?></a><?php echo 'publish' !== $row['status'] ? ' <span class="ftvs-muted">(' . esc_html( $row['status'] ) . ')</span>' : ''; ?>
-									<?php if ( $row['edit'] ) : ?>
-										<br><a class="ftvs-small-link" href="<?php echo esc_url( $row['edit'] ); ?>"><?php esc_html_e( 'Edit', 'faith-tv-series' ); ?></a>
+									<?php $edit = get_edit_post_link( (int) $row['post'], 'raw' ); // built here: the list itself may come from WP-Cron, where there is no user ?>
+									<?php if ( $edit ) : ?>
+										<br><a class="ftvs-small-link" href="<?php echo esc_url( $edit ); ?>"><?php esc_html_e( 'Edit', 'faith-tv-series' ); ?></a>
 									<?php endif; ?>
 								</td>
 								<td><?php echo esc_html( self::section_name( $row ) ); ?></td>

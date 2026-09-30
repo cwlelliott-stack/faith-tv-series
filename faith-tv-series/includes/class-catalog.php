@@ -163,7 +163,8 @@ class FTVS_Catalog {
 	/** What the church features at the top of its channel (Faith Stream), or its first home row. */
 	public static function featured() {
 		if ( ! self::connected() ) {
-			return self::not_connected();
+			$manual = FTVS_Manual::tree_row();
+			return $manual ? FTVS_Manual::get_children( $manual['id'] ) : self::not_connected();
 		}
 		if ( 'faithstream' === self::source() ) {
 			$home = FTVS_FaithStream_Client::get_home();
@@ -203,7 +204,14 @@ class FTVS_Catalog {
 	 */
 	public static function library() {
 		if ( ! self::connected() ) {
-			return self::not_connected();
+			// Only series built by hand: they are the whole library (search, message pages, "newest").
+			$manual = FTVS_Manual::library();
+			if ( ! $manual ) {
+				return self::not_connected();
+			}
+			$manual = self::sort_newest( $manual );
+			self::learn( '', array( 'categories' => array(), 'videos' => $manual ) );
+			return $manual;
 		}
 		$list = FTVS_Cache::remember( 'library', self::LIBRARY_TTL, array( __CLASS__, 'fetch_library', array() ) );
 		if ( ! is_wp_error( $list ) ) {

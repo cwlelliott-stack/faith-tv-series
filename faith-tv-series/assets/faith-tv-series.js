@@ -207,7 +207,16 @@
 		if (CONFIG.report) return CONFIG.report.url;
 		return this.kind === 'live' && Checkin.token() ? CONFIG.checkin.api + '/api/analytics/events?tenant=' + encodeURIComponent(CONFIG.checkin.tenant) : '';
 	};
+	/* One report at a time, so a pause sent before Faith Stream's first answer joins the same session instead of
+	   starting another. The last report as the page closes goes straight out. */
 	Reporter.prototype.send = function (events, keepalive) {
+		var self = this;
+		if (keepalive) return this.post(events, true);
+		var go = function () { return self.post(events, false); };
+		this.queue = (this.queue || Promise.resolve()).then(go, go);
+		return this.queue;
+	};
+	Reporter.prototype.post = function (events, keepalive) {
 		var url = this.off ? '' : this.address();
 		if (!url) return Promise.resolve();
 		var self = this;
@@ -1504,7 +1513,12 @@
 				}
 				saveProgress();
 			});
-			video.addEventListener('play', function () { if (reporter) reporter.paused = false; });
+			video.addEventListener('play', function () {
+				if (reporter && reporter.paused) {
+					reporter.paused = false;
+					reporter.resumed = true;
+				}
+			});
 			video.addEventListener('timeupdate', onTime);
 			video.addEventListener('error', onNativeError);
 			if (video.textTracks && video.textTracks.addEventListener) {
@@ -2131,7 +2145,8 @@
 			var path = entry && entry.kind === 'live' ? 'live' : 'video/' + (ep ? ep.id : '') + '?fresh=' + Date.now();
 			getJSON(path).then(function (data) {
 				if (mine !== token) return;
-				var url = entry && entry.kind === 'live' ? (data.play && data.play.src) : data.hls;
+				// Listening: the fresh audio address, not the video's.
+				var url = entry && entry.kind === 'live' ? (data.play && data.play.src) : (listening && data.audio ? data.audio : data.hls);
 				if (!url) throw new Error('gone');
 				if (hls) {
 					hls.loadSource(url);
@@ -2383,7 +2398,8 @@
 				if (reporter && !reporter.started) {
 					reporter.started = true;
 					reporter.start(video.currentTime);
-				} else if (reporter) {
+				} else if (reporter && reporter.resumed) {
+					reporter.resumed = false;
 					reporter.event('play', video.currentTime);
 				}
 			}
