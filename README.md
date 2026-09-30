@@ -22,8 +22,17 @@ faithtabernacle.com; any church can connect (or try it with sample videos first)
    block or shortcode anywhere)
 
 Sites update themselves after that (see below). `python build-zip.py --wporg` makes the
-wordpress.org edition (`faith-tv-series-wporg.zip`): no self-updater, no `Update URI` header, no
-calls to Google Fonts.
+wordpress.org edition (`faith-tv-series-wporg.zip`). It leaves out `includes/class-updater.php`
+(the self-updater, the Updates tab and its auto-update switch), the `Update URI` header and the
+Google Fonts line, and rewrites the readme's Installation and Updates text. The code tells the
+editions apart with `FTVS_Settings::direct_edition()`: in the wordpress.org edition the "Powered
+by" link and play reports to Faith Stream start off (wordpress.org wants both opt-in).
+
+Before submitting to wordpress.org, run Plugin Check on the wordpress.org zip in a test site
+(`wp plugin install plugin-check --activate`, then
+`wp plugin check faith-tv-series --include-experimental`). On 9/30/2026 it reported no errors and
+one warning (`load_plugin_textdomain`, kept so the bundled Spanish loads). faithstream.video also
+needs the `/terms` and `/privacy` pages the readme links to.
 
 `.wordpress-org/` holds the directory listing's banner, icon and screenshots (made from the
 sample videos, not a real church). They go in the SVN `assets/` folder when the plugin is listed;
@@ -61,9 +70,15 @@ their old updater once, then use the signed path.
   hand, the `ftvs_series` post type, alongside any source).
 - `includes/class-cache.php`: every answer is cached and backed up. Stale answers are served
   right away while WP-Cron fetches fresh ones (one fetch at a time, with a short cool-off when
-  the platform is down); a 404 means "removed" and the backup goes too. `class-purge.php` clears
-  common page caches when the catalog changes; Faith Stream can also ping
-  `/wp-json/faith-tv/v1/refresh` (HMAC-signed).
+  the platform is down); a 404 means "removed" and the backup goes too. A list that suddenly
+  comes back empty keeps the backup for 30 minutes, and a list that failed partway is never saved
+  (a short list would make the missing videos look "new" later). `expire()` (a Faith Stream ping,
+  a plugin update) keeps serving backups while fresh answers load; `clear()` ("Refresh from your
+  channel") fetches before showing. Copies saved by 1.2 or earlier are never shown.
+  `class-purge.php` clears common page caches when the catalog changes (the `ftvs_pages_purged`
+  action tells hosts); Faith Stream can also ping `/wp-json/faith-tv/v1/refresh` (HMAC-signed).
+- After an update (WordPress doesn't run the activation hook then), `FTVS_Settings::maybe_upgrade()`
+  starts a new cache generation and clears page caches once per version (`ftvs_version`).
 - `includes/class-renderer.php` renders every section (the shortcodes, widgets and blocks all go
   through it); `class-live.php` works out Sunday live; `class-watch.php` serves the message pages
   (`/watch/<video>/` under the chosen Watch page) with link previews and structured data, and
@@ -110,6 +125,7 @@ that the plugin header, `FTVS_VERSION` and the readme `Stable tag` agree.
 bash tests/run-docker.sh            # the whole suite, against the containers from "Test locally"
 bash tests/run-docker.sh cache      # only tests whose name or file contains "cache"
 bash tests/lint.sh                  # php -l on every PHP file, node --check on every script
+PHP="docker exec -i ftvs3-wp php" bash tests/lint.sh php   # no PHP installed: use a container's
 bash tests/check-version.sh v1.3.0  # the three version numbers agree, and match this tag
 ```
 
