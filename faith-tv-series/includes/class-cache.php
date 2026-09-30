@@ -20,6 +20,8 @@ class FTVS_Cache {
 	// After the platform times out or refuses the connection, don't try again for a while.
 	const DOWN_TTL = 3 * MINUTE_IN_SECONDS;
 	const LOCK_TTL = 90;
+	// A list that comes back empty replaces a full saved one only once it has stayed empty this long.
+	const EMPTY_WAIT = 30 * MINUTE_IN_SECONDS;
 	const QUEUE    = 'ftvs_refresh_queue';
 	const HEALTH   = 'ftvs_health';
 	const CRON     = 'ftvs_refresh_stale';
@@ -101,6 +103,28 @@ class FTVS_Cache {
 				set_transient( self::down_key(), 1, self::DOWN_TTL );
 			}
 			return $fallback( $data );
+		}
+
+		// A platform hiccup (maintenance, a half-started server) can answer "nothing" for a list that has
+		// videos: keep showing the saved list until the empty answer has lasted a while.
+		if ( null !== $backup && self::emptied( $backup['d'], $data ) ) {
+			$since = $backup['e'] ? $backup['e'] : time();
+			if ( time() - $since < self::EMPTY_WAIT ) {
+				if ( ! $backup['e'] ) {
+					update_option(
+						'ftvs_bk_' . $hash,
+						array(
+							'__ftvs' => 2,
+							't'      => $backup['t'],
+							'd'      => $backup['d'],
+							'e'      => $since,
+						),
+						false
+					);
+				}
+				set_transient( self::transient( $hash ), $backup['d'], self::ERROR_TTL );
+				return $backup['d'];
+			}
 		}
 
 		set_transient( self::transient( $hash ), $data, $ttl );
@@ -245,11 +269,32 @@ class FTVS_Cache {
 			return array(
 				't' => (int) $raw['t'],
 				'd' => $raw['d'],
+				'e' => isset( $raw['e'] ) ? (int) $raw['e'] : 0, // when an empty answer first came in instead
 			);
 		}
 		// Saved by 1.2 or earlier: its answers have other shapes (a video was only its stream address), so it is
 		// never shown. The next good answer replaces it.
 		return null;
+	}
+
+	/** Whether a list that had something now has nothing (answers that aren't lists never count). */
+	private static function emptied( $old, $new ) {
+		return 0 === self::items( $new ) && self::items( $old ) > 0;
+	}
+
+	/** How many things a list answer holds, or -1 when it isn't a list (a stream address, the live status). */
+	private static function items( $data ) {
+		if ( ! is_array( $data ) ) {
+			return -1;
+		}
+		if ( isset( $data['rows'] ) || isset( $data['videos'] ) || isset( $data['categories'] ) ) {
+			$n = 0;
+			foreach ( array( 'rows', 'videos', 'categories' ) as $part ) {
+				$n += isset( $data[ $part ] ) && is_array( $data[ $part ] ) ? count( $data[ $part ] ) : 0;
+			}
+			return $n;
+		}
+		return array_values( $data ) === $data ? count( $data ) : -1;
 	}
 
 	private static function hash( $key ) {

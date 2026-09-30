@@ -526,3 +526,24 @@ function test_cache_search_answers_leave_no_outage_copy() {
 	assert_same( array( 'v' => 'found' ), FTVS_Cache::remember( $key, 300, ftvs_t_cache_job( 'a' ) ) );
 	assert_same( null, FTVS_Cache::peek( $key ), 'every different search would otherwise leave a row behind' );
 }
+
+function test_cache_a_list_that_comes_back_empty_waits_before_replacing_a_full_one() {
+	$key  = ftvs_t_cache_setup();
+	$full = array( 'categories' => array(), 'videos' => array( array( 'id' => 'a' ), array( 'id' => 'b' ) ) );
+	$none = array( 'categories' => array(), 'videos' => array() );
+	FTVS_Test_Fetcher::answers( 'a', array( $full, $none, $none, $none ) );
+	assert_same( $full, FTVS_Cache::refresh( $key, 300, ftvs_t_cache_job( 'a' ) ) );
+	assert_same( $full, FTVS_Cache::refresh( $key, 300, ftvs_t_cache_job( 'a' ) ), 'a sudden empty answer (a platform hiccup) keeps the saved list' );
+	assert_same( $full, FTVS_Cache::refresh( $key, 300, ftvs_t_cache_job( 'a' ) ), 'still within half an hour' );
+	$saved      = get_option( ftvs_t_cache_backup_option( $key ) );
+	$saved['e'] = time() - FTVS_Cache::EMPTY_WAIT - 5;
+	update_option( ftvs_t_cache_backup_option( $key ), $saved, false );
+	assert_same( $none, FTVS_Cache::refresh( $key, 300, ftvs_t_cache_job( 'a' ) ), 'empty for half an hour: the church really emptied it' );
+}
+
+function test_cache_answers_that_are_not_lists_are_never_held_back() {
+	$key = ftvs_t_cache_setup();
+	FTVS_Test_Fetcher::answers( 'a', array( 'https://stream.test/a.m3u8', '' ) );
+	FTVS_Cache::refresh( $key, 300, ftvs_t_cache_job( 'a' ) );
+	assert_same( '', FTVS_Cache::refresh( $key, 300, ftvs_t_cache_job( 'a' ) ) );
+}
