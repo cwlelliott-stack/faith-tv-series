@@ -2338,6 +2338,7 @@ msgid "Remind me"
 msgstr "Recordarme"
 
 #: includes/class-renderer.php:858
+#: includes/class-renderer.php:1220
 msgid "Open the chat"
 msgstr "Abrir el chat"
 
@@ -2518,10 +2519,6 @@ msgstr "%s mensajes"
 #: includes/class-renderer.php:1218
 msgid "1 message"
 msgstr "1 mensaje"
-
-#: includes/class-renderer.php:1220
-msgid "This video opens on our channel."
-msgstr "Este video se abre en nuestro canal."
 
 #: includes/class-renderer.php:1256
 msgctxt "days, in a countdown"
@@ -2925,12 +2922,6 @@ msgstr "No pudimos registrarlo automáticamente. Avise a la oficina de la iglesi
 msgid "Attendance counts while the service is live, during service times."
 msgstr "La asistencia cuenta mientras el servicio está en vivo, en los horarios de servicio."
 
-#. translators: 1: minutes watched, 2: minutes needed
-#: includes/class-renderer.php:1239
-#, php-format
-msgid "Watched %1$d of %2$d minutes. Keep watching and you'll be checked in."
-msgstr "Ha visto %1$d de %2$d minutos. Siga mirando y quedará registrado."
-
 #: includes/class-renderer.php:1240
 msgid "Watching with family?"
 msgstr "¿Mira en familia?"
@@ -2964,3 +2955,9 @@ msgstr "Seguir viendo"
 #, php-format
 msgid "%d min left"
 msgstr "Quedan %d min"
+
+#. translators: 1: minutes watched, 2: minutes needed
+#: includes/class-renderer.php:1239
+#, php-format
+msgid "Watched %1$d of %2$d min. Keep watching and you'll be checked in."
+msgstr "Ha visto %1$d de %2$d min. Siga mirando y quedará registrado."

@@ -1217,7 +1217,7 @@ class FTVS_Renderer {
 				'nMessages'   => __( '%s messages', 'faith-tv-series' ),
 				'oneMessage'  => __( '1 message', 'faith-tv-series' ),
 				'poweredBy'   => __( 'Powered by', 'faith-tv-series' ),
-				'openChannel' => __( 'This video opens on our channel.', 'faith-tv-series' ),
+				'openChat'    => __( 'Open the chat', 'faith-tv-series' ),
 				'countMe'       => __( 'Count me present', 'faith-tv-series' ),
 				'countTitle'    => __( 'Watching from home? Be counted in today\'s attendance.', 'faith-tv-series' ),
 				'countHint'     => __( 'Sign in once. After a few minutes of the service, you are checked in automatically.', 'faith-tv-series' ),
@@ -1236,7 +1236,7 @@ class FTVS_Renderer {
 				'checkinFailed' => __( 'We couldn\'t check you in automatically. Let the church office know you joined online.', 'faith-tv-series' ),
 				'checkinLater'  => __( 'Attendance counts while the service is live, during service times.', 'faith-tv-series' ),
 				/* translators: 1: minutes watched, 2: minutes needed */
-				'watchedOf'     => __( 'Watched %1$d of %2$d minutes. Keep watching and you\'ll be checked in.', 'faith-tv-series' ),
+				'watchedOf'     => __( 'Watched %1$d of %2$d min. Keep watching and you\'ll be checked in.', 'faith-tv-series' ),
 				'withFamily'    => __( 'Watching with family?', 'faith-tv-series' ),
 				'whoWatching'   => __( 'Who\'s watching with you?', 'faith-tv-series' ),
 				'already'       => __( 'already checked in', 'faith-tv-series' ),

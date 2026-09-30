@@ -183,14 +183,24 @@
 		this.kind = kind;
 		this.id = id;
 		this.session = null;
-		// A viewer signed in for check-in sends live heartbeats even when general reporting is off.
-		this.url = CONFIG.report ? CONFIG.report.url : (kind === 'live' && Checkin.token() ? CONFIG.checkin.api + '/api/analytics/events?tenant=' + encodeURIComponent(CONFIG.checkin.tenant) : '');
-		this.off = !this.url || !id || id.charAt(0) === '_';
+		this.viewer = '';
+		this.off = !id || id.charAt(0) === '_';
 		this.timer = 0;
 	}
+	/* Where heartbeats go. Asked on every send: someone can sign in for check-in after the stream started, and a
+	   signed-in viewer's live heartbeats go to Faith Stream even when general reporting is off. */
+	Reporter.prototype.address = function () {
+		if (CONFIG.report) return CONFIG.report.url;
+		return this.kind === 'live' && Checkin.token() ? CONFIG.checkin.api + '/api/analytics/events?tenant=' + encodeURIComponent(CONFIG.checkin.tenant) : '';
+	};
 	Reporter.prototype.send = function (events, keepalive) {
-		if (this.off) return Promise.resolve();
+		var url = this.off ? '' : this.address();
+		if (!url) return Promise.resolve();
 		var self = this;
+		// A different person signed in on this device: their watching is a new session.
+		var who = Checkin.token();
+		if (this.session && this.viewer && who !== this.viewer) this.session = null;
+		this.viewer = who;
 		var body = {
 			session_id: this.session,
 			target_kind: this.kind,
@@ -202,8 +212,8 @@
 			events: events
 		};
 		var headers = { 'Content-Type': 'application/json' };
-		if (Checkin.token()) headers['X-Viewer-Token'] = Checkin.token();
-		return fetch(this.url, {
+		if (who) headers['X-Viewer-Token'] = who;
+		return fetch(url, {
 			method: 'POST',
 			credentials: 'omit',
 			keepalive: !!keepalive,
@@ -1038,7 +1048,9 @@
 		function api(path, method, body) {
 			var headers = {};
 			if (body) headers['Content-Type'] = 'application/json';
-			if (token()) headers['X-Viewer-Token'] = token();
+			// Only the sign-in and check-in routes take the token; the public church card must not get it (any website
+			// may read that one, so Faith Stream doesn't allow the header there and the browser would block the call).
+			if (token() && path !== '/api/tenant') headers['X-Viewer-Token'] = token();
 			var url = CONFIG.checkin.api + path + (path.indexOf('?') < 0 ? '?' : '&') + 'tenant=' + encodeURIComponent(CONFIG.checkin.tenant);
 			return fetch(url, { method: method || 'GET', credentials: 'omit', headers: headers, body: body ? JSON.stringify(body) : undefined }).then(function (r) {
 				return r.json().catch(function () { return {}; }).then(function (data) {
@@ -1243,7 +1255,7 @@
 				var pct = Math.round((100 * watched) / need);
 				bar.firstChild.style.width = pct + '%';
 				bar.setAttribute('aria-valuenow', String(pct));
-				words.textContent = str('watchedOf', 'Watched %1$d of %2$d minutes. Keep watching and you\'ll be checked in.').replace('%1$d', Math.floor(watched / 60)).replace('%2$d', Math.round(need / 60));
+				words.textContent = str('watchedOf', 'Watched %1$d of %2$d min. Keep watching and you\'ll be checked in.').replace('%1$d', Math.floor(watched / 60)).replace('%2$d', Math.round(need / 60));
 			};
 			draw();
 			state.appendChild(words);
@@ -1264,8 +1276,11 @@
 			ask.addEventListener('click', function () {
 				ask.hidden = true;
 				var wrap = el('div', { 'class': 'ftvs-ci__family' }, [el('p', { 'class': 'ftvs-ci__sub', text: str('whoWatching', 'Who\'s watching with you?') })]);
+				var wait = el('p', { 'class': 'ftvs-ci__hint', text: str('loading', 'Loading...') });
+				wrap.appendChild(wait);
 				state.appendChild(wrap);
 				api('/api/checkin/household').then(function (r) {
+					wrap.removeChild(wait);
 					var members = Array.isArray(r) ? r : (r.members || []);
 					var kid = function (m) {
 						var role = String(m.role || m.kind || '').toLowerCase();
@@ -1294,10 +1309,12 @@
 							wrap.appendChild(el('p', { 'class': 'ftvs-ci__msg', text: err.message || str('tryAgain', 'That did not go through. Please try again.') }));
 						});
 					});
-					if (!members.length) wrap.appendChild(el('p', { 'class': 'ftvs-ci__hint', text: str('noFamily', 'No one else is in your household on file.') }));
+					// Only themselves (or everyone already checked in): nothing to pick.
+					if (!boxes.some(function (b) { return !b.input.disabled; })) wrap.appendChild(el('p', { 'class': 'ftvs-ci__hint', text: str('noFamily', 'No one else is in your household on file.') }));
 					else wrap.appendChild(send);
 					Embed.height();
 				}).catch(function (err) {
+					if (wait.parentNode) wrap.removeChild(wait);
 					wrap.appendChild(el('p', { 'class': 'ftvs-ci__msg', text: err.message || str('tryAgain', 'That did not go through. Please try again.') }));
 				});
 			});
@@ -1604,7 +1621,7 @@
 			descEl.hidden = !item.description;
 			tvLink.href = entry.href || '#';
 			tvLink.hidden = !entry.href;
-			tvLink.querySelector('[data-ftvs-tv-text]').textContent = entry.kind === 'live' ? str('openChannel', 'Open the chat') : str('watchOnTv', 'Watch on Faith TV');
+			tvLink.querySelector('[data-ftvs-tv-text]').textContent = entry.kind === 'live' ? str('openChat', 'Open the chat') : str('watchOnTv', 'Watch on Faith TV');
 			var amb = item.image || item.poster || '';
 			if (amb) ambient.src = amb;
 			ambient.hidden = !amb;
