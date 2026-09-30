@@ -56,7 +56,7 @@ class FTVS_Settings {
 			'upnext'        => 1,
 			// Counting plays: on this site's dashboard, and in Faith Stream's own reports.
 			'count_plays'   => 1,
-			'report_plays'  => 1,
+			'report_plays'  => self::direct_edition() ? 1 : 0, // wordpress.org: sending anything out is opt-in
 			'stats_email'   => 0,
 			// Sunday live.
 			'services'       => array(),

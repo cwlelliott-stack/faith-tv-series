@@ -97,9 +97,10 @@ sent anywhere until a church is connected (or "Try it with sample videos" is cho
 * Faith Stream (the church's own Faith Stream address, for example stream.yourchurch.com)
   - From the site: the public catalog (series, videos, search), the live status, and the church's
     name, logo and colors. Faith Stream can also send the site a signed "something changed" ping.
-  - From visitors' browsers, when "Also count them in Faith Stream's reports" is on: play reports
-    (start, watch time, finished, the page's address without its query). Faith Stream keeps only a
-    daily-scrambled form of the visitor's internet address.
+  - From visitors' browsers, when "Also count them in Faith Stream's reports" is on (off until you
+    turn it on in the wordpress.org edition): play reports (start, watch time, finished, the page's
+    address without its query). Faith Stream keeps only a daily-scrambled form of the visitor's
+    internet address.
   - From visitors' browsers, only when a visitor chooses "Count me present" during a live service:
     their church-account email or first name and password, or the email and name they type, go to
     Faith Stream, which checks them in on the church's Faith Connections. The browser keeps a sign-in
