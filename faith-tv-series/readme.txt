@@ -4,7 +4,7 @@ Tags: church, sermons, video, live stream, podcast
 Requires at least: 6.1
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.3.0
 License: GPLv2 or later
 
 By FaithStream. Your church's videos live on your website: series, Sunday live, a sermon library and a page for every message.
@@ -187,6 +187,9 @@ https://github.com/video-dev/hls.js/tree/v1.7.3). It plays video streams in brow
 built-in HLS support, and loads only when someone is about to press play.
 
 == Changelog ==
+
+= 1.3.0 =
+* Sunday live with countdown and replay, a searchable sermon library, a page for every message (in your SEO plugin's sitemap), a podcast feed, online check-in for Faith Stream churches, instant updates from Faith Stream, and many fixes.
 
 = 1.2.1 =
 * Fixes the not-allowed message on the old Settings > Faith TV Series link.
