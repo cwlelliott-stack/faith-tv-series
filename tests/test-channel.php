@@ -165,13 +165,15 @@ function test_channel_route_lowercases_gideo_ids() {
 function test_channel_links_on_the_watch_page_are_tidy() {
 	ftvs_t_faithstream();
 	$ctx  = ftvs_t_ch_watch_ctx();
-	$base = get_permalink( $ctx['page'] );
+	$uri  = get_page_uri( $ctx['page'] );
+	$base = home_url( user_trailingslashit( $uri ) ); // the way message pages are addressed (FTVS_Watch::url)
 	assert_true( $ctx['watch'] && $ctx['pretty'] );
 	assert_same( $base, FTVS_Channel::link( 'home', '', '', $ctx ) );
-	assert_same( trailingslashit( $base ) . 'series/long-game/', FTVS_Channel::link( 'series', 'long-game', '', $ctx ) );
+	assert_same( home_url( user_trailingslashit( $uri . '/series/long-game' ) ), FTVS_Channel::link( 'series', 'long-game', '', $ctx ) );
+	assert_not_contains( '?', FTVS_Channel::link( 'series', 'long-game', '', $ctx ), 'never a tidy path glued to ?page_id=' );
 	assert_same( FTVS_Watch::url( 'part-2' ), FTVS_Channel::link( 'video', 'part-2', '', $ctx ), 'a message is its own page' );
 	assert_same( add_query_arg( 'ftvs_series', 'long-game', FTVS_Watch::url( 'part-2' ) ), FTVS_Channel::link( 'video', 'part-2', 'long-game', $ctx ) );
-	assert_same( trailingslashit( $base ) . 'live/now/', FTVS_Channel::link( 'live', 'now', '', $ctx ) );
+	assert_same( home_url( user_trailingslashit( $uri . '/live/now' ) ), FTVS_Channel::link( 'live', 'now', '', $ctx ) );
 	assert_same( add_query_arg( 'ftvs_q', 'kids%20rock', $base ), FTVS_Channel::link( 'search', '', '', $ctx, 'kids rock' ) );
 }
 

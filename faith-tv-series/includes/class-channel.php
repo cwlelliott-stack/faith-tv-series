@@ -110,13 +110,20 @@ class FTVS_Channel {
 		if ( ! $post || ! in_array( $post->post_type, array( 'page', 'post' ), true ) || ( 'publish' !== $post->post_status && ! current_user_can( 'edit_post', $page_id ) ) ) {
 			$page_id = 0;
 		}
-		$watch = $page_id && FTVS_Watch::page_id() === $page_id;
+		$watch  = $page_id && FTVS_Watch::page_id() === $page_id;
+		$pretty = $watch && (bool) get_option( 'permalink_structure' );
 		return array(
 			'page'   => $page_id,
-			'base'   => $page_id ? (string) get_permalink( $page_id ) : '',
+			// Tidy addresses are built the way message pages build theirs (FTVS_Watch::url), from the page's path.
+			'base'   => $pretty ? self::under( $page_id, '' ) : ( $page_id ? (string) get_permalink( $page_id ) : '' ),
 			'watch'  => $watch,
-			'pretty' => $watch && (bool) get_option( 'permalink_structure' ),
+			'pretty' => $pretty,
 		);
+	}
+
+	/** An address under the page: /watch/ and /watch/series/long-game/. */
+	private static function under( $page_id, $rest ) {
+		return home_url( user_trailingslashit( get_page_uri( $page_id ) . ( '' !== $rest ? '/' . $rest : '' ) ) );
 	}
 
 	/** The address of one view of the channel. */
@@ -124,12 +131,12 @@ class FTVS_Channel {
 		$base = $ctx['base'];
 		switch ( $view ) {
 			case 'series':
-				return $ctx['pretty'] ? user_trailingslashit( trailingslashit( $base ) . 'series/' . rawurlencode( $id ) ) : add_query_arg( self::SERIES_VAR, rawurlencode( $id ), $base );
+				return $ctx['pretty'] ? self::under( $ctx['page'], 'series/' . rawurlencode( $id ) ) : add_query_arg( self::SERIES_VAR, rawurlencode( $id ), $base );
 			case 'video':
 				$url = $ctx['watch'] ? FTVS_Watch::url( $id ) : add_query_arg( FTVS_Watch::VAR, rawurlencode( $id ), $base );
 				return '' !== $in ? add_query_arg( self::SERIES_VAR, rawurlencode( $in ), $url ) : $url;
 			case 'live':
-				return $ctx['pretty'] ? user_trailingslashit( trailingslashit( $base ) . 'live/' . rawurlencode( $id ) ) : add_query_arg( self::LIVE_VAR, rawurlencode( $id ), $base );
+				return $ctx['pretty'] ? self::under( $ctx['page'], 'live/' . rawurlencode( $id ) ) : add_query_arg( self::LIVE_VAR, rawurlencode( $id ), $base );
 			case 'search':
 				return add_query_arg( self::Q_VAR, rawurlencode( $q ), $base );
 		}
